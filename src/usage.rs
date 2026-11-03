@@ -28,6 +28,8 @@ pub struct Acc {
     /// codex: context window and rate limits as the harness reported them
     pub(crate) window: Option<i64>,
     pub(crate) rate_limits: Option<Value>,
+    /// thinking / reasoning level as the session last recorded it
+    pub(crate) thinking: Option<String>,
 }
 
 static FILES: LazyLock<Mutex<HashMap<PathBuf, Acc>>> = LazyLock::new(Default::default);
@@ -48,6 +50,10 @@ fn feed(kind: &str, v: &Value, a: &mut Acc) {
 
 /// omp records: user turns, assistant usage/model/credential, compactions.
 pub(crate) fn feed_omp(v: &Value, a: &mut Acc) {
+    if v["type"] == "thinking_level_change" {
+        a.thinking = v["thinkingLevel"].as_str().filter(|s| !s.is_empty()).map(String::from);
+        return;
+    }
     if v["type"] == "compaction" {
         a.compactions += 1;
         a.last_compaction = ts_of(v);
@@ -153,6 +159,14 @@ pub(crate) fn feed_codex(v: &Value, a: &mut Acc) {
         (Some("turn_context"), _) => {
             if let Some(m) = p["model"].as_str() {
                 a.model = Some(m.to_string());
+            }
+            if let Some(e) = p["effort"].as_str().filter(|s| !s.is_empty()) {
+                a.thinking = Some(e.to_string());
+            }
+        }
+        (Some("event_msg"), Some("thread_settings_applied")) => {
+            if let Some(e) = p["thread_settings"]["reasoning_effort"].as_str().filter(|s| !s.is_empty()) {
+                a.thinking = Some(e.to_string());
             }
         }
         (Some("compacted"), _) => {
@@ -304,15 +318,44 @@ fn codex_limits(r: &Value) -> Vec<Value> {
         .collect()
 }
 
+const LEVELS: &[&str] = &["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+
+/// `gemini-4-argon-medium` → `medium` (only a known level name counts).
+fn level_suffix(model: &str) -> Option<String> {
+    model.rsplit(['-', ':']).next().filter(|l| LEVELS.contains(l)).map(String::from)
+}
+
+/// `--thinking <level>` / `--thinking=<level>` of the agent's process (process list cached 30 s).
+fn launch_thinking(handle: &str) -> Option<String> {
+    type Procs = (i64, HashMap<String, Vec<crate::session::Proc>>);
+    static P: LazyLock<Mutex<Procs>> = LazyLock::new(Default::default);
+    let mut c = P.plock();
+    if now_ms() - c.0 > 30_000 {
+        *c = (now_ms(), crate::session::scan_procs());
+    }
+    c.1.get(handle)?.iter().rev().find_map(|p| thinking_flag(&p.args))
+}
+
+fn thinking_flag(args: &[String]) -> Option<String> {
+    args.iter().enumerate().find_map(|(i, x)| match x.strip_prefix("--thinking") {
+        Some("") => args.get(i + 1).cloned(),
+        Some(r) => r.strip_prefix('=').map(String::from),
+        None => None,
+    })
+}
+
 /// The usage view of one agent (`agents[].usage` and GET /api/agents/{name}/usage); parts
 /// that do not apply are null.
 pub fn view(a: &crate::collect::Agent) -> Value {
     let kind = a.agent_type.as_str();
-    let thinking = a.model.as_deref().and_then(|m| m.split_once(':')).map(|x| x.1.to_string());
     let Some(path) = a.session_path.as_deref().filter(|_| matches!(kind, "omp" | "claude" | "codex")) else {
+        // Antigravity names the level in the model (`gemini-4-argon-medium`)
+        let thinking = if kind == "antigravity" { a.model.as_deref().and_then(level_suffix) } else { None };
         return json!({"context": null, "session": null, "model": a.model, "thinking": thinking, "account": null});
     };
     let acc = read(kind, path);
+    // the session's own record, else omp's `--thinking` launch flag; never guessed
+    let thinking = acc.thinking.clone().or_else(|| if kind == "omp" { a.handle.as_deref().and_then(launch_thinking) } else { None });
     let model = acc.model.clone().or_else(|| a.model.clone());
     let limit = acc.window.or_else(|| {
         let w = windows();
@@ -365,5 +408,33 @@ mod tests {
         assert_eq!(codex_limits(c.rate_limits.as_ref().unwrap())[0]["label"], "7d");
         assert_eq!((short_window("5 Hour"), short_window("Claude 7 Day")), ("5h".to_string(), "7d".to_string()));
         assert_eq!(mask("alice.dev@example.com"), "al***@example.com");
+    }
+
+    #[test]
+    fn thinking_level_comes_from_the_session_or_the_launch_flag() {
+        let mut o = Acc::default();
+        for l in [r#"{"type":"thinking_level_change","thinkingLevel":"medium"}"#, r#"{"type":"thinking_level_change","thinkingLevel":"low"}"#] {
+            feed("omp", &serde_json::from_str(l).unwrap(), &mut o);
+        }
+        assert_eq!(o.thinking.as_deref(), Some("low"), "latest change wins");
+        let mut c = Acc::default();
+        feed("codex", &serde_json::from_str(r#"{"type":"turn_context","payload":{"model":"gpt-6-sol","effort":"xhigh"}}"#).unwrap(), &mut c);
+        assert_eq!(c.thinking.as_deref(), Some("xhigh"));
+        feed(
+            "codex",
+            &serde_json::from_str(r#"{"type":"event_msg","payload":{"type":"thread_settings_applied","thread_settings":{"reasoning_effort":"medium"}}}"#)
+                .unwrap(),
+            &mut c,
+        );
+        assert_eq!(c.thinking.as_deref(), Some("medium"));
+        let mut cl = Acc::default();
+        feed("claude", &serde_json::from_str(r#"{"type":"assistant","message":{"model":"claude-opus-5-5","usage":{}}}"#).unwrap(), &mut cl);
+        assert_eq!(cl.thinking, None, "Claude Code records no level: null, not a guess");
+        assert_eq!(level_suffix("gemini-4-argon-medium").as_deref(), Some("medium"));
+        assert_eq!(level_suffix("gemini-4-argon"), None);
+        let args = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        assert_eq!(thinking_flag(&args(&["omp", "--model", "x", "--thinking", "high"])).as_deref(), Some("high"));
+        assert_eq!(thinking_flag(&args(&["omp", "--thinking=low"])).as_deref(), Some("low"));
+        assert_eq!(thinking_flag(&args(&["omp", "--model", "x"])), None);
     }
 }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Thinking level in the chat info panel again: read from the session (omp `thinking_level_change`, Codex `effort`), omp's `--thinking` flag, or Antigravity's model name; null when the harness records none (Claude Code).
 - Snoozed agents stay quiet: no desktop or phone notification while snoozed (provider errors included), no highlight on the board, and report bottlenecks no longer count snoozed time as waiting on you.
 
 ## 0.1.0 — 2026-11-03
