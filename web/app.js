@@ -2817,7 +2817,7 @@
     const a = ov.name && agentBy(ov.name);
     const order = triageOrder();
     const k = order.indexOf(ov.name);
-    $("#ov-title").innerHTML = a ? `<span class="${a.ambiguous ? "amb" : ""}">${esc(a.name)}</span> <span class="muted small">${esc(a.project)}${a.role ? " · " + esc(a.role) : ""}</span>` : ov.name ? esc(ov.name) : "패널";
+    $("#ov-title").innerHTML = a ? `<span class="${a.ambiguous ? "amb" : ""}" title="${esc(`${L2("이름 출처", "name source")}: ${a.nameSource || "?"}${a.ambiguous ? ` · ${L2("이름이 모호함", "ambiguous name")}` : ""}`)}">${esc(a.name)}${a.ambiguous ? "?" : ""}</span> <span class="muted small">${esc(a.project)}${a.role ? " · " + esc(a.role) : ""}</span>` : ov.name ? esc(ov.name) : "패널";
     $("#ov-nav").textContent = `내 차례 ${k >= 0 ? k + 1 : "–"}/${model.counts.mine}`;
     $("#ov-unsnooze").hidden = !a?.snoozedUntil;
     // Live agent → 종료/강제 종료; ended (offline) agent → 다시 열기.
@@ -3145,7 +3145,7 @@
       const pct = c.pct ?? (c.limit ? (100 * c.used) / c.limit : null);
       parts.push(`<div class="u-row"><span class="u-k">컨텍스트</span>${pct != null ? ubar(pct) : ""}<span class="u-v${pct >= 90 ? " hi" : pct >= 70 ? " mid" : ""}">${pct != null ? `<b class="u-num">${pct.toFixed(1)}%</b>` : ""}${c.used != null ? ` · ${fmtTok(c.used)}${c.limit ? ` / ${fmtTok(c.limit)}` : ""}` : ""}</span></div>${c.compactions ? `<div class="u-sub muted small">${t_(`컴팩션 ${c.compactions}회`)}${c.lastCompactionAt ? ` · 마지막 ${ago(c.lastCompactionAt)}` : ""}</div>` : ""}`);
     }
-    if (u?.model || u?.thinking) parts.push(`<div class="u-row"><span class="u-k">모델</span><span class="u-v">${esc(u.model || a.model || "")}${u.thinking ? ` · thinking ${esc(u.thinking)}` : ""}</span></div>`);
+    if (compact && (u?.model || u?.thinking)) parts.push(`<div class="u-row"><span class="u-k">모델</span><span class="u-v">${esc(u.model || a.model || "")}${u.thinking ? ` · thinking ${esc(u.thinking)}` : ""}</span></div>`);
     if (ss) {
       const tok = [["입력 토큰", ss.input], ["출력 토큰", ss.output], ["캐시 읽기", ss.cacheRead], ["캐시 쓰기", ss.cacheWrite]].filter(([, v]) => v != null);
       parts.push(`<div class="u-row"><span class="u-k">이 세션</span><span class="u-v">${[ss.turns != null ? `턴 ${ss.turns}` : "", ss.cost != null ? `<b class="u-num">${fmtCost(ss.cost)}</b>` : "", ss.startedAt ? `${fmtMin((nowTick() - ss.startedAt) / 60000) || "1분 미만"} 경과` : ""].filter(Boolean).join(" · ")}</span></div>${tok.length ? `<div class="u-sub u-tok">${tok.map(([k, v]) => `<span><span class="muted">${k}</span> ${fmtTok(v)}</span>`).join("")}</div>` : ""}`);
@@ -3154,7 +3154,7 @@
       parts.push(`<div class="u-row"><span class="u-k">계정</span><span class="u-v">${esc([ac.provider ? provLabel(ac.provider) : "", ac.account].filter(Boolean).join(" · "))}</span></div>${(ac.windows || []).map((w) => `<div class="u-row u-win"${w.name || w.recordedAt ? ` title="${esc([w.name, w.recordedAt ? `기록 ${hhmm(w.recordedAt)}` : ""].filter(Boolean).join(" · "))}"` : ""}><span class="u-k muted">${esc(w.label || "")}</span>${ubar(w.pct)}<span class="u-v${w.pct >= 90 ? " hi" : w.pct >= 70 ? " mid" : ""}">${w.pct != null ? `<b class="u-num">${Math.round(w.pct)}%</b>` : ""}${w.resetsAt ? ` <span class="muted">${leftTo(w.resetsAt)}</span>` : ""}</span></div>`).join("")}`);
     }
     const exp = cacheExp(a);
-    if (exp && cacheState(a) !== "cold") parts.push(`<div class="u-row"><span class="u-k">캐시</span><span class="u-v"><span class="cd" data-exp="${exp}" data-basis="${esc(cacheBasis(a))}"></span> <span class="muted small">남음</span></span></div>`);
+    if (compact && exp && cacheState(a) !== "cold") parts.push(`<div class="u-row"><span class="u-k">캐시</span><span class="u-v"><span class="cd" data-exp="${exp}" data-basis="${esc(cacheBasis(a))}"></span> <span class="muted small">남음</span></span></div>`);
     if (!parts.length) return "";
     if (!compact) return `<div class="usage"><h4>사용량</h4>${parts.join("")}</div>`;
     // Phone summary line: context %, session cost, the tightest account window.
@@ -3307,13 +3307,10 @@
     if (!a) html = ov.name ? `<p class="muted">${esc(ov.name)} 에이전트가 더 이상 없습니다.</p>` : `<p class="muted">선택된 에이전트 없음</p>`;
     else {
       const pr = a.progress, n = esc(a.name), tx = ov.tx;
-      html = `<dl class="kv"><dt>이름</dt><dd>${n}${a.ambiguous ? ` <span class="badge cooling" title="이름이 모호함">?</span>` : ""} <span class="muted small">(${esc(a.nameSource || "")})</span></dd>
-          ${a.role ? `<dt>역할</dt><dd>${esc(a.role)}</dd>` : ""}
-          <dt>프로젝트</dt><dd>${esc(a.project)}</dd>
-          <dt>제목</dt><dd>${esc(a.title || "-")}</dd>
-          <dt>종류</dt><dd>${esc(a.agentType)}${a.model ? " · " + esc(a.model) : ""}</dd>
+html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
+          <dt>종류</dt><dd>${esc([a.agentType, a.usage?.model || a.model, a.usage?.thinking ? `thinking ${a.usage.thinking}` : ""].filter(Boolean).join(" · "))}</dd>
           <dt>상태</dt><dd>${esc(stateKo(a.state))} · ${fmtMin(sinceMin(a))}${a.snoozedUntil ? ` · 미룸 ~${new Date(a.snoozedUntil).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}` : ""}</dd>
-          ${cacheState(a) ? `<dt>캐시</dt><dd><span class="badge ${esc(cacheState(a))}">${CACHE_KO[cacheState(a)] || esc(cacheState(a))}</span>${cacheExp(a) && cacheState(a) !== "cold" ? ` <span class="cd" data-exp="${cacheExp(a)}" data-basis="${esc(cacheBasis(a))}"></span>` : ""}${cacheBasis(a) ? `<div class="muted small">${esc(cacheBasis(a))}</div>` : ""}</dd>` : ""}
+          ${cacheState(a) ? `<dt>캐시</dt><dd${cacheBasis(a) ? ` title="${esc(cacheBasis(a))}"` : ""}><span class="badge ${esc(cacheState(a))}">${CACHE_KO[cacheState(a)] || esc(cacheState(a))}</span>${cacheExp(a) && cacheState(a) !== "cold" ? ` <span class="cd" data-exp="${cacheExp(a)}" data-basis="${esc(cacheBasis(a))}"></span>` : ""}</dd>` : ""}
           ${a.tool ? `<dt>도구</dt><dd>${esc(a.tool)}</dd>` : ""}
           ${pr ? `<dt>진행</dt><dd>${pr.done}/${pr.total}${pr.current ? " · " + esc(pr.current) : ""} <span class="muted small">(${esc(pr.source)})</span></dd>` : ""}
           <dt>대화 출처</dt><dd>${tx ? (tx.unavailable ? `<span class="muted">불러올 수 없음 (${esc(tx.unavailable)})</span>` : `${esc(tx.source || "?")} · ${tx.mappingConfidence === "exact" ? "정확" : tx.mappingConfidence === "heuristic" ? `<span style="color:var(--info-warn)">추정</span>` : esc(tx.mappingConfidence || "?")}`) : "…"}</dd>
