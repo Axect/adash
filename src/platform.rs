@@ -388,21 +388,38 @@ pub fn which(bin: &str) -> bool {
 
 /// Show a desktop notification. With an action label, block until it is dismissed (≤15 min)
 /// and return whether the action was clicked (notify-send only; others return false at once).
-pub fn notify(summary: &str, body: &str, action: Option<&str>) -> bool {
+/// `tag` groups notifications: a new one with the same tag replaces the one still on screen
+/// (notification servers that support the stack-tag / synchronous hints; macOS groups).
+pub fn notify(summary: &str, body: &str, action: Option<&str>, tag: Option<&str>) -> bool {
     match notify_backend().as_str() {
-        "notify-send" => match action {
-            Some(label) => timeout(900)
-                .args(["notify-send", "-a", "adash", &format!("--action=open={label}"), summary, body])
-                .output()
-                .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).trim() == "open"),
-            None => {
-                let _ = Command::new("notify-send").args(["-a", "adash", summary, body]).spawn().map(|mut c| std::thread::spawn(move || c.wait()));
-                false
+        "notify-send" => {
+            let mut a: Vec<String> = vec!["-a".into(), "adash".into()];
+            if let Some(t) = tag {
+                a.extend([
+                    "-h".into(),
+                    format!("string:x-dunst-stack-tag:adash-{t}"),
+                    "-h".into(),
+                    format!("string:x-canonical-private-synchronous:adash-{t}"),
+                ]);
             }
-        },
+            match action {
+                Some(label) => {
+                    a.extend([format!("--action=open={label}"), summary.into(), body.into()]);
+                    timeout(900)
+                        .args(std::iter::once("notify-send".to_string()).chain(a))
+                        .output()
+                        .is_ok_and(|o| String::from_utf8_lossy(&o.stdout).trim() == "open")
+                }
+                None => {
+                    a.extend([summary.into(), body.into()]);
+                    let _ = Command::new("notify-send").args(a).spawn().map(|mut c| std::thread::spawn(move || c.wait()));
+                    false
+                }
+            }
+        }
         "terminal-notifier" => {
             let _ = Command::new("terminal-notifier")
-                .args(["-title", "adash", "-subtitle", summary, "-message", body, "-group", "adash"])
+                .args(["-title", "adash", "-subtitle", summary, "-message", body, "-group", &format!("adash-{}", tag.unwrap_or(""))])
                 .spawn()
                 .map(|mut c| std::thread::spawn(move || c.wait()));
             false

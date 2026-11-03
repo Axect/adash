@@ -1305,10 +1305,11 @@ fn deliver_magi(s: &Snapshot, st: &mut crate::magi::RunState) {
             st.status = "held".into();
             if reason.contains("draft") && !st.notified_held {
                 st.notified_held = true;
-                crate::notify::send(
+                crate::notify::send_for(
                     &format!("adash 전송 보류: magi → {}", st.source),
                     "입력창에 초안이 있어 magi 지시를 보내지 않았습니다. 대시보드에서 '그래도 전달'하거나 초안을 비우세요.",
                     None,
+                    Some(&st.source),
                 );
             }
             st.held_reason = Some(reason);
@@ -1406,6 +1407,10 @@ fn refresh(sh: &Shared) {
 
 pub fn serve(port: u16) -> Res<()> {
     let server = Server::http(("127.0.0.1", port)).map_err(|e| format!("bind 127.0.0.1:{port}: {e}"))?;
+    // the agent server's global environment follows notifications.silenceHarness
+    if crate::term::server_pid().is_some() {
+        crate::term::harness_env();
+    }
     let removed = crate::uploads::cleanup();
     if removed > 0 {
         eprintln!("adash: removed {removed} uploads older than 30 days");

@@ -82,16 +82,50 @@ pub fn status() -> bool {
 /// Start the server unit when it is down and wait (≤5 s) for its socket.
 pub fn ensure_server() -> Res<()> {
     if server_pid().is_some() {
+        harness_env();
         return Ok(());
     }
     crate::platform::start_service(UNIT, false)?;
     for _ in 0..50 {
         if server_pid().is_some() {
+            harness_env();
             return Ok(());
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
     Err(format!("{UNIT} started but the tmux server did not answer"))
+}
+
+/// Environment variable that turns off omp's own desktop notifications (adash notifies instead).
+pub const OMP_SILENCE: &str = "PI_NO_DESKTOP_NOTIFY";
+
+/// `notifications.silenceHarness`: the agent server's global environment carries the omp
+/// switch, so any shell opened in it (also by hand) starts omp without its own notifications.
+pub fn harness_env() {
+    let _ = if crate::config::get().notifications.silence_harness {
+        tmux(&["set-environment", "-g", OMP_SILENCE, "1"])
+    } else {
+        tmux(&["set-environment", "-gu", OMP_SILENCE])
+    };
+}
+
+/// An agent command with the harness's own notifications off, when the harness has a switch
+/// for it: Claude Code `preferredNotifChannel` (as flag settings, so `~/.claude` is untouched),
+/// Codex `tui.notifications`. omp reads `PI_NO_DESKTOP_NOTIFY` from the pane environment.
+pub fn silence_harness(command: &str) -> String {
+    let t = command.trim_start();
+    let (prog, rest) = t.split_once(' ').unwrap_or((t, ""));
+    let flag = match prog {
+        "claude" if !t.contains("preferredNotifChannel") => r#"--settings '{"preferredNotifChannel":"notifications_disabled"}'"#,
+        "codex" if !t.contains("tui.notifications") => "-c tui.notifications=false",
+        _ => return command.to_string(),
+    };
+    // codex subcommands (`codex resume …`) take the global -c before them as well
+    if rest.is_empty() {
+        format!("{prog} {flag}")
+    } else {
+        format!("{prog} {flag} {rest}")
+    }
 }
 
 /// The tmux server's pid (None = server down). Changes when the server restarts.
@@ -217,19 +251,31 @@ pub fn create(cwd: &Path, project: &str, title: &str, command: Option<&str>, han
     let sess = session_name(project);
     let cwd_s = cwd.to_string_lossy().into_owned();
     let env = format!("{HANDLE_ENV}={h}");
+    let silence = crate::config::get().notifications.silence_harness;
+    let omp_env = format!("{OMP_SILENCE}=1");
     let name = if title.trim().is_empty() { "shell" } else { title.trim() };
     let has = tmux(&["has-session", "-t", &format!("={sess}")]).is_ok();
+    let tsess = format!("={sess}:");
     let pane = if has {
-        tmux(&["new-window", "-d", "-P", "-F", "#{pane_id}", "-t", &format!("={sess}:"), "-n", name, "-c", &cwd_s, "-e", &env])?
+        let mut a = vec!["new-window", "-d", "-P", "-F", "#{pane_id}", "-t", &tsess, "-n", name, "-c", &cwd_s, "-e", &env];
+        if silence {
+            a.extend(["-e", omp_env.as_str()]);
+        }
+        tmux(&a)?
     } else {
-        tmux(&["new-session", "-d", "-P", "-F", "#{pane_id}", "-s", &sess, "-n", name, "-c", &cwd_s, "-e", &env])?
+        let mut a = vec!["new-session", "-d", "-P", "-F", "#{pane_id}", "-s", &sess, "-n", name, "-c", &cwd_s, "-e", &env];
+        if silence {
+            a.extend(["-e", omp_env.as_str()]);
+        }
+        tmux(&a)?
     };
     let pane = pane.trim().to_string();
     tmux(&["set-option", "-p", "-t", &pane, "@adash_handle", &h])?;
     tmux(&["set-option", "-p", "-t", &pane, "@adash_cwd", &cwd_s])?;
     tmux(&["set-option", "-w", "-t", &pane, "automatic-rename", "off"])?;
     if let Some(c) = command.filter(|c| !c.trim().is_empty()) {
-        type_line(&pane, c)?;
+        let c = if silence { silence_harness(c) } else { c.to_string() };
+        type_line(&pane, &c)?;
     }
     Ok(h)
 }
@@ -533,5 +579,18 @@ mod tests {
         let (p, a) = super::emulator_command("Terminal", &argv);
         assert_eq!(p, "osascript");
         assert!(a[1].contains("do script \"tmux -L adash attach-session -t '=galaxy'\""), "{}", a[1]);
+    }
+
+    #[test]
+    fn harness_notifications_off_only_for_known_switches() {
+        assert_eq!(super::silence_harness("claude --resume 'x'"), r#"claude --settings '{"preferredNotifChannel":"notifications_disabled"}' --resume 'x'"#);
+        assert_eq!(super::silence_harness("codex resume 'id'"), "codex -c tui.notifications=false resume 'id'");
+        assert_eq!(super::silence_harness("codex"), "codex -c tui.notifications=false");
+        // already there (resume keeps -c flags): unchanged
+        let c = "codex -c tui.notifications=false resume 'id'";
+        assert_eq!(super::silence_harness(c), c);
+        // omp goes by environment; other commands untouched
+        assert_eq!(super::silence_harness("omp --resume x"), "omp --resume x");
+        assert_eq!(super::silence_harness("agy"), "agy");
     }
 }

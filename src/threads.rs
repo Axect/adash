@@ -331,7 +331,12 @@ fn capture_reply(t: &mut Thread, target: Option<&Agent>) {
     t.confirmed = false;
     if t.from == "human" {
         t.phase = "done".into();
-        notify::send(&format!("adash 답변 도착: {}", t.to), &truncate(t.reply_text().unwrap_or_default().trim(), 120), target.and_then(|a| a.handle.clone()));
+        notify::send_for(
+            &format!("adash 답변 도착: {}", t.to),
+            &truncate(t.reply_text().unwrap_or_default().trim(), 120),
+            target.and_then(|a| a.handle.clone()),
+            Some(&t.to),
+        );
     } else {
         t.phase = "relay".into();
     }

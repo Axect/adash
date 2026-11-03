@@ -66,6 +66,9 @@
             "osascript",
             "none"
           ]
+        },
+        "silenceHarness": {
+          "type": "boolean"
         }
       },
       "type": "object"

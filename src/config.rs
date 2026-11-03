@@ -63,6 +63,8 @@ pub struct Terminal {
 pub struct Notifications {
     /// auto | notify-send | terminal-notifier | osascript | none
     pub backend: String,
+    /// turn off the agents' own desktop notifications in adash terminals (adash notifies once)
+    pub silence_harness: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -129,7 +131,7 @@ impl Default for Terminal {
 
 impl Default for Notifications {
     fn default() -> Self {
-        Notifications { backend: "auto".into() }
+        Notifications { backend: "auto".into(), silence_harness: true }
     }
 }
 
@@ -251,6 +253,9 @@ pub fn config_text(c: &Config) -> String {
          [notifications]\n\
          # auto | notify-send | terminal-notifier | osascript | none\n\
          backend = {backend}\n\
+         # turn off omp / Claude Code / Codex desktop notifications in adash terminals, so each\n\
+         # event notifies once (from adash); agents outside adash keep theirs\n\
+         silenceHarness = {silence}\n\
          \n\
          [open]\n\
          # app for Markdown files opened from chat; unset = system default\n\
@@ -282,6 +287,7 @@ pub fn config_text(c: &Config) -> String {
         emu = q(&c.terminal.emulator),
         tmux = q(&c.terminal.tmux),
         backend = q(&c.notifications.backend),
+        silence = c.notifications.silence_harness,
         md = opt("markdownApp", &c.open.markdown_app, "typora"),
         chrome = opt("chrome", &c.reports.chrome, "/usr/bin/chromium"),
         skill = opt("skill", &c.magi.skill, "~/skills/magi-research/SKILL.md"),
@@ -361,7 +367,7 @@ pub fn schema() -> serde_json::Value {
             "port": {"type": "integer", "minimum": 1, "maximum": 65535, "description": "HTTP port (env ADASH_PORT wins)"},
             "harnesses": {"type": "object", "additionalProperties": false, "properties": {"omp": {"type": "boolean"}, "claude": {"type": "boolean"}, "codex": {"type": "boolean"}, "antigravity": {"type": "boolean"}}},
             "terminal": {"type": "object", "additionalProperties": false, "properties": {"emulator": s("auto, or an emulator command such as ghostty / \"kitty --single-instance\""), "tmux": s("tmux binary")}},
-            "notifications": {"type": "object", "additionalProperties": false, "properties": {"backend": {"enum": ["auto", "notify-send", "terminal-notifier", "osascript", "none"]}}},
+            "notifications": {"type": "object", "additionalProperties": false, "properties": {"backend": {"enum": ["auto", "notify-send", "terminal-notifier", "osascript", "none"]}, "silenceHarness": {"type": "boolean"}}},
             "open": {"type": "object", "additionalProperties": false, "properties": {"markdownApp": s("app for Markdown files opened from chat")}},
             "reports": {"type": "object", "additionalProperties": false, "properties": {"chrome": s("Chromium-family browser for PDF reports")}},
             "magi": {"type": "object", "additionalProperties": false, "properties": {"skill": s("SKILL.md of a multi-agent review skill; unset = magi off")}},
