@@ -57,7 +57,7 @@ A theme is resolved to the complete token set (its base first, then its own valu
 
 | kind | pairs | error | warning |
 |---|---|---|---|
-| text | `ui.fg` on `ui.surface`, `ui.bg`, `ui.subtle`, `ui.selection`; `ui.muted`, `ui.link`, `signal.decision`, `info.cache`, `info.warn`, `info.thread`, `info.progress` on `ui.surface`; `signal.ask-text` on `signal.ask-bg` and `ui.surface`; `signal.error-text` on `signal.error-bg` and `ui.surface`; `signal.turn-text` on `signal.turn-bg` and on `ui.surface` (the TURN tag sits on the row); the wordmark's white text on `brand.pill` | under 3:1 | under 4.5:1 |
+| text | `ui.fg` on `ui.surface`, `ui.bg`, `ui.subtle`, `ui.selection`; `ui.muted`, `ui.link`, `signal.decision`, `info.cache`, `info.warn`, `info.thread`, `info.progress` on `ui.surface`; `signal.ask-text` on `signal.ask-bg` and `ui.surface`; `signal.error-text` on `signal.error-bg` and `ui.surface`; `signal.turn-text` on `signal.turn-bg`, `ui.surface` and `ui.bg` (the my-turn mark beside the name sits on the row or the page); the wordmark's white text on `brand.pill` | under 3:1 | under 4.5:1 |
 | marks | `signal.ask`, `signal.error`, `signal.turn`, `timeline.now`, `ui.interact` on `ui.surface` | under 2:1 | under 3:1 |
 | button text | `ui.on-interact` on `ui.interact` (primary buttons, 11.5 px regular) | under 3:1 | under 4.5:1 |
 | grayscale | `signal.ask`, `signal.error` against `timeline.working` (a working agent would look like one that needs you; the my-turn bar is a hollow rail, told apart by shape) | — | under 1.5:1 |

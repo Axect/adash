@@ -567,6 +567,8 @@ const TEXT_PAIRS: &[(&str, &str)] = &[
     ("signal.error-text", "ui.surface"),
     ("signal.turn-text", "signal.turn-bg"),
     ("signal.turn-text", "ui.surface"),
+    // the my-turn mark next to an agent's name also sits on the page / group band
+    ("signal.turn-text", "ui.bg"),
     ("#ffffff", "brand.pill"),
     ("signal.decision", "ui.surface"),
     ("info.cache", "ui.surface"),

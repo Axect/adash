@@ -1042,3 +1042,10 @@ body.mobile .model-btn { min-height: 36px; }
 .pop.placed.sheet, body.mobile .pop.placed { left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; width: auto !important; min-width: 0 !important; max-width: none !important; max-height: 78vh !important; border-radius: 12px 12px 0 0; padding-bottom: calc(8px + env(safe-area-inset-bottom)); zoom: 1; }
 .model-pop.placed { overflow: auto; }
 .pop.placed > * { flex-shrink: 0; }
+/* v45 my-turn mark: the working mark's speed lines, stopped, in the turn colour + wait time. Same slot/size as .wk. */
+.tk { display: inline-flex; align-items: center; gap: 4px; flex: none; margin-left: 5px; color: var(--signal-turn-text); font: 600 var(--fs-xs)/1 var(--font-ui, inherit); white-space: nowrap; }
+.tk-sl { position: relative; display: inline-block; width: 14px; height: 8px; overflow: hidden; color: var(--signal-turn); }
+.tk-sl i { position: absolute; top: 0; left: 0; width: 3px; height: 8px; background: currentColor; transform: translateX(var(--x)) skewX(-20deg); }
+.tk-sl i:nth-child(1) { --x: 1.5px; } .tk-sl i:nth-child(2) { --x: 5.5px; opacity: .55; }
+.lrow .nmwrap .utag { margin-left: 5px; }
+.ov-title .tk { margin-left: 6px; } .mc-head .tk { margin: 0 2px 0 -2px; align-self: center; }

@@ -1209,6 +1209,11 @@
   // Working mark (v44): the wordmark's speed lines drifting left. One shared keyframe; paused off-screen,
   // in hidden tabs and with reduced motion (then the lines stand still). Neutral colour only.
   const WK = `<span class="wk" aria-hidden="true"><i></i><i></i><i></i></span>`;
+  // My-turn mark (v45, decision A): the same speed lines, stopped (two bars, turn colour) + how long it has waited.
+  // Same slot and size as WK, so working → my turn reads as the lines stopping and changing colour. No motion.
+  const fmtWait = (m) => { m = Math.max(0, m || 0); const en = window.ADASH_LANG === "en"; return m < 60 ? (en ? `${Math.round(m)}m` : `${Math.round(m)}분`) : m < 1440 ? (en ? `${+(m / 60).toFixed(1)}h` : `${+(m / 60).toFixed(1)}시간`) : en ? `${Math.round(m / 1440)}d` : `${Math.round(m / 1440)}일`; };
+  const isMyTurn = (a) => a && (a.turn === "unread" || a.turn === "other");
+  const TK = (a) => `<span class="tk" title="${esc(L2(`내 차례 · ${fmtWait(a.waitedMin)} 기다림`, `Your turn · waiting ${fmtWait(a.waitedMin)}`))}"><span class="tk-sl" aria-hidden="true"><i></i><i></i></span><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span></span>`;
   function harnessBadge(s, live = true) {
     if (!s) return `<span class="hb h-none" title="종료됨"><i class="hg"></i><span class="hn">·</span></span>`;
     const t = String(s.agentType || "").toLowerCase(), mono = HARNESS[t] || (t.slice(0, 3) || "?"), cls = HARNESS[t] ? mono : "other";
@@ -1452,9 +1457,9 @@
       const turn = a.unread && model.hasInteractions && a.kind !== "asking" && a.kind !== "error";
       const cls = `lrow${a.name === selName ? " sel" : ""}${a.live ? "" : " dimrow"}${a.unread && model.hasInteractions ? " unread" : ""}${a.kind === "asking" ? " asking" : ""}${a.kind === "error" ? " erred" : ""}${a.kind === "working" ? " work" : ""}`;
       // Left micro urgency tag (direction 1): what the row needs from me, readable without the legend.
-      const utag = a.kind === "asking" ? `<span class="utag ask">ASK</span>` : a.kind === "error" ? `<span class="utag err">ERR${s?.lastError?.status ? ` ${esc(s.lastError.status)}` : ""}</span>` : turn ? `<span class="utag turn">TURN</span>` : "";
+      const utag = a.kind === "asking" ? `<span class="utag ask">ASK</span>` : a.kind === "error" ? `<span class="utag err">ERR${s?.lastError?.status ? ` ${esc(s.lastError.status)}` : ""}</span>` : isMyTurn(a) ? TK(a) : "";
       L.push(`<div class="${cls}${bulk.has(a.name) ? " picked" : ""}" data-agent="${esc(a.name)}"><input type="checkbox" class="pick" tabindex="-1" ${bulk.has(a.name) ? "checked" : ""} title="여러 개 선택 (Ctrl/Shift+클릭)">${harnessBadge(s, a.live)}${a.live ? netIcon(s) : ""}
-        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WK : ""}</span>${utag}${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
+        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WK : utag}</span>${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
       // Status column (v15.1): one line = [unread dot][icon chips][time][countdown][progress]. Secondary marks are
       // small same-color icon chips; if the line still overflows, fitInfoRows() folds the lowest-priority items
       // (질문 > 오류 > 결정 > 보류 > 초안 > magi > 시간) into a "+k" chip whose tooltip lists everything.
@@ -1493,7 +1498,7 @@
       const exp = (a.unread || a.kind === "asking" || a.kind === "waiting") && cacheState(s) !== "cold" ? cacheExp(s) : null;
       // Cache countdown is informational (gray, clock glyph), labelled in its tooltip.
       const cd = exp ? `<span class="cd" data-p="7" data-exp="${exp}" data-basis="${esc(cacheBasis(s))}" data-label="캐시 만료 예상"></span>` : "";
-      R.push(`<div class="${cls}" data-agent="${esc(a.name)}"><span class="udot${turn ? " on" : ""}"></span>${a.kind === "error" ? `${chips.join("")}${st}` : `${st}${chips.join("")}`}<span class="spacer"></span><span class="ic c-more" hidden></span>${cd}${prog}</div>`);
+      R.push(`<div class="${cls}" data-agent="${esc(a.name)}">${a.kind === "error" ? `${chips.join("")}${st}` : `${st}${chips.join("")}`}<span class="spacer"></span><span class="ic c-more" hidden></span>${cd}${prog}</div>`);
     }
     H("#lane-labels").innerHTML = L.join("");
     renderBoardEmpty();
@@ -2878,7 +2883,7 @@
     const a = ov.name && agentBy(ov.name);
     const order = triageOrder();
     const k = order.indexOf(ov.name);
-    $("#ov-title").innerHTML = a ? `<span class="${a.ambiguous ? "amb" : ""}" title="${esc(`${L2("이름 출처", "name source")}: ${a.nameSource || "?"}${a.ambiguous ? ` · ${L2("이름이 모호함", "ambiguous name")}` : ""}`)}">${esc(a.name)}${a.ambiguous ? "?" : ""}</span>${kindOf(a) === "working" ? WK : ""} <span class="muted small">${esc(a.project)}${a.role ? " · " + esc(a.role) : ""}</span>` : ov.name ? esc(ov.name) : "패널";
+    $("#ov-title").innerHTML = a ? `<span class="${a.ambiguous ? "amb" : ""}" title="${esc(`${L2("이름 출처", "name source")}: ${a.nameSource || "?"}${a.ambiguous ? ` · ${L2("이름이 모호함", "ambiguous name")}` : ""}`)}">${esc(a.name)}${a.ambiguous ? "?" : ""}</span>${kindOf(a) === "working" ? WK : isMyTurn(model.agents.find((x) => x.name === a.name)) ? TK(model.agents.find((x) => x.name === a.name)) : ""} <span class="muted small">${esc(a.project)}${a.role ? " · " + esc(a.role) : ""}</span>` : ov.name ? esc(ov.name) : "패널";
     $("#ov-nav").textContent = `내 차례 ${k >= 0 ? k + 1 : "–"}/${model.counts.mine}`;
     $("#ov-unsnooze").hidden = !a?.snoozedUntil;
     // Live agent → 종료/강제 종료; ended (offline) agent → 다시 열기.
@@ -4320,13 +4325,13 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
         const s = a.s, dn = decisionsOf(s).length;
         return `<div class="mcard${a.unread ? " unread" : ""}${a.kind === "asking" ? " asking" : ""}${a.kind === "error" ? " erred" : ""}" data-magent="${esc(a.name)}">
           <div class="mc-swipe"><span class="mc-l">확인함</span><span class="spacer"></span><span class="mc-r">미루기 60분</span></div>
-          <div class="mc-body"><div class="mc-head"><b>${esc(a.name)}</b>${a.kind === "working" ? WK : ""}<span class="muted">${esc(a.project)}</span><span class="spacer"></span><span class="mc-st">${stateLine(a)}</span></div>
+          <div class="mc-body"><div class="mc-head"><b>${esc(a.name)}</b>${a.kind === "working" ? WK : isMyTurn(a) ? TK(a) : ""}<span class="muted">${esc(a.project)}</span><span class="spacer"></span><span class="mc-st">${stateLine(a)}</span></div>
             <div class="mc-meta">${a.role ? `<span class="muted">${esc(a.role)}</span>` : ""}${dn ? `<span class="dec-mark">결정 ${dn}</span>` : ""}${heldRelays(a.name).length ? '<span class="held-mark">답변 보류</span>' : ""}${s?.draft?.text ? '<span class="draft-mark">초안</span>' : ""}${soonCold(s) ? `<span class="cd soon" title="${esc(cacheBasis(s))}">곧 식음</span>` : ""}</div>
             <div class="mc-first">${esc(a.kind === "error" ? s?.lastError?.message || "제공자 API 오류로 멈춤" : a.kind === "asking" && s?.ask ? askQuestions(s.ask)[0].question : firstLine(s?.lastMessage))}</div>${a.kind === "error" ? `<div class="mc-act"><button data-retry="${esc(a.name)}">${esc(retryLabel(s))}</button></div>` : ""}</div></div>`;
       }).join("") : `<p class="muted m-empty">기다리는 에이전트가 없습니다</p>`;
     } else if (mtab === "projects") {
       html = model.groups.map((g) => `<section class="mproj"><div class="mp-head"><b>${esc(g.name)}</b>${g.asking ? `<span class="ask-n">질문 ${g.asking}</span>` : ""}${g.unread ? `<span class="unread-n">미확인 ${g.unread}</span>` : ""}<span class="spacer"></span><span class="muted small">에이전트 ${g.allCount}</span><button class="g-more m" data-proj-menu="${esc(g.name)}" aria-label="프로젝트 메뉴">⋯</button></div>
-        ${g.members.map((a) => `<div class="mp-row" data-magent="${esc(a.name)}">${harnessBadge(a.s, a.live)}<span class="mp-n${a.unread ? " unread" : ""}">${esc(a.name)}${a.kind === "working" ? WK : ""}${a.live ? netIcon(a.s) : ""}</span><span class="mp-st muted">${a.live ? stateLine(a) : `<button class="reopen-btn m" data-reopen="${esc(a.name)}">다시 열기</button>`}</span>${sparkline(a)}</div>`).join("")}${g.hidden.length ? `<div class="mp-row mp-off muted small" data-toggle-offline="${esc(g.name)}">${expandedOffline.has(g.name) ? "오프라인 접기" : `오프라인 ${g.hidden.length}개 숨김`}</div>` : ""}</section>`).join("") + hiddenProjHtml(true);
+        ${g.members.map((a) => `<div class="mp-row" data-magent="${esc(a.name)}">${harnessBadge(a.s, a.live)}<span class="mp-n${a.unread ? " unread" : ""}">${esc(a.name)}${a.kind === "working" ? WK : isMyTurn(a) ? TK(a) : ""}${a.live ? netIcon(a.s) : ""}</span><span class="mp-st muted">${a.live ? stateLine(a) : `<button class="reopen-btn m" data-reopen="${esc(a.name)}">다시 열기</button>`}</span>${sparkline(a)}</div>`).join("")}${g.hidden.length ? `<div class="mp-row mp-off muted small" data-toggle-offline="${esc(g.name)}">${expandedOffline.has(g.name) ? "오프라인 접기" : `오프라인 ${g.hidden.length}개 숨김`}</div>` : ""}</section>`).join("") + hiddenProjHtml(true);
     } else if (mtab === "more") {
       html = `${capListHtml()}<div class="mmore"><button class="primary" data-act="m-new">새 세션</button><button data-act="m-sessions">지난 세션</button><button data-act="m-reports">보고서</button><button data-act="m-push">알림·기기 설정</button><button data-open-tab="threads">검토 요청 목록</button><button data-open-tab="tasks">내 할 일</button><button class="font-btn">표시 설정</button></div>`;
     }
