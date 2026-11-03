@@ -63,7 +63,8 @@ impl Notifier {
     pub fn observe(&mut self, snap: &Snapshot) -> Vec<Agent> {
         let mut fired = Vec::new();
         if let Some(prev) = &self.prev {
-            for a in snap.agents.iter().filter(|a| !a.hidden) {
+            // hidden projects and snoozed agents stay quiet (errors included)
+            for a in snap.agents.iter().filter(|a| !a.hidden && a.snoozed_until.is_none()) {
                 let was = prev.get(&a.identity).map(String::as_str);
                 // a provider error stopped the agent: once per error
                 if a.state == "error" && was.is_some_and(|w| w != "error") && self.sent.insert((a.identity.clone(), a.state_since)) {
@@ -107,5 +108,31 @@ impl Notifier {
             self.sent.clear();
         }
         fired
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn snoozed_agents_do_not_notify_even_on_errors() {
+        let agent = |state: &str, snoozed: bool| Agent {
+            identity: "/s/a.jsonl".into(),
+            name: "A".into(),
+            state: state.into(),
+            state_since: 5,
+            needs_human: !snoozed && state != "working",
+            snoozed_until: snoozed.then_some(i64::MAX),
+            ..Default::default()
+        };
+        let snap = |a: Agent| Snapshot { agents: vec![a], ..Default::default() };
+        let mut n = Notifier::default();
+        n.observe(&snap(agent("working", true)));
+        assert!(n.observe(&snap(agent("error", true))).is_empty(), "snoozed error: quiet");
+        let mut m = Notifier::default();
+        m.observe(&snap(agent("working", false)));
+        // the desktop/push side effects run; the fired list is what matters here
+        assert_eq!(m.observe(&snap(agent("error", false))).len(), 1);
     }
 }

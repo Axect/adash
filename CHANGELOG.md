@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Snoozed agents stay quiet: no desktop or phone notification while snoozed (provider errors included), no highlight on the board, and report bottlenecks no longer count snoozed time as waiting on you.
+
 ## 0.1.0 — 2026-11-03
 
 First public release.

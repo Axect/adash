@@ -257,7 +257,10 @@ pub fn build(db: &Db, period: &str, label: &str, from: i64, to: i64, pdf: bool) 
     let span = to - from;
     let (pf, pt) = (from - span, from);
     const HM: &str = "FROM human_messages WHERE kind = 'human' AND ts >= ?1 AND ts < ?2";
+    // time a turn's wait for me spent snoozed (snoozed segments of the session, clipped to the
+    // gap before the human message): not waiting on me, so not a bottleneck
     const TURNS: &str = "FROM agent_turns WHERE start_ts >= ?1 AND start_ts < ?2";
+    const SNOOZED_IN_GAP: &str = SNOOZED_OVERLAP;
 
     // ---- headline
     let msgs_sql = format!("SELECT COUNT(*) {HM}");
@@ -431,7 +434,7 @@ pub fn build(db: &Db, period: &str, label: &str, from: i64, to: i64, pdf: bool) 
     // ---- bottlenecks: hours agents waited on me, per project
     let wait = c.rows(
         "병목: 프로젝트별 나를 기다린 시간(h, 사람 응답 간격 합)",
-        &format!("SELECT project, SUM(human_gap_ms) / 3600000.0, COUNT(*) {TURNS} AND trigger_kind = 'human' AND human_gap_ms IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
+        &format!("SELECT project, SUM(MAX(0, human_gap_ms - {SNOOZED_IN_GAP})) / 3600000.0, COUNT(*) {TURNS} AND trigger_kind = 'human' AND human_gap_ms IS NOT NULL GROUP BY 1 ORDER BY 2 DESC LIMIT 10"),
     );
     // ---- asks / threads / tools
     let asks = c.scalar("답한 질문(ask)", "SELECT COUNT(*) FROM asks WHERE answered_at >= ?1 AND answered_at < ?2 AND cancelled = 0");
@@ -641,6 +644,10 @@ pub fn due() -> Vec<(String, String, i64, i64)> {
     out
 }
 
+/// SQL: milliseconds of `agent_turns`' human gap (the time before the human's message) that the
+/// session spent snoozed, from the `state_segments` view.
+pub const SNOOZED_OVERLAP: &str = "COALESCE((SELECT SUM(MAX(0, MIN(COALESCE(g.end_ts, agent_turns.start_ts), agent_turns.start_ts) - MAX(g.start_ts, agent_turns.start_ts - agent_turns.human_gap_ms))) FROM state_segments g JOIN sessions s ON s.file = g.identity WHERE s.id = agent_turns.session_id AND g.state = 'snoozed'), 0)";
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -690,5 +697,26 @@ mod tests {
         let _ = std::fs::remove_file(&r.html);
         let _ = std::fs::remove_file(r.html.with_extension("json"));
         let _ = std::fs::remove_dir_all(&dirp);
+    }
+}
+
+#[cfg(test)]
+mod snooze_tests {
+    #[test]
+    fn snoozed_time_is_not_counted_as_waiting_on_me() {
+        let c = rusqlite::Connection::open_in_memory().unwrap();
+        c.execute_batch(
+            "CREATE TABLE sessions (id INTEGER PRIMARY KEY, file TEXT);
+             CREATE TABLE agent_turns (session_id INTEGER, start_ts INTEGER, human_gap_ms INTEGER);
+             CREATE TABLE state_transitions (identity TEXT, ts INTEGER, state TEXT);
+             CREATE VIEW state_segments AS SELECT identity, state, ts AS start_ts, LEAD(ts) OVER (PARTITION BY identity ORDER BY ts) AS end_ts FROM state_transitions;
+             INSERT INTO sessions VALUES (1, '/s/a.jsonl');
+             -- waiting 0..100, snoozed 20..50, waiting again 50..100; the human answers at 100
+             INSERT INTO state_transitions VALUES ('/s/a.jsonl', 0, 'waiting'), ('/s/a.jsonl', 20, 'snoozed'), ('/s/a.jsonl', 50, 'waiting'), ('/s/a.jsonl', 100, 'working');
+             INSERT INTO agent_turns VALUES (1, 100, 100);",
+        )
+        .unwrap();
+        let waited: i64 = c.query_row(&format!("SELECT MAX(0, human_gap_ms - {}) FROM agent_turns", super::SNOOZED_OVERLAP), [], |r| r.get(0)).unwrap();
+        assert_eq!(waited, 70);
     }
 }

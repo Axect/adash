@@ -326,6 +326,9 @@ impl History {
             return;
         }
         self.last.retain(|id, _| !(self.test_ids.contains(id) || handles.iter().any(|h| id.contains(h.as_str()))));
+        if cfg!(test) {
+            return; // unit tests share one history file
+        }
         // rewrite the file without them (sends kept)
         let text = std::fs::read_to_string(path()).unwrap_or_default();
         let body: String = text
@@ -801,6 +804,5 @@ mod tests {
         assert!(h.has_project("paper"));
         let _ = std::fs::remove_file(std::env::temp_dir().join(format!("adash-test-handles-{}.txt", std::process::id())));
         let _ = std::fs::remove_file(super::test_ids_path());
-        let _ = std::fs::remove_file(super::path());
     }
 }

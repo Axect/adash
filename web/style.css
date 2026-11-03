@@ -1009,3 +1009,5 @@ body.mobile #usage-m[open] { max-height: 62vh; overflow-y: auto; overscroll-beha
 #font-panel .fp-row > span:not(.muted):not(.small) { white-space: nowrap; }
 .mp-help { margin: -2px 0 4px; line-height: 1.35; }
 .meta-rule { margin: 4px 0 8px; }
+.st-txt.snz, .st-txt.snz .st-c { color: var(--ui-muted); font-weight: 400; }
+.unsnz-btn { flex: none; height: 20px; padding: 0 7px; margin-left: 6px; font-size: var(--fs-xs); }

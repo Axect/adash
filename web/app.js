@@ -255,6 +255,13 @@
     // Fixture: absolute/home paths exist unless they say missing/nope; bare relative paths only resolve via a base.
     if (m) return { results: body.paths.map((p) => ({ path: p, exists: /^(~\/|\/|file:\/\/\/)/.test(p) && !/missing|nope/.test(p), dir: p.endsWith("/") || !/\.[A-Za-z0-9]{1,8}$/.test(p) })) };
     if (/^\/api\/agents\/[^/]+\/open$/.test(path)) return { ok: true, app: /\.md$/i.test(body.path) ? "markdown-editor" : "xdg-open" };
+    m = path.match(/^\/api\/agents\/([^/]+)\/snooze$/);
+    if (m && method === "POST") {
+      const a = fixtureData.agents.find((x) => x.name === decodeURIComponent(m[1]));
+      if (a) { a.snoozedUntil = body?.minutes ? now() + body.minutes * 60000 : null; a.snoozedAt = a.snoozedUntil ? now() : null; }
+      setTimeout(refresh, 50);
+      return { ok: true, snoozedUntil: a?.snoozedUntil ?? null };
+    }
     m = path.match(/^\/api\/agents\/([^/]+)\/(ack|draft)$/);
     if (m) {
       const a = fixtureData.agents.find((x) => x.name === decodeURIComponent(m[1]));
@@ -649,7 +656,10 @@
     for (const e of byName.values()) {
       const s = e.s, h = e.h;
       const k0 = s ? kindOf(s) : "offline";
-      const kind = s && k0 !== "asking" && s.snoozedUntil && s.needsHuman ? "snoozed" : k0;
+      // Snoozed (until a future time): every highlight is off: question, error, unread, waiting all read as
+      // "snoozed"; `held` keeps what it would have been so the Now column can say it in gray. Working stays working.
+      const snz = !!(s?.snoozedUntil && s.snoozedUntil > now);
+      const kind = snz && k0 !== "working" ? "snoozed" : k0;
       let segs = h?.segments || [];
       if (!segs.length && s) segs = [{ state: kind, start: Math.max(from, s.stateSince || from), end: now, src: "recorded" }];
       // History may not know the open question yet: show it from askedAt on.
@@ -667,9 +677,16 @@
       // Unread: the agent finished and is waiting on me, and that happened after my last message to it.
       // Without interaction data (older backend) every waiting agent counts as unread.
       // Backend `unread` (A2: lastAnswerAt > max(lastHumanAt, ackedAt)) wins; otherwise derive it from interactions.
-      const unread = s && typeof s.unread === "boolean" ? s.unread : kind === "waiting" && (!hasInteractions || lastHumanAt == null || waitingSince > lastHumanAt);
+      const unread0 = s && typeof s.unread === "boolean" ? s.unread : kind === "waiting" && (!hasInteractions || lastHumanAt == null || waitingSince > lastHumanAt);
+      const unread = snz ? false : unread0;
+      const held = kind === "snoozed" ? (k0 === "asking" ? "asking" : k0 === "error" ? "error" : unread0 ? "unread" : null) : null;
+      // Timeline: the snoozed stretch draws as the hatch, not as a question / error / wait bar.
+      if (kind === "snoozed" && segs.length) {
+        const at = Math.max(from, Math.min(now, s.snoozedAt || segs[segs.length - 1].start));
+        segs = segs.filter((g) => g.start < at).map((g) => (g.end > at ? { ...g, end: at } : g)).concat([{ state: "snoozed", start: at, end: now, src: "recorded" }]);
+      }
       // Live = present in /api/state now; history's live flag lags behind a close from this dashboard.
-      agents.push({ name: e.name, realName: e.realName, identity: e.identity, s, h, kind, segs, waitedMin, inter, lastHuman, lastHumanAt, unread, live: !!s, project: s?.project || h?.project || "?", role: s?.role ?? h?.role ?? null });
+      agents.push({ name: e.name, realName: e.realName, identity: e.identity, s, h, kind, held, snoozedUntil: snz ? s.snoozedUntil : null, segs, waitedMin, inter, lastHuman, lastHumanAt, unread, live: !!s, project: s?.project || h?.project || "?", role: s?.role ?? h?.role ?? null });
     }
     // Threads name their ends; with fromIdentity/toIdentity they attach to that session's row (an ended same-name
     // agent's row key differs from its name). Threads without identities (older ones) keep the name link.
@@ -1385,13 +1402,19 @@
       if (a.kind === "asking") st = `<span class="st-txt ask" data-p="0" data-tip="${esc(`질문 대기 ${fmtMin(a.waitedMin) || "0분"}`)}"><span class="st-c">? 질문</span><span class="st-a"> · ${fmtMin(a.waitedMin) || "0분"}</span></span>`;
       else if (a.kind === "error") { const e = s?.lastError; st = `<span class="st-txt" data-p="0" data-tip="${esc(errTip(e))}"><span class="st-a">${e?.at ? ago(e.at) : "멈춤"}</span></span>`; }
       else if (a.kind === "waiting") st = `<span class="st-txt${turn ? " turn" : ""}" data-p="0" data-tip="${esc(`${fmtMin(a.waitedMin)} 전에 답함`)}"><span class="st-c">${fmtMin(a.waitedMin)} 전 답</span></span>`;
+      else if (a.kind === "snoozed") {
+        // Gray: what it would be (질문 / 오류 / 미확인) + until when, and an unsnooze button. No colour, no weight.
+        const until = new Date(a.snoozedUntil).toLocaleTimeString(window.ADASH_LANG === "en" ? "en-GB" : "ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+        const what = { asking: L2("질문", "Question"), error: s?.lastError ? errLabel(s.lastError) : L2("오류", "Error"), unread: L2("미확인", "Unread") }[a.held] || "";
+        st = `<span class="st-txt snz" data-p="0" data-tip="${esc(L2(`${until}까지 미룸 · 강조 끔`, `Snoozed until ${until} · highlights off`))}"><span class="st-c">${what ? `${esc(what)} · ` : ""}${esc(L2(`미룸 ~${until}`, `Snoozed ~${until}`))}</span></span><button type="button" class="unsnz-btn" data-p="1" data-unsnooze="${esc(a.name)}">${esc(L2("해제", "Unsnooze"))}</button>`;
+      }
       else if (a.kind === "working") st = `<span class="st-txt work" data-p="0" data-tip="${esc(`작업 중${s?.tool ? ` · ${s.tool}` : ""}`)}"><span class="st-c">작업 중</span>${s?.tool ? `<span class="st-a"> · <code>${esc(s.tool)}</code></span>` : ""}</span>`;
       else { const t = a.lastHumanAt ? ago(a.lastHumanAt) : SEG_KO[a.kind] || a.kind; st = `<span class="st-txt idle" data-p="0" data-tip="${esc(a.lastHumanAt ? `내 마지막 메시지 ${t}` : t)}"><span class="st-a">${esc(t)}</span></span>`; }
       const chips = [];
       const lastErr = a.kind === "error" ? s?.lastError || {} : null;
       // Status column keeps the retry button icon-only (↻) to fit next to "오류 403"; its tooltip names the harness method.
       if (lastErr) chips.push(`<span class="ic c-err c-err-main" data-p="0" data-tip="${esc(errTip(s?.lastError))}">${ICONS.err}<b>${esc(errLabel(s?.lastError))}</b></span><button class="retry-btn" data-p="0" data-retry="${esc(a.name)}" data-tip="${esc(retryTip(s))}" aria-label="${esc(retryLabel(s))}">${ICONS.retry}</button>`);
-      const bad = !lastErr && ((state.threads || []).some((t) => (t.from === a.name || t.to === a.name) && ["escalated", "failed"].includes(t.status) && now - (t.createdAt || 0) < 86400000) || (typeof s?.error === "string" && s.error));
+      const bad = !lastErr && a.kind !== "snoozed" && ((state.threads || []).some((t) => (t.from === a.name || t.to === a.name) && ["escalated", "failed"].includes(t.status) && now - (t.createdAt || 0) < 86400000) || (typeof s?.error === "string" && s.error));
       if (bad) chips.push(chip(2, "c-err", "err", "", `오류 · ${typeof s?.error === "string" ? s.error : "실패하거나 에스컬레이션된 검토 요청이 있음"}`));
       const decs = decisionsOf(s);
       if (decs.length) chips.push(chip(4, "c-dec", "dec", decs.length, `정하실 것 ${decs.length}\n${decs.map((d, i) => `${i + 1}. ${raw(d.text)}`).join("\n")}`));
@@ -3859,6 +3882,13 @@
   }
   const interruptDlg = (name) => dialog(`<h3>${esc(name)} 중단</h3><p>진행 중인 작업을 중단(인터럽트)합니다. 계속할까요?</p>`, "중단", () => act("POST", `/api/agents/${enc(name)}/interrupt`, undefined, "중단 요청 보냄"));
 
+  // Unsnooze from the board: highlights come back at once (optimistic), the next /api/state confirms.
+  async function unsnooze(name) {
+    try { await api("POST", `/api/agents/${enc(name)}/snooze`, { minutes: 0 }); } catch { return; }
+    const s = agentBy(name); if (s) s.snoozedUntil = null;
+    toast(L2(`${name} 미루기 해제`, `${name} unsnoozed`), 2000);
+    if (!FIXTURE) refresh(); else render();
+  }
   // ---------- events ----------
   document.addEventListener("click", (e) => {
     if (!$("#viewer").hidden && (e.target.closest(".viewer-close") || e.target === $("#viewer") || e.target.closest("#viewer img"))) return closeViewer();
@@ -3882,6 +3912,8 @@
     if (ro) return openChat(ro.dataset.agentOpen);
     const hb = e.target.closest("[data-hours]");
     if (hb) { hours = +hb.dataset.hours; localStorage.setItem("adash.hours", hours); render(); return refreshHistory(); }
+    const us = e.target.closest("[data-unsnooze]");
+    if (us) return unsnooze(us.dataset.unsnooze);
     const row = e.target.closest(".lrow[data-agent]");
     if (row && (e.ctrlKey || e.metaKey || e.shiftKey || e.target.classList.contains("pick") || bulk.size)) { e.preventDefault(); return toggleBulk(row.dataset.agent, e.shiftKey); }
     if (row) return openChat(row.dataset.agent);
