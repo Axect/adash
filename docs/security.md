@@ -32,6 +32,7 @@ Out of scope: a compromised user account (it can read the session files and driv
 
 - Only tailnet logins listed in `meta.yaml` (default: the tailnet owner) can request access.
 - Each device shows a code and waits until you approve it on the desktop; approval issues an HttpOnly cookie bound to that device. Pending requests expire.
+- An approved device is also recorded with its Tailscale node (StableID from `tailscale whois` on the client address tailscale serve forwards, accepted only when the node's login matches the `Tailscale-User-Login` header serve sets, and only for tailnet addresses). The same node coming back without its cookie (a home-screen app and a browser tab keep separate cookies, cleared site data) gets a new cookie instead of a new approval code. Revoking a device revokes every entry of its node.
 - An approved phone can read the dashboard, send messages, answer questions and retry errors. It cannot change the login allowlist, and its desktop `/open` is limited as above.
 - `mobile.tailscale = false` in `config.toml` turns tailnet access off entirely.
 

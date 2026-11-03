@@ -4516,7 +4516,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
         <div class="row">조용한 시간 <input type="time" name="qf" value="${esc(cur.quietHours?.from || "")}"> ~ <input type="time" name="qt" value="${esc(cur.quietHours?.to || "")}"></div>
         ${key?.idleSupported ? `<label class="mg-t"><input type="checkbox" name="idle" ${cur.onlyWhenIdle ? "checked" : ""}>데스크톱을 5분 이상 쓰지 않을 때만</label>` : ""}
         <label class="mg-t"><input type="checkbox" name="on" ${ps.sub ? "checked" : ""} ${ps.supported && key?.publicKey ? "" : "disabled"}>이 기기에서 푸시 받기</label></div>
-      ${devices.length ? `<div class="ps-sec"><b>기기</b>${devices.map((d) => `<div class="dev-row"><span>${esc(d.name || d.id)}</span><span class="muted small">${esc(d.login || "")}${d.lastSeen ? ` · ${ago(d.lastSeen)}` : ""}</span><span class="spacer"></span>${d.approved ? `<button type="button" data-act="dev-revoke" data-id="${esc(d.id)}">해제</button>` : `<button type="button" class="primary" data-act="dev-approve" data-id="${esc(d.id)}">승인</button>`}</div>`).join("")}</div>` : ""}`, "저장", async (fd) => {
+      ${devices.length ? `<div class="ps-sec"><b>기기</b>${devices.map((d) => `<div class="dev-row"><span>${d.node ? `<b>${esc(d.node)}</b> ` : ""}${esc(d.name || d.id)}</span><span class="muted small">${esc(d.login || "")}${d.lastSeen ? ` · ${ago(d.lastSeen)}` : ""}</span><span class="spacer"></span>${d.approved ? `<button type="button" data-act="dev-revoke" data-id="${esc(d.id)}" title="${esc(d.node ? L2(`이 Tailscale 기기(${d.node})의 모든 접속을 해제`, `Revokes every login from this Tailscale device (${d.node})`) : "")}">해제</button>` : `<button type="button" class="primary" data-act="dev-approve" data-id="${esc(d.id)}">승인</button>`}</div>`).join("")}</div>` : ""}`, "저장", async (fd) => {
       const settings = { events: fd.getAll("ev"), quietHours: fd.get("qf") && fd.get("qt") ? { from: fd.get("qf"), to: fd.get("qt") } : null, onlyWhenIdle: !!fd.get("idle") };
       localStorage.setItem("adash.push", JSON.stringify(settings));
       try {
@@ -4564,7 +4564,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     if (!p) return;
     markDevPrompted(p);
     devPrompt = p.id;
-    dialog(`<h3>새 기기 승인 요청</h3><p><b>${esc(p.name || p.id)}</b> <span class="muted">${esc(p.login || "")}</span></p>${p.code ? `<p>휴대폰에 보이는 코드: <b class="pair-code">${esc(p.code)}</b></p>` : ""}<p class="muted small">모르는 기기라면 취소하세요. 나중에 '알림·기기 설정'에서 승인할 수 있습니다.</p>`, "승인", () => act("POST", `/api/devices/${enc(p.id)}/approve`, {}, "기기를 승인했습니다"));
+    dialog(`<h3>새 기기 승인 요청</h3><p>${p.node ? `<b>${esc(p.node)}</b> · ` : ""}<b>${esc(p.name || p.id)}</b> <span class="muted">${esc(p.login || "")}</span></p>${p.code ? `<p>휴대폰에 보이는 코드: <b class="pair-code">${esc(p.code)}</b></p>` : ""}<p class="muted small">모르는 기기라면 취소하세요. 나중에 '알림·기기 설정'에서 승인할 수 있습니다.</p>`, "승인", () => act("POST", `/api/devices/${enc(p.id)}/approve`, {}, "기기를 승인했습니다"));
     $("#dlg").dataset.dev = p.id;
     $("#dlg").addEventListener("close", () => { delete $("#dlg").dataset.dev; devPrompt = null; }, { once: true });
   }

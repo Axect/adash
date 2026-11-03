@@ -1790,6 +1790,9 @@ fn handle(sh: &Shared, mut req: Request) {
     }
     // Phase C access: Tailscale-proxied requests need an allowed login and an approved device.
     // The app shell (static files) still loads for a pending device so it can show its code.
+    // the tailnet node behind a tailscale serve request (whois, outside the devices lock)
+    let node = crate::mobile::node_from(hdr("X-Forwarded-For").as_deref(), hdr("Tailscale-User-Login").as_deref(), &crate::mobile::whois);
+    let mut node_cookie = None;
     let access = {
         let mut ds = sh.devices.plock();
         crate::mobile::check(
@@ -1798,11 +1801,15 @@ fn handle(sh: &Shared, mut req: Request) {
             hdr("Cookie").as_deref(),
             hdr("User-Agent").as_deref().unwrap_or(""),
             &sh.ts_allowed,
+            node.as_ref(),
         )
     };
     let device = match access {
         crate::mobile::Access::Local => None,
-        crate::mobile::Access::Device(id) => Some(id),
+        crate::mobile::Access::Device(id, cookie) => {
+            node_cookie = cookie;
+            Some(id)
+        }
         crate::mobile::Access::Denied(code, v, cookie) => {
             let is_api = segs.first() == Some(&"api");
             if is_api || v["error"] != "device_pending" {
@@ -1827,6 +1834,17 @@ fn handle(sh: &Shared, mut req: Request) {
             None
         }
     };
+    if let Some(c) = node_cookie {
+        // known Tailscale node without a cookie: hand it one and repeat the request with it
+        // (307 keeps the method and body)
+        let r = Response::from_data(Vec::new())
+            .with_status_code(307)
+            .with_header(Header::from_bytes("Location", req.url().as_bytes()).unwrap())
+            .with_header(Header::from_bytes("Set-Cookie", c.as_bytes()).unwrap())
+            .with_header(Header::from_bytes("Cache-Control", "no-store").unwrap());
+        let _ = req.respond(r);
+        return;
+    }
     if !matches!(method, Method::Get | Method::Head) {
         let port = crate::util::port();
         let ts_origin = sh.ts_host.as_ref().map(|h| format!("https://{h}"));
@@ -1914,19 +1932,21 @@ fn handle(sh: &Shared, mut req: Request) {
             }
             let mut ds = sh.devices.plock();
             let Some(d) = ds.devices.iter_mut().find(|d| d.id == *id) else { return reply_json(req, 404, &json!({"error": format!("unknown device {id}")})) };
-            if *act == "approve" {
+            let revoked = if *act == "approve" {
                 d.approved = true;
                 d.revoked = false;
+                vec![]
             } else {
-                d.revoked = true;
-            }
+                // a phone is one Tailscale node: every entry of that node goes
+                crate::mobile::revoke_node(&mut ds, id)
+            };
             let _ = ds.save();
             let v = ds.listing();
             drop(ds);
             if *act == "revoke" {
                 // its push subscriptions go with it
                 let mut subs = crate::push::Subs::load();
-                subs.subs.retain(|s| s.device_id.as_deref() != Some(id));
+                subs.subs.retain(|s| !s.device_id.as_deref().is_some_and(|d| revoked.iter().any(|r| r == d)));
                 let _ = subs.save();
             }
             return reply_json(req, 200, &v);
