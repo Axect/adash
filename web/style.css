@@ -186,7 +186,6 @@ code.path { font: var(--fs-xs) var(--mono); color: var(--muted); user-select: al
 .g-add:hover { border-color: var(--border); color: var(--fg); }
 .lrow .nmwrap { display: flex; align-items: baseline; gap: 6px; min-width: 0; flex: 1; overflow: hidden; }
 .lrow .nm { flex: 0 1 auto; min-width: 0; font-weight: 400; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
-.lrow.work .nm { font-weight: 500; color: var(--fg); }
 .lrow.unread .nm, .lrow.asking .nm { font-weight: 700; color: var(--fg); }
 .lrow.asking { box-shadow: inset 3.5px 0 0 var(--ask); }
 .lrow.unread:not(.asking):not(.erred) { box-shadow: inset 3.5px 0 0 var(--turn); }
@@ -216,8 +215,8 @@ code.path { font: var(--fs-xs) var(--mono); color: var(--muted); user-select: al
 .lrow .st-txt.ask { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--signal-ask-text); font-weight: 700; height: 18px; line-height: 16px; padding: 0 6px; border: 1px solid var(--ask); border-radius: 4px; background: var(--ask-bg); }
 .lrow .st-txt.turn { color: var(--fg); font-weight: 600; }
 .lrow .st-txt.turn::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--turn); margin-right: 5px; vertical-align: 1px; }
-.lrow .st-txt.work { color: var(--muted); font-weight: 500; }
-.lrow .st-txt.work code { font: var(--fs-s) var(--mono); color: var(--fg); background: none; padding: 0; }
+.lrow .st-txt.work { color: var(--muted); font-weight: 400; }
+.lrow .st-txt.work code { font: var(--fs-s) var(--mono); color: var(--muted); background: none; padding: 0; }
 .lrow .st-txt.idle { color: var(--dim); }
 .col-info .cd { min-width: 28px; text-align: right; }
 .lrow .prog { flex: none; min-width: 30px; font-size: var(--fs-xs); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
@@ -565,7 +564,7 @@ body[data-links="all"] #timeline .conn { display: none; }
 .resp-tag.unread { color: var(--ui-link); }
 .resp-tag.unread::before { content: ""; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-right: 6px; vertical-align: 1px; }
 .resp-tag.answered, .resp-tag.none { color: var(--muted); }
-.resp-tag.working { color: var(--fg); }
+.resp-tag.working { color: var(--muted); }
 
 /* ---------- chat overlay ---------- */
 #overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(17, 24, 39, .28); }

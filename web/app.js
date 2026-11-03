@@ -257,8 +257,8 @@
     if (/^\/api\/agents\/[^/]+\/open$/.test(path)) return { ok: true, app: /\.md$/i.test(body.path) ? "markdown-editor" : "xdg-open" };
     m = path.match(/^\/api\/agents\/([^/]+)\/models$/);
     if (m && method === "GET") {
-      // Mirrors the server: omp switches effort only (its /model picker rewrites the configured roles), Claude Code
-      // both (and the choice becomes its default), Codex both (session only), Antigravity neither.
+      // Mirrors the server: omp both (session only, Alt+P temporary picker), Claude Code both (and the choice
+      // becomes its default), Codex both (session only), Antigravity neither.
       const a = fixtureData.agents.find((x) => x.name === decodeURIComponent(m[1]));
       const h = /antigravity|agy/.test(a?.agentType || "") ? "agy" : /claude/.test(a?.agentType || "") ? "claude" : /codex/.test(a?.agentType || "") ? "codex" : "omp";
       const E = ["low", "medium", "high"], EX = ["minimal", "low", "medium", "high", "xhigh"];
@@ -268,8 +268,8 @@
       const curModel = h === "claude" ? "opus" : h === "codex" ? "gpt-5.2-codex" : h === "omp" ? "anthropic/" + (a?.usage?.model || a?.model || "claude-opus-5-5") : null;
       const cur = models.find((x) => x[0] === curModel);
       return { harness: a?.agentType || "omp", current: { model: curModel, effort: a?.usage?.thinking || (cur?.[2].length ? "medium" : null) }, models: models.map(([id, label, efforts]) => ({ id, label, efforts })), efforts: cur?.[2] || [],
-        canSetModel: h === "claude" || h === "codex", canSetEffort: h !== "agy", persistsDefault: h === "claude",
-        how: h === "omp" ? "omp: switch models with /model in the terminal (it changes the configured roles)." : h === "agy" ? "Antigravity: pick the model in its own window (terminal → model menu)." : null };
+        canSetModel: h !== "agy", canSetEffort: h !== "agy", persistsDefault: h === "claude",
+        how: h === "agy" ? "Antigravity: pick the model in its own window (terminal → model menu)." : null };
     }
     m = path.match(/^\/api\/agents\/([^/]+)\/model$/);
     if (m && method === "POST") {
@@ -277,6 +277,7 @@
       const fail = new URLSearchParams(location.search).get("modelerr");
       return new Promise((res, rej) => setTimeout(() => {
         if (fail || (a && a.state === "working")) { const e = new Error(fail ? "the harness did not confirm the switch" : "working: wait until it finishes"); e.status = fail ? 502 : 409; return rej(e); }
+        if (a?.draft?.text) { const e = new Error("입력창에 보내지 않은 글이 있습니다"); e.status = 409; return rej(e); }
         if (a && body.model) { const id = String(body.model).split("/").pop(); a.model = id; if (a.usage) a.usage.model = id; }
         if (a && body.effort) { a.usage = a.usage || {}; a.usage.thinking = body.effort; }
         res({ ok: true, sent: body });
@@ -1298,7 +1299,9 @@
         if (s.state === "offline" || s.end <= from) continue;
         const tip = `${raw(r.a.name)} · ${SEG_KO[s.state] || s.state}\n${hhmm(s.start)}–${s.end >= now ? "지금" : hhmm(s.end)} · ${durTxt(s.end - s.start)}${s.src === "reconstructed" ? " · 복원" : ""}`;
         const rec = s.src === "reconstructed" ? " rec" : "";
-        const cls = s.state === "waiting" ? (s === lastSeg && s.end >= now - 60000 && r.a.kind === "waiting" ? "s-wait" : "s-wait-old") : `s-${s.state}`;
+        // The turn-coloured wait bar only while it really is my turn (unread answer / other wait, not snoozed); a waiting
+        // stretch after I have read the answer is idle time and draws as the gray hairline.
+        const cls = s.state === "waiting" ? (s === lastSeg && s.end >= now - 60000 && (r.a.turn === "unread" || r.a.turn === "other") ? "s-wait" : "s-wait-old") : `s-${s.state}`;
         const x0 = X(Math.max(s.start, from)), x1 = X(s.end), w = Math.max(1, x1 - x0);
         // Thickness carries the meaning (readable in grayscale and at README size): needs-me 10 / 8 px, working
         // 5.5 px steel, snoozed 4 px hatch, idle and earlier waiting a 2 px hairline.
