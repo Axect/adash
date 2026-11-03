@@ -5,7 +5,7 @@
 <h3 align="center">Your agents aren't the bottleneck. You are.</h3>
 
 <p align="center">
-  A local dashboard for omp, Claude Code, Codex and Antigravity running in tmux that shows which agent is waiting on you.
+  A local dashboard for omp, Claude Code, Codex and Antigravity that shows which agent is waiting on you.
 </p>
 
 <p align="center">
