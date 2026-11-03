@@ -18,6 +18,7 @@ mod lifecycle;
 mod magi;
 mod meta;
 mod mobile;
+mod model_switch;
 mod network;
 mod notify;
 mod palette;

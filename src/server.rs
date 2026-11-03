@@ -2377,6 +2377,19 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
             let a = agent_for(sh, name, q("identity").as_deref())?;
             Ok((200, crate::usage::view(&a)))
         }
+        (Method::Get, ["api", "agents", name, "models"]) => {
+            let a = agent_for(sh, name, q("identity").as_deref())?;
+            Ok((200, crate::model_switch::view(&a)))
+        }
+        (Method::Post, ["api", "agents", name, "model"]) => {
+            let a = agent_for(sh, name, q("identity").as_deref())?;
+            let r = crate::model_switch::apply(&a, j["model"].as_str().filter(|s| !s.is_empty()), j["effort"].as_str().filter(|s| !s.is_empty()));
+            if let Some(db) = sh.analytics.plock().as_ref() {
+                db.log_action("model", &a.name, &json!({"model": j["model"], "effort": j["effort"], "ok": r.is_ok()}));
+            }
+            refresh(sh);
+            r.map(|v| (200, v))
+        }
         (Method::Get, ["api", "agents", name, "usage", "hourly"]) => {
             let a = agent_for(sh, name, q("identity").as_deref())?;
             let hours = q("hours").and_then(|h| h.parse().ok()).unwrap_or(48);

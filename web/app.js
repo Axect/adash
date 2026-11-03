@@ -154,11 +154,11 @@
     if (!p.hidden && !e.target.closest("#font-panel")) p.hidden = true;
   }, true);
   // Popover menus ([data-pop] buttons → #id .pop): one open at a time; any click outside, or on a menu item,
-  // closes them. The 보기 popover stays open while its controls are used.
+  // closes them. The 보기 popover and the model picker stay open while their controls are used.
   document.addEventListener("click", (e) => {
     const pb = e.target.closest("[data-pop]");
     const target = pb && document.getElementById(pb.dataset.pop);
-    const keep = !pb && e.target.closest(".view-pop");
+    const keep = !pb && e.target.closest(".view-pop, #model-pop");
     const opening = target && target.hidden;
     if (!keep) $$(".pop").forEach((p) => { p.hidden = true; });
     $$("[data-pop]").forEach((b) => b.classList.remove("on"));
@@ -255,6 +255,21 @@
     // Fixture: absolute/home paths exist unless they say missing/nope; bare relative paths only resolve via a base.
     if (m) return { results: body.paths.map((p) => ({ path: p, exists: /^(~\/|\/|file:\/\/\/)/.test(p) && !/missing|nope/.test(p), dir: p.endsWith("/") || !/\.[A-Za-z0-9]{1,8}$/.test(p) })) };
     if (/^\/api\/agents\/[^/]+\/open$/.test(path)) return { ok: true, app: /\.md$/i.test(body.path) ? "markdown-editor" : "xdg-open" };
+    m = path.match(/^\/api\/agents\/([^/]+)\/models$/);
+    if (m && method === "GET") {
+      const a = fixtureData.agents.find((x) => x.name === decodeURIComponent(m[1]));
+      const agy = /antigravity|agy/.test(a?.agentType || "");
+      return { harness: a?.agentType || "omp", current: { model: a?.usage?.model || a?.model || null, effort: a?.usage?.thinking || null },
+        models: [["claude-opus-5-5", "Claude Opus 5.5", "anthropic"], ["claude-sonnet-5", "Claude Sonnet 5", "anthropic"], ["claude-haiku-4-5", "Claude Haiku 4.5", "anthropic"], ["gpt-5.2-codex", "GPT-5.2 Codex", "openai"], ["gemini-3-pro", "Gemini 3 Pro", "google"], ["glm-5", "GLM-5", "zai"]].map(([id, label, provider]) => ({ id, label, provider })),
+        efforts: agy ? [] : ["minimal", "low", "medium", "high", "xhigh"], canSetModel: !agy, canSetEffort: !agy, how: agy ? "Antigravity picks the model in its own window: open the terminal and use the model menu." : null };
+    }
+    m = path.match(/^\/api\/agents\/([^/]+)\/model$/);
+    if (m && method === "POST") {
+      const a = fixtureData.agents.find((x) => x.name === decodeURIComponent(m[1]));
+      if (new URLSearchParams(location.search).get("modelerr")) { const e = new Error("model switch failed: harness did not acknowledge /model"); e.status = 502; throw e; }
+      setTimeout(() => { if (!a) return; if (body.model) { a.model = body.model; if (a.usage) a.usage.model = body.model; } if (body.effort) { a.usage = a.usage || {}; a.usage.thinking = body.effort; } refresh(); }, 900);
+      return { ok: true, pending: true };
+    }
     m = path.match(/^\/api\/agents\/([^/]+)\/snooze$/);
     if (m && method === "POST") {
       const a = fixtureData.agents.find((x) => x.name === decodeURIComponent(m[1]));
@@ -1152,8 +1167,9 @@
   function harnessBadge(s, live = true) {
     if (!s) return `<span class="hb h-none" title="종료됨"><i class="hg"></i><span class="hn">·</span></span>`;
     const t = String(s.agentType || "").toLowerCase(), mono = HARNESS[t] || (t.slice(0, 3) || "?"), cls = HARNESS[t] ? mono : "other";
-    const fam = modelFamily(s.model);
-    return `<span class="hb h-${cls}${fam ? " has-m" : ""}${live ? "" : " off"}" title="${esc(`${s.agentType || "?"}${s.model ? ` · ${s.model}` : ""}${s.role ? `\n역할: ${s.role}` : ""}${live ? "" : "\n종료됨"}`)}"><i class="hg"></i><span class="hn">${esc(mono)}</span>${fam ? `<span class="hm">${esc(fam.slice(0, 5))}</span>` : ""}</span>`;
+    // usage.model is the live model (it follows /model switches); s.model is what the session was started with.
+    const mdl = s.usage?.model || s.model, fam = modelFamily(mdl);
+    return `<span class="hb h-${cls}${fam ? " has-m" : ""}${live ? "" : " off"}" title="${esc(`${s.agentType || "?"}${mdl ? ` · ${mdl}` : ""}${s.role ? `\n역할: ${s.role}` : ""}${live ? "" : "\n종료됨"}`)}"><i class="hg"></i><span class="hn">${esc(mono)}</span>${fam ? `<span class="hm">${esc(fam.slice(0, 5))}</span>` : ""}</span>`;
   }
   // 연결 보기 (item 2): basic = request spans + connector ticks, all = every curve, off = nothing.
   let linkMode = localStorage.getItem("adash.links") || "basic";
@@ -3145,7 +3161,7 @@
       const pct = c.pct ?? (c.limit ? (100 * c.used) / c.limit : null);
       parts.push(`<div class="u-row"><span class="u-k">컨텍스트</span>${pct != null ? ubar(pct) : ""}<span class="u-v${pct >= 90 ? " hi" : pct >= 70 ? " mid" : ""}">${pct != null ? `<b class="u-num">${pct.toFixed(1)}%</b>` : ""}${c.used != null ? ` · ${fmtTok(c.used)}${c.limit ? ` / ${fmtTok(c.limit)}` : ""}` : ""}</span></div>${c.compactions ? `<div class="u-sub muted small">${t_(`컴팩션 ${c.compactions}회`)}${c.lastCompactionAt ? ` · 마지막 ${ago(c.lastCompactionAt)}` : ""}</div>` : ""}`);
     }
-    if (compact && (u?.model || u?.thinking)) parts.push(`<div class="u-row"><span class="u-k">모델</span><span class="u-v">${esc(u.model || a.model || "")}${u.thinking ? ` · thinking ${esc(u.thinking)}` : ""}</span></div>`);
+if (compact && (u?.model || u?.thinking || a.model)) parts.push(`<div class="u-row"><span class="u-k">모델</span><span class="u-v"><button type="button" class="model-btn" data-model-pick="${esc(a.name)}">${esc(u?.model || a.model || "")}${u?.thinking ? ` · thinking ${esc(u.thinking)}` : ""} <span class="muted">▾</span></button></span></div>`);
     if (ss) {
       const tok = [["입력 토큰", ss.input], ["출력 토큰", ss.output], ["캐시 읽기", ss.cacheRead], ["캐시 쓰기", ss.cacheWrite]].filter(([, v]) => v != null);
       parts.push(`<div class="u-row"><span class="u-k">이 세션</span><span class="u-v">${[ss.turns != null ? `턴 ${ss.turns}` : "", ss.cost != null ? `<b class="u-num">${fmtCost(ss.cost)}</b>` : "", ss.startedAt ? `${fmtMin((nowTick() - ss.startedAt) / 60000) || "1분 미만"} 경과` : ""].filter(Boolean).join(" · ")}</span></div>${tok.length ? `<div class="u-sub u-tok">${tok.map(([k, v]) => `<span><span class="muted">${k}</span> ${fmtTok(v)}</span>`).join("")}</div>` : ""}`);
@@ -3301,6 +3317,78 @@
     if (uh.name !== a.name) { uh.data = null; uhRender(); }
     uhLoad(a.name);
   }
+  // ---------- model / effort picker (v43): GET /api/agents/{n}/models, POST /api/agents/{n}/model {model?, effort?} ----------
+  // GET → {harness, current: {model, effort}, models: [{id, label?, provider?}], efforts: [..], canSetModel, canSetEffort, how?}
+  // Applies only when the agent is not working (no queued "apply later"); success = the state shows the new values.
+  const mp = { name: null, data: null, model: null, effort: null, q: "", busy: false, err: "" };
+  function modelPopEl() {
+    let el = $("#model-pop");
+    if (!el) {
+      el = document.createElement("div"); el.id = "model-pop"; el.className = "pop model-pop"; el.hidden = true; el.setAttribute("data-no-i18n", "");
+      document.body.appendChild(el);
+      el.addEventListener("input", (e) => { if (e.target.id === "mp-q") { mp.q = e.target.value; renderModelPop(true); } });
+      el.addEventListener("click", (e) => {
+        const m = e.target.closest("[data-mp-model]"); if (m && !m.disabled) { mp.model = m.dataset.mpModel; return renderModelPop(); }
+        const f = e.target.closest("[data-mp-effort]"); if (f && !f.disabled) { mp.effort = f.dataset.mpEffort; return renderModelPop(); }
+        if (e.target.closest("#mp-apply")) return applyModel();
+        if (e.target.closest("#mp-close")) return closeModelPop();
+      });
+    }
+    return el;
+  }
+  const closeModelPop = () => { const el = $("#model-pop"); if (el) el.hidden = true; document.body.classList.remove("sheet-open"); mp.name = null; };
+  async function openModelPop(name, btn) {
+    const el = modelPopEl();
+    Object.assign(mp, { name, data: null, model: null, effort: null, q: "", busy: false, err: "" });
+    el.hidden = false; el.classList.toggle("sheet", isMobile()); document.body.classList.toggle("sheet-open", isMobile());
+    if (!isMobile()) { const r = btn.getBoundingClientRect(); el.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 360))}px`; el.style.top = `${Math.min(r.bottom + 4, innerHeight - 420)}px`; }
+    else { el.style.left = el.style.top = ""; }
+    renderModelPop();
+    try { mp.data = await api("GET", `/api/agents/${enc(name)}/models`, undefined, { quiet: true }); }
+    catch (e) { mp.err = e.message; }
+    if (mp.name !== name) return;
+    mp.model = mp.data?.current?.model || null; mp.effort = mp.data?.current?.effort || null;
+    renderModelPop();
+  }
+  function renderModelPop(keepFocus) {
+    const el = $("#model-pop"); if (!el || el.hidden) return;
+    const a = agentBy(mp.name), d = mp.data;
+    const head = `<div class="mp-head"><b>${esc(L2("모델", "Model"))}</b><span class="muted small">${esc(mp.name || "")}${d?.harness ? ` · ${esc(d.harness)}` : ""}</span><span class="spacer"></span><button type="button" id="mp-close" aria-label="${esc(L2("닫기", "Close"))}">✕</button></div>`;
+    if (!d) { el.innerHTML = head + `<p class="muted small">${esc(mp.err ? L2(`불러오지 못함: ${mp.err}`, `Could not load: ${mp.err}`) : L2("불러오는 중…", "Loading…"))}</p>`; return; }
+    const working = a && (a.state === "working" || kindOf(a) === "working");
+    const cur = d.current || {}, q = mp.q.trim().toLowerCase();
+    const list = (d.models || []).filter((m) => !q || `${m.id} ${m.label || ""} ${m.provider || ""}`.toLowerCase().includes(q));
+    const canM = d.canSetModel !== false, canE = d.canSetEffort !== false && (d.efforts || []).length > 0;
+    const changed = (mp.model && mp.model !== cur.model) || (mp.effort && mp.effort !== cur.effort);
+    const why = !canM && !canE ? (d.how || L2("이 하네스는 여기서 모델을 바꿀 수 없습니다", "This harness can't switch models from here"))
+      : working ? L2("작업 중에는 바꿀 수 없습니다. 작업이 끝난 뒤 다시 여세요", "Can't switch while it is working. Open this again when it finishes") : "";
+    el.innerHTML = head + `
+      <input id="mp-q" type="search" placeholder="${esc(L2("모델 찾기", "Find a model"))}" value="${esc(mp.q)}" autocomplete="off"${canM ? "" : " disabled"}>
+      <div class="mp-list" role="listbox">${list.map((m) => `<button type="button" role="option" class="mp-m${m.id === mp.model ? " on" : ""}" data-mp-model="${esc(m.id)}" aria-selected="${m.id === mp.model}"${canM && !working ? "" : " disabled"}><span class="mp-id">${esc(m.label || m.id)}</span><span class="muted small">${esc([m.label && m.label !== m.id ? m.id : "", m.provider || ""].filter(Boolean).join(" · "))}</span>${m.id === cur.model ? `<span class="mp-cur">${esc(L2("현재", "current"))}</span>` : ""}</button>`).join("") || `<p class="muted small">${esc(L2("일치하는 모델 없음", "No matching model"))}</p>`}</div>
+      ${canE ? `<div class="mp-eff"><span class="muted small">effort</span><div class="seg">${d.efforts.map((x) => `<button type="button" data-mp-effort="${esc(x)}" class="${x === mp.effort ? "on" : ""}${x === cur.effort ? " cur" : ""}"${x === cur.effort ? ` title="${esc(L2("현재", "current"))}"` : ""}${working ? " disabled" : ""}>${esc(x)}</button>`).join("")}</div></div>` : !canM ? "" : `<p class="muted small">${esc(d.how || L2("이 하네스는 effort 를 바꿀 수 없습니다", "This harness can't change effort"))}</p>`}
+      ${why ? `<p class="mp-why small">${esc(why)}</p>` : ""}
+      ${mp.err && d ? `<p class="mp-err small">${esc(mp.err)}</p>` : ""}
+      <div class="mp-foot"><span class="muted small">${mp.busy ? esc(L2("적용 중… 반영을 기다리는 중", "Applying… waiting for it to take effect")) : ""}</span><span class="spacer"></span><button type="button" id="mp-apply" class="primary"${!changed || why || mp.busy ? " disabled" : ""}>${esc(mp.busy ? L2("적용 중…", "Applying…") : L2("적용", "Apply"))}</button></div>`;
+    if (keepFocus) { const i = el.querySelector("#mp-q"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+  }
+  async function applyModel() {
+    const name = mp.name, d = mp.data, cur = d?.current || {};
+    const body = {}; if (mp.model && mp.model !== cur.model) body.model = mp.model; if (mp.effort && mp.effort !== cur.effort) body.effort = mp.effort;
+    if (!Object.keys(body).length) return;
+    mp.busy = true; mp.err = ""; renderModelPop();
+    try { await api("POST", `/api/agents/${enc(name)}/model`, body, { quiet: true }); }
+    catch (e) { mp.busy = false; mp.err = e.message; renderModelPop(); toast(`${name}: ${e.message}`, 5000); return; }
+    // Confirmed when /api/state reports the new values (poll up to ~20 s).
+    const ok = (s) => s && (!body.model || (s.usage?.model || s.model) === body.model) && (!body.effort || s.usage?.thinking === body.effort);
+    for (let i = 0; i < 20 && mp.name === name; i++) {
+      await new Promise((r) => setTimeout(r, 1000)); await refresh();
+      if (ok(agentBy(name))) {
+        toast(L2(`${name} · ${[body.model, body.effort && `effort ${body.effort}`].filter(Boolean).join(" · ")} 로 바뀜`, `${name} switched to ${[body.model, body.effort && `effort ${body.effort}`].filter(Boolean).join(" · ")}`), 3000);
+        closeModelPop(); render(); return;
+      }
+    }
+    if (mp.name === name) { mp.busy = false; mp.err = L2("요청은 보냈지만 아직 바뀐 값이 보이지 않습니다", "Sent, but the new value has not shown up yet"); renderModelPop(); }
+  }
   function renderInfo() {
     const a = ov.name && agentBy(ov.name);
     let html;
@@ -3308,7 +3396,8 @@
     else {
       const pr = a.progress, n = esc(a.name), tx = ov.tx;
 html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
-          <dt>종류</dt><dd>${esc([a.agentType, a.usage?.model || a.model, a.usage?.thinking ? `thinking ${a.usage.thinking}` : ""].filter(Boolean).join(" · "))}</dd>
+          <dt>하네스</dt><dd>${esc(a.agentType || "?")}</dd>
+          <dt>모델</dt><dd><button type="button" class="model-btn" data-model-pick="${n}" title="${esc(L2("모델·effort 바꾸기", "Change model / effort"))}">${esc([a.usage?.model || a.model || L2("알 수 없음", "unknown"), a.usage?.thinking ? `thinking ${a.usage.thinking}` : ""].filter(Boolean).join(" · "))} <span class="muted">▾</span></button></dd>
           <dt>상태</dt><dd>${esc(stateKo(a.state))} · ${fmtMin(sinceMin(a))}${a.snoozedUntil ? ` · 미룸 ~${new Date(a.snoozedUntil).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}` : ""}</dd>
           ${cacheState(a) ? `<dt>캐시</dt><dd${cacheBasis(a) ? ` title="${esc(cacheBasis(a))}"` : ""}><span class="badge ${esc(cacheState(a))}">${CACHE_KO[cacheState(a)] || esc(cacheState(a))}</span>${cacheExp(a) && cacheState(a) !== "cold" ? ` <span class="cd" data-exp="${cacheExp(a)}" data-basis="${esc(cacheBasis(a))}"></span>` : ""}</dd>` : ""}
           ${a.tool ? `<dt>도구</dt><dd>${esc(a.tool)}</dd>` : ""}
@@ -3909,6 +3998,9 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     if (ro) return openChat(ro.dataset.agentOpen);
     const hb = e.target.closest("[data-hours]");
     if (hb) { hours = +hb.dataset.hours; localStorage.setItem("adash.hours", hours); render(); return refreshHistory(); }
+    const mpb = e.target.closest("[data-model-pick]");
+    if (mpb) return openModelPop(mpb.dataset.modelPick, mpb);
+    if ($("#model-pop") && !$("#model-pop").hidden && !e.composedPath().includes($("#model-pop"))) closeModelPop(); // composedPath: the pop re-renders on click, detaching e.target
     const us = e.target.closest("[data-unsnooze]");
     if (us) return unsnooze(us.dataset.unsnooze);
     const row = e.target.closest(".lrow[data-agent]");

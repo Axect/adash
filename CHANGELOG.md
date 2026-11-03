@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Change an agent's model and reasoning effort from the chat info panel where the harness allows it (omp: effort; Claude Code and Codex: both; Antigravity: read-only), confirmed from the session record or the harness's reply (`GET /api/agents/{name}/models`, `POST /api/agents/{name}/model`).
 - Thinking level in the chat info panel again: read from the session (omp `thinking_level_change`, Codex `effort`), omp's `--thinking` flag, or Antigravity's model name; null when the harness records none (Claude Code).
 - Snoozed agents stay quiet: no desktop or phone notification while snoozed (provider errors included), no highlight on the board, and report bottlenecks no longer count snoozed time as waiting on you.
 

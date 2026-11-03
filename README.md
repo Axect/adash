@@ -106,6 +106,7 @@ adash only manages agents running in its own tmux server (`tmux -L adash`); ever
 | Provider error detection | ✓ | ✓ | ✓ | — |
 | Retry after an error | F5 (retry key) | "continue" message | "continue" message | "continue" message |
 | Usage (context, cost, limits) | ✓ | context, tokens | context, tokens, limits | — |
+| Change model / effort from the dashboard | effort (`/effort`) | both (`/model`, `/effort`; also saved as Claude Code's default) | both (`/model … --reasoning=`, this session) | — |
 | Slash commands / skills menu | ✓ | ✓ | ✓ | ✓ |
 | `@` file references | `@path` (read by the harness) | `@path` | plain path | plain path |
 | Side questions (`/btw`) | ✓ | — | — | — |

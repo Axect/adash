@@ -1011,3 +1011,21 @@ body.mobile #usage-m[open] { max-height: 62vh; overflow-y: auto; overscroll-beha
 .meta-rule { margin: 4px 0 8px; }
 .st-txt.snz, .st-txt.snz .st-c { color: var(--ui-muted); font-weight: 400; }
 .unsnz-btn { flex: none; height: 20px; padding: 0 7px; margin-left: 6px; font-size: var(--fs-xs); }
+/* v43 model / effort picker: popover on desktop, bottom sheet on phones */
+.model-btn { height: auto; min-height: 24px; padding: 1px 6px; margin-left: -6px; border: 1px solid transparent; background: none; color: var(--fg); text-align: left; font: inherit; border-radius: 5px; cursor: pointer; }
+.model-btn:hover, .model-btn:focus-visible { border-color: var(--border); background: var(--hl); }
+.model-pop { position: fixed; z-index: 45; width: 340px; max-height: min(460px, 80vh); padding: 10px; gap: 8px; overflow: hidden; }
+.model-pop.sheet { left: 0 !important; right: 0; bottom: 0; top: auto !important; width: auto; max-height: 78vh; border-radius: 12px 12px 0 0; zoom: 1; }
+.mp-head { display: flex; align-items: baseline; gap: 8px; } .mp-head #mp-close { height: 24px; padding: 0 6px; border: none; background: none; color: var(--muted); }
+#mp-q { width: 100%; }
+.mp-list { display: flex; flex-direction: column; gap: 2px; overflow: auto; min-height: 60px; max-height: 220px; }
+.model-pop.sheet .mp-list { max-height: 40vh; }
+.mp-m { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; column-gap: 8px; text-align: left; height: auto; padding: 5px 8px; border: 1px solid transparent; border-radius: 6px; background: none; }
+.mp-m .muted { grid-column: 1; } .mp-m .mp-cur { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: var(--pop-help); color: var(--muted); }
+.mp-m:hover:not([disabled]) { background: var(--hl); } .mp-m.on { border-color: var(--ui-link); }
+.mp-m[disabled] { opacity: .6; cursor: default; }
+.mp-eff { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; } .mp-eff .seg button { height: 26px; padding: 0 9px; }
+.mp-why { margin: 0; color: var(--muted); } .mp-err { margin: 0; color: var(--signal-error-text); }
+.mp-foot { display: flex; align-items: center; gap: 8px; }
+body.mobile .model-btn { min-height: 36px; }
+.mp-eff .seg button.cur { text-decoration: underline; text-underline-offset: 3px; }
