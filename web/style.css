@@ -415,14 +415,17 @@ body.mobile .ri { grid-template-columns: 72px minmax(0, 1fr); } body.mobile .ri 
 .mcard.go-r .mc-swipe { background: color-mix(in srgb, var(--warm) 15%, var(--card)); }
 .mcard.go-l .mc-swipe { background: color-mix(in srgb, var(--info-warn) 15%, var(--card)); }
 .mc-body { position: relative; padding: 12px 14px; min-height: 64px; background: var(--card); transition: transform .15s ease-out; }
-.mc-head { display: flex; align-items: baseline; gap: 8px; } .mc-head b { font-size: 16px; }
-.mc-st { font-size: 13px; white-space: nowrap; }
+.mc-head { display: flex; align-items: center; gap: 8px; min-width: 0; } .mc-head b { font-size: 16px; flex: none; }
+.mc-proj { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-st { font-size: 13px; white-space: nowrap; flex: none; }
 .mc-meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0; font-size: 12px; }
 .mc-first { color: var(--muted); font-size: 14px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .mproj { margin-bottom: 14px; border-bottom: 1px solid var(--border); padding-bottom: 8px; }
 .mp-head { display: flex; align-items: baseline; gap: 10px; padding: 6px 0; font-size: 15px; }
 .mp-row { display: grid; grid-template-columns: 80px minmax(0, 1fr) auto; grid-template-rows: auto 8px; column-gap: 8px; align-items: center; min-height: 44px; padding: 4px 0; }
-.mp-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); } .mp-n.unread { color: var(--fg); font-weight: 600; }
+.mp-n { display: flex; align-items: center; min-width: 0; white-space: nowrap; color: var(--muted); }
+/* the name gives way (ellipsis, at least 2.5em); the working / my-turn mark and its time stay whole */
+.mp-nt { min-width: 2.5em; overflow: hidden; text-overflow: ellipsis; } .mp-n .wk, .mp-n .tk { flex: none; } .mp-n.unread { color: var(--fg); font-weight: 600; }
 .mp-st { font-size: 12px; white-space: nowrap; }
 .spark { grid-column: 2 / -1; width: 100%; height: 6px; }
 .spark .s-working { fill: var(--work-bar); } .spark .s-wait1 { fill: var(--turn); } .spark .s-asking { fill: var(--ask); } .spark .s-idle { fill: var(--idle); } .spark .s-snoozed { fill: var(--idle); }
