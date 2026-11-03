@@ -1,0 +1,44 @@
+/* adash theme dawnfox · demo copy of GET /api/themes/dawnfox.css */
+:root {
+  --brand-accent: #d7827e;
+  --brand-pill: #575279;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #625c87;
+  --harness-cc: #625c87;
+  --harness-cdx: #625c87;
+  --harness-omp: #625c87;
+  --info-cache: #625c87;
+  --info-held: #625c87;
+  --info-progress: #625c87;
+  --info-thread: #575279;
+  --info-warn: #575279;
+  --signal-ask: #907aa9;
+  --signal-ask-bg: #907aa91f;
+  --signal-ask-text: #4c4769;
+  --signal-decision: #575279;
+  --signal-error: #b4637a;
+  --signal-error-bg: #b4637a1f;
+  --signal-error-text: #575279;
+  --signal-turn: #ca6e69;
+  --signal-turn-bg: #ca6e691f;
+  --signal-turn-text: #575279;
+  --timeline-idle: #d0d8d8;
+  --timeline-now: #286983;
+  --timeline-snoozed: #9893a5;
+  --timeline-working: #d0d8d8;
+  --ui-bg: #ebe5df;
+  --ui-border: #d0d8d8;
+  --ui-border-strong: #9893a5;
+  --ui-dim: #9893a5;
+  --ui-fg: #575279;
+  --ui-interact: #286983;
+  --ui-link: #286983;
+  --ui-muted: #625c87;
+  --ui-on-interact: #faf4ed;
+  --ui-selection: #28698326;
+  --ui-subtle: #ebe0df;
+  --ui-surface: #faf4ed;
+}

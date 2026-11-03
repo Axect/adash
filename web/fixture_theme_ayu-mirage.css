@@ -1,0 +1,44 @@
+/* adash theme ayu-mirage · demo copy of GET /api/themes/ayu-mirage.css */
+:root {
+  --brand-accent: #ffa659;
+  --brand-pill: #282e3b;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #cccac2c7;
+  --harness-cc: #cccac2c7;
+  --harness-cdx: #cccac2c7;
+  --harness-omp: #cccac2c7;
+  --info-cache: #cccac2c7;
+  --info-held: #cccac2c7;
+  --info-progress: #cccac2c7;
+  --info-thread: #d5ff80;
+  --info-warn: #ffcd66;
+  --signal-ask: #dfbfff;
+  --signal-ask-bg: #dfbfff1f;
+  --signal-ask-text: #dfbfff;
+  --signal-decision: #ffa659;
+  --signal-error: #f28779;
+  --signal-error-bg: #f287791f;
+  --signal-error-text: #f28779;
+  --signal-turn: #ffa659;
+  --signal-turn-bg: #ffa6591f;
+  --signal-turn-text: #ffa659;
+  --timeline-idle: #171b24;
+  --timeline-now: #73d0ff;
+  --timeline-snoozed: #6e7c8f;
+  --timeline-working: #6e7c8f;
+  --ui-bg: #1f2430;
+  --ui-border: #171b24;
+  --ui-border-strong: #6e7c8f;
+  --ui-dim: #6e7c8f;
+  --ui-fg: #cccac2;
+  --ui-interact: #73d0ff;
+  --ui-link: #73d0ff;
+  --ui-muted: #cccac2c7;
+  --ui-on-interact: #242936;
+  --ui-selection: #73d0ff26;
+  --ui-subtle: #282e3b;
+  --ui-surface: #242936;
+}

@@ -1,0 +1,13 @@
+adash
+Copyright 2026 The adash contributors
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+It bundles the following third-party web libraries in web/vendor/, each under the MIT
+License (full texts in web/vendor/LICENSE.*):
+- KaTeX (Khan Academy and other contributors), including its fonts
+- markdown-it (Vitaly Puzrin, Alex Kocharin)
+- markdown-it-texmath (Stefan Goessner)
+- Mermaid (Knut Sveidqvist and contributors)
+
+Rust dependencies are fetched from crates.io under their own licenses; see Cargo.lock.

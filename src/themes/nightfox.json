@@ -1,0 +1,95 @@
+{
+ "id": "nightfox",
+ "family": "nightfox",
+ "label": "Nightfox",
+ "dark": true,
+ "source": "https://github.com/EdenEast/nightfox.nvim/blob/4dacd3f0185a2227bdf3b6c0975a8f0bf87cac9a/lua/nightfox/palette/nightfox.lua",
+ "colors": {
+  "bg": [
+   "#192330",
+   "bg1"
+  ],
+  "bg_alt": [
+   "#212e3f",
+   "bg2"
+  ],
+  "bg_dark": [
+   "#131a24",
+   "bg0"
+  ],
+  "line": [
+   "#2b3b51",
+   "sel0"
+  ],
+  "comment": [
+   "#738091",
+   "comment"
+  ],
+  "fg_dim": [
+   "#aeafb0",
+   "fg2"
+  ],
+  "fg": [
+   "#cdcecf",
+   "fg1"
+  ],
+  "red": [
+   "#c94f6d",
+   "red.base"
+  ],
+  "orange": [
+   "#f4a261",
+   "orange.base"
+  ],
+  "yellow": [
+   "#dbc074",
+   "yellow.base"
+  ],
+  "green": [
+   "#81b29a",
+   "green.base"
+  ],
+  "cyan": [
+   "#63cdcf",
+   "cyan.base"
+  ],
+  "blue": [
+   "#719cd6",
+   "blue.base"
+  ],
+  "magenta": [
+   "#9d79d6",
+   "magenta.base"
+  ]
+ },
+ "extra": {
+  "black.base": "#393b44",
+  "black.bright": "#575860",
+  "black.dim": "#30323a",
+  "red.bright": "#d16983",
+  "red.dim": "#ab435d",
+  "green.bright": "#8ebaa4",
+  "green.dim": "#6e9783",
+  "yellow.bright": "#e0c989",
+  "yellow.dim": "#baa363",
+  "blue.bright": "#86abdc",
+  "blue.dim": "#6085b6",
+  "magenta.bright": "#baa1e2",
+  "magenta.dim": "#8567b6",
+  "cyan.bright": "#7ad5d6",
+  "cyan.dim": "#54aeb0",
+  "white.base": "#dfdfe0",
+  "white.bright": "#e4e4e5",
+  "white.dim": "#bebebe",
+  "orange.bright": "#f6b079",
+  "orange.dim": "#cf8a52",
+  "pink.base": "#d67ad2",
+  "pink.bright": "#dc8ed9",
+  "pink.dim": "#b668b3",
+  "bg3": "#29394f",
+  "bg4": "#39506d",
+  "fg0": "#d6d6d7",
+  "fg3": "#71839b",
+  "sel1": "#3c5372"
+ }
+}

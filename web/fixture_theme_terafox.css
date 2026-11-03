@@ -1,0 +1,44 @@
+/* adash theme terafox · demo copy of GET /api/themes/terafox.css */
+:root {
+  --brand-accent: #ff8349;
+  --brand-pill: #293e40;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #cbd9d8;
+  --harness-cc: #cbd9d8;
+  --harness-cdx: #cbd9d8;
+  --harness-omp: #cbd9d8;
+  --info-cache: #cbd9d8;
+  --info-held: #cbd9d8;
+  --info-progress: #cbd9d8;
+  --info-thread: #7aa4a1;
+  --info-warn: #fda47f;
+  --signal-ask: #ad5c7c;
+  --signal-ask-bg: #ad5c7c1f;
+  --signal-ask-text: #e6eaea;
+  --signal-decision: #ff8349;
+  --signal-error: #e85c51;
+  --signal-error-bg: #e85c511f;
+  --signal-error-text: #eb746b;
+  --signal-turn: #ff8349;
+  --signal-turn-bg: #ff83491f;
+  --signal-turn-text: #ff8349;
+  --timeline-idle: #293e40;
+  --timeline-now: #5a93aa;
+  --timeline-snoozed: #6d7f8b;
+  --timeline-working: #cbd9d8;
+  --ui-bg: #0f1c1e;
+  --ui-border: #293e40;
+  --ui-border-strong: #6d7f8b;
+  --ui-dim: #6d7f8b;
+  --ui-fg: #e6eaea;
+  --ui-interact: #5a93aa;
+  --ui-link: #5a93aa;
+  --ui-muted: #cbd9d8;
+  --ui-on-interact: #152528;
+  --ui-selection: #5a93aa26;
+  --ui-subtle: #1d3337;
+  --ui-surface: #152528;
+}

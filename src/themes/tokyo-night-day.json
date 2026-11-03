@@ -1,0 +1,62 @@
+{
+ "id": "tokyo-night-day",
+ "family": "tokyo-night",
+ "label": "Tokyo Night Day",
+ "dark": false,
+ "source": "https://github.com/folke/tokyonight.nvim/blob/main/extras/ghostty/tokyonight_day",
+ "colors": {
+  "bg": [
+   "#e1e2e7",
+   "background"
+  ],
+  "line": [
+   "#b7c1e3",
+   "selection-background"
+  ],
+  "comment": [
+   "#a1a6c5",
+   "palette 8"
+  ],
+  "fg_dim": [
+   "#6172b0",
+   "palette 7"
+  ],
+  "fg": [
+   "#3760bf",
+   "foreground"
+  ],
+  "red": [
+   "#f52a65",
+   "palette 1"
+  ],
+  "yellow": [
+   "#8c6c3e",
+   "palette 3"
+  ],
+  "green": [
+   "#587539",
+   "palette 2"
+  ],
+  "cyan": [
+   "#007197",
+   "palette 6"
+  ],
+  "blue": [
+   "#2e7de9",
+   "palette 4"
+  ],
+  "purple": [
+   "#9854f1",
+   "palette 5"
+  ]
+ },
+ "extra": {
+  "palette 0": "#b4b5b9",
+  "palette 9": "#ff4774",
+  "palette 10": "#5c8524",
+  "palette 11": "#a27629",
+  "palette 12": "#358aff",
+  "palette 13": "#a463ff",
+  "palette 14": "#007ea8"
+ }
+}

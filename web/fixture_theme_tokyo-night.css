@@ -1,0 +1,44 @@
+/* adash theme tokyo-night · demo copy of GET /api/themes/tokyo-night.css */
+:root {
+  --brand-accent: #ff9e64;
+  --brand-pill: #565f89;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #a9b1d6;
+  --harness-cc: #a9b1d6;
+  --harness-cdx: #a9b1d6;
+  --harness-omp: #a9b1d6;
+  --info-cache: #a9b1d6;
+  --info-held: #a9b1d6;
+  --info-progress: #a9b1d6;
+  --info-thread: #9ece6a;
+  --info-warn: #e0af68;
+  --signal-ask: #9d7cd8;
+  --signal-ask-bg: #9d7cd81f;
+  --signal-ask-text: #bb9af7;
+  --signal-decision: #ff9e64;
+  --signal-error: #f7768e;
+  --signal-error-bg: #f7768e1f;
+  --signal-error-text: #f7768e;
+  --signal-turn: #ff9e64;
+  --signal-turn-bg: #ff9e641f;
+  --signal-turn-text: #ff9e64;
+  --timeline-idle: #3b4261;
+  --timeline-now: #7aa2f7;
+  --timeline-snoozed: #565f89;
+  --timeline-working: #565f89;
+  --ui-bg: #16161e;
+  --ui-border: #3b4261;
+  --ui-border-strong: #565f89;
+  --ui-dim: #565f89;
+  --ui-fg: #c0caf5;
+  --ui-interact: #7aa2f7;
+  --ui-link: #7aa2f7;
+  --ui-muted: #a9b1d6;
+  --ui-on-interact: #1a1b26;
+  --ui-selection: #7aa2f726;
+  --ui-subtle: #292e42;
+  --ui-surface: #1a1b26;
+}

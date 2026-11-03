@@ -1,0 +1,44 @@
+/* adash theme nord · demo copy of GET /api/themes/nord.css */
+:root {
+  --brand-accent: #d08770;
+  --brand-pill: #4c566a;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #d8dee9;
+  --harness-cc: #d8dee9;
+  --harness-cdx: #d8dee9;
+  --harness-omp: #d8dee9;
+  --info-cache: #d8dee9;
+  --info-held: #d8dee9;
+  --info-progress: #d8dee9;
+  --info-thread: #a3be8c;
+  --info-warn: #ebcb8b;
+  --signal-ask: #b48ead;
+  --signal-ask-bg: #b48ead1f;
+  --signal-ask-text: #eceff4;
+  --signal-decision: #8fbcbb;
+  --signal-error: #bf616a;
+  --signal-error-bg: #bf616a1f;
+  --signal-error-text: #eceff4;
+  --signal-turn: #8fbcbb;
+  --signal-turn-bg: #8fbcbb1f;
+  --signal-turn-text: #8fbcbb;
+  --timeline-idle: #434c5e;
+  --timeline-now: #81a1c1;
+  --timeline-snoozed: #4c566a;
+  --timeline-working: #4c566a;
+  --ui-bg: #2e3440;
+  --ui-border: #434c5e;
+  --ui-border-strong: #4c566a;
+  --ui-dim: #4c566a;
+  --ui-fg: #eceff4;
+  --ui-interact: #81a1c1;
+  --ui-link: #81a1c1;
+  --ui-muted: #d8dee9;
+  --ui-on-interact: #2e3440;
+  --ui-selection: #81a1c126;
+  --ui-subtle: #3b4252;
+  --ui-surface: #2e3440;
+}

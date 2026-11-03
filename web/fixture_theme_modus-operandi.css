@@ -1,0 +1,44 @@
+/* adash theme modus-operandi · demo copy of GET /api/themes/modus-operandi.css */
+:root {
+  --brand-accent: #a60000;
+  --brand-pill: #000000;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #595959;
+  --harness-cc: #595959;
+  --harness-cdx: #595959;
+  --harness-omp: #595959;
+  --info-cache: #595959;
+  --info-held: #595959;
+  --info-progress: #595959;
+  --info-thread: #006800;
+  --info-warn: #6f5500;
+  --signal-ask: #531ab6;
+  --signal-ask-bg: #531ab61f;
+  --signal-ask-text: #531ab6;
+  --signal-decision: #005e8b;
+  --signal-error: #a60000;
+  --signal-error-bg: #a600001f;
+  --signal-error-text: #a60000;
+  --signal-turn: #005e8b;
+  --signal-turn-bg: #005e8b1f;
+  --signal-turn-text: #005e8b;
+  --timeline-idle: #9f9f9f;
+  --timeline-now: #0031a9;
+  --timeline-snoozed: #595959;
+  --timeline-working: #9f9f9f;
+  --ui-bg: #ffffff;
+  --ui-border: #9f9f9f;
+  --ui-border-strong: #595959;
+  --ui-dim: #595959;
+  --ui-fg: #000000;
+  --ui-interact: #0031a9;
+  --ui-link: #0031a9;
+  --ui-muted: #595959;
+  --ui-on-interact: #ffffff;
+  --ui-selection: #0031a926;
+  --ui-subtle: #f2f2f2;
+  --ui-surface: #ffffff;
+}

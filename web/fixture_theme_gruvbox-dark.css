@@ -1,0 +1,44 @@
+/* adash theme gruvbox-dark · demo copy of GET /api/themes/gruvbox-dark.css */
+:root {
+  --brand-accent: #fe8019;
+  --brand-pill: #504945;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #a89984;
+  --harness-cc: #a89984;
+  --harness-cdx: #a89984;
+  --harness-omp: #a89984;
+  --info-cache: #a89984;
+  --info-held: #a89984;
+  --info-progress: #a89984;
+  --info-thread: #b8bb26;
+  --info-warn: #fabd2f;
+  --signal-ask: #d3869b;
+  --signal-ask-bg: #d3869b1f;
+  --signal-ask-text: #ebdbb2;
+  --signal-decision: #fe8019;
+  --signal-error: #fb4934;
+  --signal-error-bg: #fb49341f;
+  --signal-error-text: #ebdbb2;
+  --signal-turn: #fe8019;
+  --signal-turn-bg: #fe80191f;
+  --signal-turn-text: #fe8019;
+  --timeline-idle: #504945;
+  --timeline-now: #83a598;
+  --timeline-snoozed: #928374;
+  --timeline-working: #504945;
+  --ui-bg: #1d2021;
+  --ui-border: #504945;
+  --ui-border-strong: #928374;
+  --ui-dim: #928374;
+  --ui-fg: #ebdbb2;
+  --ui-interact: #83a598;
+  --ui-link: #83a598;
+  --ui-muted: #a89984;
+  --ui-on-interact: #282828;
+  --ui-selection: #83a59826;
+  --ui-subtle: #3c3836;
+  --ui-surface: #282828;
+}

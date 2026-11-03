@@ -1,0 +1,70 @@
+{
+ "id": "one-dark",
+ "family": "one",
+ "label": "One Dark",
+ "dark": true,
+ "source": "https://github.com/atom/atom/blob/master/packages/one-dark-syntax/styles/colors.less (hsl); hex from https://github.com/rakr/vim-one/blob/master/colors/one.vim (dark block, matches Atom hsl exactly)",
+ "colors": {
+  "bg": [
+   "#282c34",
+   "syntax-bg"
+  ],
+  "bg_alt": [
+   "#2c323c",
+   "syntax-cursor (cursor line)"
+  ],
+  "line": [
+   "#3e4452",
+   "visual_grey (selection)"
+  ],
+  "comment": [
+   "#5c6370",
+   "mono-3"
+  ],
+  "fg_dim": [
+   "#828997",
+   "mono-2"
+  ],
+  "fg": [
+   "#abb2bf",
+   "mono-1 (syntax-fg)"
+  ],
+  "red": [
+   "#e06c75",
+   "hue-5 (red 1)"
+  ],
+  "orange": [
+   "#d19a66",
+   "hue-6 (orange 1)"
+  ],
+  "yellow": [
+   "#e5c07b",
+   "hue-6-2 (orange 2)"
+  ],
+  "green": [
+   "#98c379",
+   "hue-4 (green)"
+  ],
+  "cyan": [
+   "#56b6c2",
+   "hue-1 (cyan)"
+  ],
+  "blue": [
+   "#61afef",
+   "hue-2 (blue)"
+  ],
+  "purple": [
+   "#c678dd",
+   "hue-3 (purple)"
+  ]
+ },
+ "extra": {
+  "hue-5-2 (red 2)": "#be5046",
+  "mono-4": "#4b5263",
+  "syntax-gutter": "#636d83",
+  "syntax-accent": "#528bff",
+  "vertsplit": "#181a1f",
+  "special_grey": "#3b4048",
+  "pmenu": "#333841"
+ }
+}

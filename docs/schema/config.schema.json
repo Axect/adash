@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "harnesses": {
+      "additionalProperties": false,
+      "properties": {
+        "antigravity": {
+          "type": "boolean"
+        },
+        "claude": {
+          "type": "boolean"
+        },
+        "codex": {
+          "type": "boolean"
+        },
+        "omp": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "magi": {
+      "additionalProperties": false,
+      "properties": {
+        "skill": {
+          "description": "SKILL.md of a multi-agent review skill; unset = magi off",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "mobile": {
+      "additionalProperties": false,
+      "properties": {
+        "tailscale": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "network": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "probes": {
+          "additionalProperties": {
+            "format": "uri",
+            "type": "string"
+          },
+          "type": "object"
+        }
+      },
+      "type": "object"
+    },
+    "notifications": {
+      "additionalProperties": false,
+      "properties": {
+        "backend": {
+          "enum": [
+            "auto",
+            "notify-send",
+            "terminal-notifier",
+            "osascript",
+            "none"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "open": {
+      "additionalProperties": false,
+      "properties": {
+        "markdownApp": {
+          "description": "app for Markdown files opened from chat",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "port": {
+      "description": "HTTP port (env ADASH_PORT wins)",
+      "maximum": 65535,
+      "minimum": 1,
+      "type": "integer"
+    },
+    "reports": {
+      "additionalProperties": false,
+      "properties": {
+        "chrome": {
+          "description": "Chromium-family browser for PDF reports",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "terminal": {
+      "additionalProperties": false,
+      "properties": {
+        "emulator": {
+          "description": "auto, or an emulator command such as ghostty / \"kitty --single-instance\"",
+          "type": "string"
+        },
+        "tmux": {
+          "description": "tmux binary",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "theme": {
+      "additionalProperties": false,
+      "properties": {
+        "dark": {
+          "description": "theme for dark mode (default dark, adash dark)",
+          "type": "string"
+        },
+        "light": {
+          "description": "theme for light mode (default catppuccin-latte)",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "title": "adash config.toml",
+  "type": "object"
+}

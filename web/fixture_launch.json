@@ -1,0 +1,405 @@
+{
+ "workspaces": {
+  "projects": [
+   {
+    "name": "paper-draft",
+    "path": "~/work/paper-draft",
+    "worktrees": [
+     {
+      "path": "~/work/paper-draft",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 4
+     },
+     {
+      "path": "~/work/paper-draft-wt/feature-x",
+      "branch": "feature-x",
+      "isMain": false,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "grant-app",
+    "path": "~/work/grant-app",
+    "worktrees": [
+     {
+      "path": "~/work/grant-app",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 6
+     }
+    ]
+   },
+   {
+    "name": "adash-dev",
+    "path": "~/work/adash-dev",
+    "worktrees": [
+     {
+      "path": "~/work/adash-dev",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 2
+     },
+     {
+      "path": "~/work/adash-dev-wt/feature-x",
+      "branch": "feature-x",
+      "isMain": false,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "galaxy-survey",
+    "path": "~/work/galaxy-survey",
+    "worktrees": [
+     {
+      "path": "~/work/galaxy-survey",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 3
+     }
+    ]
+   },
+   {
+    "name": "protein-fold",
+    "path": "~/work/protein-fold",
+    "worktrees": [
+     {
+      "path": "~/work/protein-fold",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 2
+     }
+    ]
+   },
+   {
+    "name": "climate-model",
+    "path": "~/work/climate-model",
+    "worktrees": [
+     {
+      "path": "~/work/climate-model",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 2
+     }
+    ]
+   },
+   {
+    "name": "lr-schedules",
+    "path": "~/work/lr-schedules",
+    "worktrees": [
+     {
+      "path": "~/work/lr-schedules",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "orbit-sim",
+    "path": "~/work/orbit-sim",
+    "worktrees": [
+     {
+      "path": "~/work/orbit-sim",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "ocean-sim",
+    "path": "~/work/ocean-sim",
+    "worktrees": [
+     {
+      "path": "~/work/ocean-sim",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "event-site",
+    "path": "~/work/event-site",
+    "worktrees": [
+     {
+      "path": "~/work/event-site",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "math-lib",
+    "path": "~/work/math-lib",
+    "worktrees": [
+     {
+      "path": "~/work/math-lib",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "data-lake",
+    "path": "~/work/data-lake",
+    "worktrees": [
+     {
+      "path": "~/work/data-lake",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "travel-plans",
+    "path": "~/work/travel-plans",
+    "worktrees": [
+     {
+      "path": "~/work/travel-plans",
+      "branch": null,
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "docs-site",
+    "path": "~/work/docs-site",
+    "worktrees": [
+     {
+      "path": "~/work/docs-site",
+      "branch": null,
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   },
+   {
+    "name": "sensor-fusion",
+    "path": "~/work/sensor-fusion",
+    "worktrees": [
+     {
+      "path": "~/work/sensor-fusion",
+      "branch": "main",
+      "isMain": true,
+      "liveAgents": 0
+     }
+    ]
+   }
+  ]
+ },
+ "catalog": {
+  "agents": [
+   {
+    "id": "omp",
+    "label": "omp",
+    "installed": true,
+    "models": [
+     "anthropic/claude-opus-5-5",
+     "anthropic/claude-sonnet-5",
+     "openai-codex/gpt-5.5",
+     "google-antigravity/gemini-3-pro"
+    ],
+    "efforts": [
+     "low",
+     "medium",
+     "high"
+    ],
+    "effortMode": "suffix",
+    "defaultModel": "anthropic/claude-opus-5-5"
+   },
+   {
+    "id": "claude",
+    "label": "Claude Code",
+    "installed": true,
+    "models": [
+     "opus",
+     "sonnet"
+    ],
+    "efforts": [
+     "low",
+     "medium",
+     "high"
+    ],
+    "effortMode": "flag",
+    "defaultModel": "sonnet"
+   },
+   {
+    "id": "codex",
+    "label": "Codex",
+    "installed": true,
+    "models": [
+     "gpt-5.5",
+     "gpt-5.5-mini"
+    ],
+    "efforts": [
+     "low",
+     "medium",
+     "high"
+    ],
+    "effortMode": "flag",
+    "defaultModel": "gpt-5.5"
+   },
+   {
+    "id": "antigravity",
+    "label": "Antigravity",
+    "installed": false,
+    "models": [
+     "gemini-3-pro"
+    ],
+    "efforts": [],
+    "effortMode": "none",
+    "defaultModel": "gemini-3-pro"
+   }
+  ]
+ },
+ "capacity": {
+  "fetchedAt": 1793152620000,
+  "stale": false,
+  "error": null,
+  "vendors": [
+   {
+    "vendor": "claude",
+    "provider": "anthropic",
+    "accounts": [
+     {
+      "account": "d***@example.com",
+      "plan": "max",
+      "limits": [
+       {
+        "id": "5h",
+        "label": "Session",
+        "windowLabel": "5h",
+        "usedFraction": 0.15,
+        "resetsAt": 1793164320000,
+        "status": "ok",
+        "unit": "percent"
+       },
+       {
+        "id": "7d",
+        "label": "Weekly",
+        "windowLabel": "7d",
+        "usedFraction": 0.47,
+        "resetsAt": 1793372400000,
+        "status": "ok",
+        "unit": "percent"
+       },
+       {
+        "id": "7d-opus",
+        "label": "Weekly Opus",
+        "windowLabel": "7d",
+        "usedFraction": 0.78,
+        "resetsAt": 1793372400000,
+        "status": "ok",
+        "unit": "percent"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "vendor": "openai",
+    "provider": "openai-codex",
+    "accounts": [
+     {
+      "account": "acct 1",
+      "plan": "pro",
+      "limits": [
+       {
+        "id": "5h",
+        "label": "5h",
+        "windowLabel": "5h",
+        "usedFraction": 0.04,
+        "resetsAt": 1793160360000,
+        "status": "ok",
+        "unit": "percent"
+       },
+       {
+        "id": "7d",
+        "label": "Weekly",
+        "windowLabel": "7d",
+        "usedFraction": 0.18,
+        "resetsAt": 1793476800000,
+        "status": "ok",
+        "unit": "percent"
+       }
+      ]
+     },
+     {
+      "account": "acct 2",
+      "plan": "plus",
+      "limits": [
+       {
+        "id": "5h",
+        "label": "5h",
+        "windowLabel": "5h",
+        "usedFraction": 0.93,
+        "resetsAt": 1793154960000,
+        "status": "warning",
+        "unit": "percent"
+       },
+       {
+        "id": "7d",
+        "label": "Weekly",
+        "windowLabel": "7d",
+        "usedFraction": 0.52,
+        "resetsAt": 1793296800000,
+        "status": "ok",
+        "unit": "percent"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "vendor": "google",
+    "provider": "google-antigravity",
+    "accounts": [
+     {
+      "account": "g***",
+      "plan": "ultra",
+      "limits": [
+       {
+        "id": "gemini",
+        "label": "Gemini",
+        "windowLabel": "5h",
+        "usedFraction": 0.16,
+        "resetsAt": 1793167200000,
+        "status": "ok",
+        "unit": "percent"
+       }
+      ]
+     }
+    ]
+   },
+   {
+    "vendor": "other",
+    "provider": "zai",
+    "accounts": [
+     {
+      "account": "z***",
+      "plan": "coding",
+      "limits": [
+       {
+        "id": "5h",
+        "label": "5h",
+        "windowLabel": "5h",
+        "usedFraction": 0.02,
+        "resetsAt": 1793156400000,
+        "status": "ok",
+        "unit": "percent"
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}

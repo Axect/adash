@@ -1,0 +1,44 @@
+/* adash theme carbonfox · demo copy of GET /api/themes/carbonfox.css */
+:root {
+  --brand-accent: #ee5396;
+  --brand-pill: #6e6f70;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #b6b8bb;
+  --harness-cc: #b6b8bb;
+  --harness-cdx: #b6b8bb;
+  --harness-omp: #b6b8bb;
+  --info-cache: #b6b8bb;
+  --info-held: #b6b8bb;
+  --info-progress: #b6b8bb;
+  --info-thread: #25be6a;
+  --info-warn: #f2f4f8;
+  --signal-ask: #be95ff;
+  --signal-ask-bg: #be95ff1f;
+  --signal-ask-text: #be95ff;
+  --signal-decision: #33b1ff;
+  --signal-error: #ee5396;
+  --signal-error-bg: #ee53961f;
+  --signal-error-text: #ee5396;
+  --signal-turn: #33b1ff;
+  --signal-turn-bg: #33b1ff1f;
+  --signal-turn-text: #33b1ff;
+  --timeline-idle: #2a2a2a;
+  --timeline-now: #78a9ff;
+  --timeline-snoozed: #6e6f70;
+  --timeline-working: #6e6f70;
+  --ui-bg: #0c0c0c;
+  --ui-border: #2a2a2a;
+  --ui-border-strong: #6e6f70;
+  --ui-dim: #6e6f70;
+  --ui-fg: #f2f4f8;
+  --ui-interact: #78a9ff;
+  --ui-link: #78a9ff;
+  --ui-muted: #b6b8bb;
+  --ui-on-interact: #161616;
+  --ui-selection: #78a9ff26;
+  --ui-subtle: #252525;
+  --ui-surface: #161616;
+}

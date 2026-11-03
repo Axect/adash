@@ -1,0 +1,27 @@
+{
+  // synthetic theme
+  "name": "Sample Night",
+  "include": "./base-color-theme.json",
+  "colors": {
+  "editor.background": "#1e2030",
+  "editor.foreground": "#d8dae6",
+  "editor.selectionBackground": "#3e4452ff",
+  "terminal.ansiBlack": "#1b1d2b",
+  "terminal.ansiRed": "#e06c75",
+  "terminal.ansiGreen": "#98c379",
+  "terminal.ansiYellow": "#e5c07b",
+  "terminal.ansiBlue": "#61afef",
+  "terminal.ansiMagenta": "#c678dd",
+  "terminal.ansiCyan": "#56b6c2",
+  "terminal.ansiWhite": "#abb2bf",
+  "terminal.ansiBrightBlack": "#5c6370",
+  "terminal.ansiBrightRed": "#ef7b84",
+  "terminal.ansiBrightGreen": "#a8d389",
+  "terminal.ansiBrightYellow": "#f0cd8b",
+  "terminal.ansiBrightBlue": "#71bfff",
+  "terminal.ansiBrightMagenta": "#d688ed",
+  "terminal.ansiBrightCyan": "#66c6d2",
+  "terminal.ansiBrightWhite": "#ffffff"
+},
+  "tokenColors": []
+}

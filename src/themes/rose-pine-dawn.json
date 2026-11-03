@@ -1,0 +1,67 @@
+{
+ "id": "rose-pine-dawn",
+ "family": "rose-pine",
+ "label": "Rosé Pine Dawn",
+ "dark": false,
+ "source": "https://github.com/rose-pine/neovim/blob/ff483051a47e27d84bdef47703538df1ed9f4a47/lua/rose-pine/palette.lua (variants.dawn)",
+ "colors": {
+  "bg": [
+   "#faf4ed",
+   "base"
+  ],
+  "bg_alt": [
+   "#fffaf3",
+   "surface"
+  ],
+  "bg_dark": [
+   "#f2e9e1",
+   "overlay"
+  ],
+  "line": [
+   "#dfdad9",
+   "highlight med"
+  ],
+  "comment": [
+   "#9893a5",
+   "muted"
+  ],
+  "fg_dim": [
+   "#797593",
+   "subtle"
+  ],
+  "fg": [
+   "#464261",
+   "text"
+  ],
+  "red": [
+   "#b4637a",
+   "love"
+  ],
+  "yellow": [
+   "#ea9d34",
+   "gold"
+  ],
+  "cyan": [
+   "#56949f",
+   "foam"
+  ],
+  "blue": [
+   "#286983",
+   "pine"
+  ],
+  "purple": [
+   "#907aa9",
+   "iris"
+  ],
+  "magenta": [
+   "#d7827e",
+   "rose"
+  ]
+ },
+ "extra": {
+  "leaf": "#6d8f89",
+  "highlight low": "#f4ede8",
+  "highlight high": "#cecacd",
+  "_nc": "#f8f0e7"
+ }
+}

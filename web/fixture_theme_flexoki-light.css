@@ -1,0 +1,44 @@
+/* adash theme flexoki-light · demo copy of GET /api/themes/flexoki-light.css */
+:root {
+  --brand-accent: #bc5215;
+  --brand-pill: #100f0f;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #6f6e69;
+  --harness-cc: #6f6e69;
+  --harness-cdx: #6f6e69;
+  --harness-omp: #6f6e69;
+  --info-cache: #6f6e69;
+  --info-held: #6f6e69;
+  --info-progress: #6f6e69;
+  --info-thread: #313d07;
+  --info-warn: #503d02;
+  --signal-ask: #5e409d;
+  --signal-ask-bg: #5e409d1f;
+  --signal-ask-text: #5e409d;
+  --signal-decision: #59290d;
+  --signal-error: #af3029;
+  --signal-error-bg: #af30291f;
+  --signal-error-text: #af3029;
+  --signal-turn: #bc5215;
+  --signal-turn-bg: #bc52151f;
+  --signal-turn-text: #59290d;
+  --timeline-idle: #e6e4d9;
+  --timeline-now: #205ea6;
+  --timeline-snoozed: #b7b5ac;
+  --timeline-working: #b7b5ac;
+  --ui-bg: #fffcf0;
+  --ui-border: #e6e4d9;
+  --ui-border-strong: #b7b5ac;
+  --ui-dim: #b7b5ac;
+  --ui-fg: #100f0f;
+  --ui-interact: #205ea6;
+  --ui-link: #205ea6;
+  --ui-muted: #6f6e69;
+  --ui-on-interact: #fffcf0;
+  --ui-selection: #205ea626;
+  --ui-subtle: #f2f0e5;
+  --ui-surface: #fffcf0;
+}

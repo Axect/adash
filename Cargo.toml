@@ -1,0 +1,32 @@
+[package]
+name = "adash"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.87"
+description = "A local dashboard for running many coding agents (omp, Claude Code, Codex, Antigravity) in tmux: see which agent is waiting on you"
+license = "Apache-2.0"
+readme = "README.md"
+authors = ["Tae-Geun Kim <axect.tg@proton.me>"]
+repository = "https://github.com/Axect/adash"
+homepage = "https://github.com/Axect/adash"
+keywords = ["agents", "tmux", "dashboard", "claude", "codex"]
+categories = ["command-line-utilities", "development-tools"]
+exclude = ["docs/media/", "scripts/", ".github/", ".gitleaks.toml"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+regex = "1"
+web-push = { version = "0.10", default-features = false, features = ["isahc-client"] }
+futures-lite = "2"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+tiny_http = "0.12"
+sha2 = "0.10"
+rusqlite = { version = "0.32", features = ["bundled", "backup", "functions"] }
+include_dir = "0.7"
+libc = "0.2"
+toml = "0.8"
+
+[profile.release]
+opt-level = 3

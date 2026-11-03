@@ -1,0 +1,44 @@
+/* adash theme catppuccin-mocha · demo copy of GET /api/themes/catppuccin-mocha.css */
+:root {
+  --brand-accent: #fab387;
+  --brand-pill: #6c7086;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #a6adc8;
+  --harness-cc: #a6adc8;
+  --harness-cdx: #a6adc8;
+  --harness-omp: #a6adc8;
+  --info-cache: #a6adc8;
+  --info-held: #a6adc8;
+  --info-progress: #a6adc8;
+  --info-thread: #a6e3a1;
+  --info-warn: #f9e2af;
+  --signal-ask: #cba6f7;
+  --signal-ask-bg: #cba6f71f;
+  --signal-ask-text: #cba6f7;
+  --signal-decision: #fab387;
+  --signal-error: #f38ba8;
+  --signal-error-bg: #f38ba81f;
+  --signal-error-text: #f38ba8;
+  --signal-turn: #fab387;
+  --signal-turn-bg: #fab3871f;
+  --signal-turn-text: #fab387;
+  --timeline-idle: #313244;
+  --timeline-now: #89b4fa;
+  --timeline-snoozed: #6c7086;
+  --timeline-working: #6c7086;
+  --ui-bg: #11111b;
+  --ui-border: #313244;
+  --ui-border-strong: #6c7086;
+  --ui-dim: #6c7086;
+  --ui-fg: #cdd6f4;
+  --ui-interact: #89b4fa;
+  --ui-link: #89b4fa;
+  --ui-muted: #a6adc8;
+  --ui-on-interact: #1e1e2e;
+  --ui-selection: #89b4fa26;
+  --ui-subtle: #181825;
+  --ui-surface: #1e1e2e;
+}

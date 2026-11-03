@@ -1,0 +1,44 @@
+/* adash theme nordfox · demo copy of GET /api/themes/nordfox.css */
+:root {
+  --brand-accent: #c9826b;
+  --brand-pill: #60728a;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #abb1bb;
+  --harness-cc: #abb1bb;
+  --harness-cdx: #abb1bb;
+  --harness-omp: #abb1bb;
+  --info-cache: #abb1bb;
+  --info-held: #abb1bb;
+  --info-progress: #abb1bb;
+  --info-thread: #a3be8c;
+  --info-warn: #ebcb8b;
+  --signal-ask: #b48ead;
+  --signal-ask-bg: #b48ead1f;
+  --signal-ask-text: #cdcecf;
+  --signal-decision: #cdcecf;
+  --signal-error: #bf616a;
+  --signal-error-bg: #bf616a1f;
+  --signal-error-text: #cdcecf;
+  --signal-turn: #c9826b;
+  --signal-turn-bg: #c9826b1f;
+  --signal-turn-text: #cdcecf;
+  --timeline-idle: #3e4a5b;
+  --timeline-now: #81a1c1;
+  --timeline-snoozed: #60728a;
+  --timeline-working: #3e4a5b;
+  --ui-bg: #232831;
+  --ui-border: #3e4a5b;
+  --ui-border-strong: #60728a;
+  --ui-dim: #60728a;
+  --ui-fg: #cdcecf;
+  --ui-interact: #81a1c1;
+  --ui-link: #81a1c1;
+  --ui-muted: #abb1bb;
+  --ui-on-interact: #2e3440;
+  --ui-selection: #81a1c126;
+  --ui-subtle: #39404f;
+  --ui-surface: #2e3440;
+}

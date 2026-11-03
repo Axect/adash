@@ -1,0 +1,7 @@
+# gitleaks: default rules; minified third-party bundles produce false positives
+[extend]
+useDefault = true
+
+[allowlist]
+description = "vendored minified libraries"
+paths = ['''web/vendor/''']

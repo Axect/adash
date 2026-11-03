@@ -1,0 +1,67 @@
+{
+ "id": "rose-pine-moon",
+ "family": "rose-pine",
+ "label": "Rosé Pine Moon",
+ "dark": true,
+ "source": "https://github.com/rose-pine/neovim/blob/ff483051a47e27d84bdef47703538df1ed9f4a47/lua/rose-pine/palette.lua (variants.moon)",
+ "colors": {
+  "bg": [
+   "#232136",
+   "base"
+  ],
+  "bg_alt": [
+   "#2a273f",
+   "surface"
+  ],
+  "bg_dark": [
+   "#393552",
+   "overlay"
+  ],
+  "line": [
+   "#44415a",
+   "highlight med"
+  ],
+  "comment": [
+   "#6e6a86",
+   "muted"
+  ],
+  "fg_dim": [
+   "#908caa",
+   "subtle"
+  ],
+  "fg": [
+   "#e0def4",
+   "text"
+  ],
+  "red": [
+   "#eb6f92",
+   "love"
+  ],
+  "yellow": [
+   "#f6c177",
+   "gold"
+  ],
+  "cyan": [
+   "#9ccfd8",
+   "foam"
+  ],
+  "blue": [
+   "#3e8fb0",
+   "pine"
+  ],
+  "purple": [
+   "#c4a7e7",
+   "iris"
+  ],
+  "magenta": [
+   "#ea9a97",
+   "rose"
+  ]
+ },
+ "extra": {
+  "leaf": "#95b1ac",
+  "highlight low": "#2a283e",
+  "highlight high": "#56526e",
+  "_nc": "#1f1d30"
+ }
+}

@@ -1,0 +1,1203 @@
+{
+ "version": 1793651232996,
+ "dir": "~/.config/adash/themes",
+ "defaults": {
+  "dark": "dark",
+  "light": "catppuccin-latte"
+ },
+ "refused": [],
+ "themes": [
+  {
+   "base": null,
+   "dark": false,
+   "errors": [],
+   "family": "adash",
+   "label": "adash light",
+   "name": "light",
+   "pair": "dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#f1f5f9",
+    "#ffffff",
+    "#0f172a",
+    "#6d28d9",
+    "#d32020",
+    "#d97706",
+    "#2563eb"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "adash",
+   "label": "adash dark",
+   "name": "dark",
+   "pair": "light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#131822",
+    "#0b0e14",
+    "#f1f5f9",
+    "#c084fc",
+    "#f87171",
+    "#fbbf24",
+    "#60a5fa"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "adash",
+   "label": "adash high contrast",
+   "name": "high-contrast",
+   "pair": "dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#ffffff",
+    "#ffffff",
+    "#000000",
+    "#5b00b3",
+    "#b00000",
+    "#8a4b00",
+    "#0033cc"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "dark",
+   "dark": true,
+   "errors": [],
+   "family": "adash",
+   "label": "adash ink",
+   "name": "ink",
+   "pair": "light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#0e1116",
+    "#090b0f",
+    "#e7eaf0",
+    "#c084fc",
+    "#f87171",
+    "#fbbf24",
+    "#38bdf8"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "dracula",
+   "label": "Dracula",
+   "name": "dracula",
+   "pair": null,
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#282a36",
+    "#282a36",
+    "#f8f8f2",
+    "#bd93f9",
+    "#ff5555",
+    "#ffb86c",
+    "#8be9fd"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "catppuccin",
+   "label": "Catppuccin Mocha",
+   "name": "catppuccin-mocha",
+   "pair": "catppuccin-latte",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#11111b",
+    "#1e1e2e",
+    "#cdd6f4",
+    "#cba6f7",
+    "#f38ba8",
+    "#fab387",
+    "#89b4fa"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "catppuccin",
+   "label": "Catppuccin Latte",
+   "name": "catppuccin-latte",
+   "pair": "catppuccin-mocha",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#dce0e8",
+    "#eff1f5",
+    "#4c4f69",
+    "#8839ef",
+    "#d20f39",
+    "#179299",
+    "#4c4f69"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "tokyo-night",
+   "label": "Tokyo Night",
+   "name": "tokyo-night",
+   "pair": "tokyo-night-day",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#16161e",
+    "#1a1b26",
+    "#c0caf5",
+    "#9d7cd8",
+    "#f7768e",
+    "#ff9e64",
+    "#7aa2f7"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "tokyo-night",
+   "label": "Tokyo Night Day",
+   "name": "tokyo-night-day",
+   "pair": "tokyo-night",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#e1e2e7",
+    "#e1e2e7",
+    "#3760bf",
+    "#9854f1",
+    "#f52a65",
+    "#007197",
+    "#3760bf"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "nord",
+   "label": "Nord",
+   "name": "nord",
+   "pair": null,
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#2e3440",
+    "#2e3440",
+    "#eceff4",
+    "#b48ead",
+    "#bf616a",
+    "#8fbcbb",
+    "#81a1c1"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "gruvbox",
+   "label": "Gruvbox Dark",
+   "name": "gruvbox-dark",
+   "pair": "gruvbox-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#1d2021",
+    "#282828",
+    "#ebdbb2",
+    "#d3869b",
+    "#fb4934",
+    "#fe8019",
+    "#83a598"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "gruvbox",
+   "label": "Gruvbox Light",
+   "name": "gruvbox-light",
+   "pair": "gruvbox-dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#f2e5bc",
+    "#fbf1c7",
+    "#3c3836",
+    "#8f3f71",
+    "#9d0006",
+    "#af3a03",
+    "#076678"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "solarized",
+   "label": "Solarized Dark",
+   "name": "solarized-dark",
+   "pair": "solarized-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#002b36",
+    "#002b36",
+    "#93a1a1",
+    "#6c71c4",
+    "#dc322f",
+    "#cb4b16",
+    "#2aa198"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "solarized",
+   "label": "Solarized Light",
+   "name": "solarized-light",
+   "pair": "solarized-dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#fdf6e3",
+    "#fdf6e3",
+    "#586e75",
+    "#6c71c4",
+    "#dc322f",
+    "#cb4b16",
+    "#002b36"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "rose-pine",
+   "label": "Rosé Pine",
+   "name": "rose-pine",
+   "pair": "rose-pine-dawn",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#26233a",
+    "#191724",
+    "#e0def4",
+    "#c4a7e7",
+    "#eb6f92",
+    "#31748f",
+    "#9ccfd8"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "rose-pine",
+   "label": "Rosé Pine Moon",
+   "name": "rose-pine-moon",
+   "pair": "rose-pine-dawn",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#393552",
+    "#232136",
+    "#e0def4",
+    "#c4a7e7",
+    "#eb6f92",
+    "#3e8fb0",
+    "#9ccfd8"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "rose-pine",
+   "label": "Rosé Pine Dawn",
+   "name": "rose-pine-dawn",
+   "pair": "rose-pine",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#f2e9e1",
+    "#faf4ed",
+    "#464261",
+    "#907aa9",
+    "#b4637a",
+    "#56949f",
+    "#286983"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "kanagawa",
+   "label": "Kanagawa Wave",
+   "name": "kanagawa-wave",
+   "pair": "kanagawa-lotus",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#16161d",
+    "#1f1f28",
+    "#dcd7ba",
+    "#957fb8",
+    "#c34043",
+    "#ffa066",
+    "#7e9cd8"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "kanagawa",
+   "label": "Kanagawa Lotus",
+   "name": "kanagawa-lotus",
+   "pair": "kanagawa-wave",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#d5cea3",
+    "#f2ecbc",
+    "#545464",
+    "#624c83",
+    "#c84053",
+    "#836f4a",
+    "#4d699b"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "everforest",
+   "label": "Everforest Dark (medium)",
+   "name": "everforest-dark",
+   "pair": "everforest-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#232a2e",
+    "#2d353b",
+    "#d3c6aa",
+    "#d699b6",
+    "#e67e80",
+    "#e69875",
+    "#7fbbb3"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "everforest",
+   "label": "Everforest Light (medium)",
+   "name": "everforest-light",
+   "pair": "everforest-dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#efebd4",
+    "#fdf6e3",
+    "#5c6a72",
+    "#3a94c5",
+    "#f85552",
+    "#829181",
+    "#5c6a72"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "github",
+   "label": "GitHub Dark",
+   "name": "github-dark",
+   "pair": "github-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#010409",
+    "#0d1117",
+    "#e6edf3",
+    "#a371f7",
+    "#f85149",
+    "#db6d28",
+    "#2f81f7"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "github",
+   "label": "GitHub Dark Dimmed",
+   "name": "github-dark-dimmed",
+   "pair": "github-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#1c2128",
+    "#22272e",
+    "#adbac7",
+    "#986ee2",
+    "#e5534b",
+    "#cc6b2c",
+    "#539bf5"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "github",
+   "label": "GitHub Light",
+   "name": "github-light",
+   "pair": "github-dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#f6f8fa",
+    "#ffffff",
+    "#1f2328",
+    "#8250df",
+    "#d1242f",
+    "#bc4c00",
+    "#0969da"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "modus",
+   "label": "Modus Vivendi",
+   "name": "modus-vivendi",
+   "pair": "modus-operandi",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#000000",
+    "#000000",
+    "#ffffff",
+    "#b6a0ff",
+    "#ff5f59",
+    "#00d3d0",
+    "#2fafff"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "modus",
+   "label": "Modus Operandi",
+   "name": "modus-operandi",
+   "pair": "modus-vivendi",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#ffffff",
+    "#ffffff",
+    "#000000",
+    "#531ab6",
+    "#a60000",
+    "#005e8b",
+    "#0031a9"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "one",
+   "label": "One Dark",
+   "name": "one-dark",
+   "pair": "one-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#282c34",
+    "#282c34",
+    "#abb2bf",
+    "#c678dd",
+    "#e06c75",
+    "#d19a66",
+    "#61afef"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "one",
+   "label": "One Light",
+   "name": "one-light",
+   "pair": "one-dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#fafafa",
+    "#fafafa",
+    "#383a42",
+    "#a626a4",
+    "#e45649",
+    "#986801",
+    "#383a42"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "ayu",
+   "label": "Ayu Dark",
+   "name": "ayu-dark",
+   "pair": "ayu-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#0d1017",
+    "#10141c",
+    "#bfbdb6",
+    "#d2a6ff",
+    "#f07178",
+    "#ff8f40",
+    "#59c2ff"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "ayu",
+   "label": "Ayu Mirage",
+   "name": "ayu-mirage",
+   "pair": "ayu-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#1f2430",
+    "#242936",
+    "#cccac2",
+    "#dfbfff",
+    "#f28779",
+    "#ffa659",
+    "#73d0ff"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "ayu",
+   "label": "Ayu Light",
+   "name": "ayu-light",
+   "pair": "ayu-dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#f8f9fa",
+    "#fcfcfc",
+    "#5c6166",
+    "#a37acc",
+    "#e65050",
+    "#cf6610",
+    "#5c6166"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "flexoki",
+   "label": "Flexoki Dark",
+   "name": "flexoki-dark",
+   "pair": "flexoki-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#100f0f",
+    "#100f0f",
+    "#cecdc3",
+    "#8b7ec8",
+    "#d14d41",
+    "#da702c",
+    "#4385be"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "flexoki",
+   "label": "Flexoki Light",
+   "name": "flexoki-light",
+   "pair": "flexoki-dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#fffcf0",
+    "#fffcf0",
+    "#100f0f",
+    "#5e409d",
+    "#af3029",
+    "#bc5215",
+    "#205ea6"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "nightfox",
+   "label": "Nightfox",
+   "name": "nightfox",
+   "pair": "dayfox",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#131a24",
+    "#192330",
+    "#cdcecf",
+    "#9d79d6",
+    "#c94f6d",
+    "#f4a261",
+    "#719cd6"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "nightfox",
+   "label": "Dayfox",
+   "name": "dayfox",
+   "pair": "nightfox",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#e4dcd4",
+    "#f6f2ee",
+    "#3d2b5a",
+    "#6e33ce",
+    "#a5222f",
+    "#955f61",
+    "#2848a9"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "nightfox",
+   "label": "Dawnfox",
+   "name": "dawnfox",
+   "pair": "nightfox",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#ebe5df",
+    "#faf4ed",
+    "#575279",
+    "#907aa9",
+    "#b4637a",
+    "#ca6e69",
+    "#286983"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "nightfox",
+   "label": "Duskfox",
+   "name": "duskfox",
+   "pair": "dayfox",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#191726",
+    "#232136",
+    "#e0def4",
+    "#c4a7e7",
+    "#eb6f92",
+    "#ea9a97",
+    "#569fba"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "nightfox",
+   "label": "Nordfox",
+   "name": "nordfox",
+   "pair": "dayfox",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#232831",
+    "#2e3440",
+    "#cdcecf",
+    "#b48ead",
+    "#bf616a",
+    "#c9826b",
+    "#81a1c1"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "nightfox",
+   "label": "Terafox",
+   "name": "terafox",
+   "pair": "dayfox",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#0f1c1e",
+    "#152528",
+    "#e6eaea",
+    "#ad5c7c",
+    "#e85c51",
+    "#ff8349",
+    "#5a93aa"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "nightfox",
+   "label": "Carbonfox",
+   "name": "carbonfox",
+   "pair": "dayfox",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#0c0c0c",
+    "#161616",
+    "#f2f4f8",
+    "#be95ff",
+    "#ee5396",
+    "#33b1ff",
+    "#78a9ff"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": true,
+   "errors": [],
+   "family": "okabe-ito",
+   "label": "Okabe–Ito Dark",
+   "name": "okabe-ito-dark",
+   "pair": "okabe-ito-light",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#131822",
+    "#0b0e14",
+    "#f1f5f9",
+    "#0072b2",
+    "#d55e00",
+    "#56b4e9",
+    "#009e73"
+   ],
+   "warnings": []
+  },
+  {
+   "base": "light",
+   "dark": false,
+   "errors": [],
+   "family": "okabe-ito",
+   "label": "Okabe–Ito Light",
+   "name": "okabe-ito-light",
+   "pair": "okabe-ito-dark",
+   "path": null,
+   "source": "builtin",
+   "swatch": [
+    "#f1f5f9",
+    "#ffffff",
+    "#0f172a",
+    "#0072b2",
+    "#d55e00",
+    "#009e73",
+    "#64748b"
+   ],
+   "warnings": []
+  },
+  {
+   "name": "ghostty",
+   "source": "user",
+   "family": "user",
+   "label": "ghostty (imported from Ghostty)",
+   "pair": null,
+   "dark": true,
+   "base": "dark",
+   "path": "~/.config/adash/themes/ghostty.toml",
+   "warnings": [],
+   "errors": [],
+   "swatch": [
+    "#282a36",
+    "#282a36",
+    "#f8f8f2",
+    "#bd93f9",
+    "#ff5555",
+    "#9aedfe",
+    "#8be9fd"
+   ]
+  }
+ ],
+ "tokens": [
+  {
+   "description": "wordmark speed lines and favicon only",
+   "group": "brand",
+   "key": "accent",
+   "kind": "color",
+   "var": "--brand-accent"
+  },
+  {
+   "description": "dark pill behind the wordmark",
+   "group": "brand",
+   "key": "pill",
+   "kind": "color",
+   "var": "--brand-pill"
+  },
+  {
+   "description": "page and project group header band",
+   "group": "ui",
+   "key": "bg",
+   "kind": "color",
+   "var": "--ui-bg"
+  },
+  {
+   "description": "agent rows, cards, dialogs",
+   "group": "ui",
+   "key": "surface",
+   "kind": "color",
+   "var": "--ui-surface"
+  },
+  {
+   "description": "column headers, footers",
+   "group": "ui",
+   "key": "subtle",
+   "kind": "color",
+   "var": "--ui-subtle"
+  },
+  {
+   "description": "primary text",
+   "group": "ui",
+   "key": "fg",
+   "kind": "color",
+   "var": "--ui-fg"
+  },
+  {
+   "description": "secondary text",
+   "group": "ui",
+   "key": "muted",
+   "kind": "color",
+   "var": "--ui-muted"
+  },
+  {
+   "description": "tertiary text",
+   "group": "ui",
+   "key": "dim",
+   "kind": "color",
+   "var": "--ui-dim"
+  },
+  {
+   "description": "1 px separators",
+   "group": "ui",
+   "key": "border",
+   "kind": "color",
+   "var": "--ui-border"
+  },
+  {
+   "description": "group borders",
+   "group": "ui",
+   "key": "border-strong",
+   "kind": "color",
+   "var": "--ui-border-strong"
+  },
+  {
+   "description": "buttons, focus, selection, links, my message marks",
+   "group": "ui",
+   "key": "interact",
+   "kind": "color",
+   "var": "--ui-interact"
+  },
+  {
+   "description": "text on primary buttons (drawn on ui.interact)",
+   "group": "ui",
+   "key": "on-interact",
+   "kind": "color",
+   "var": "--ui-on-interact"
+  },
+  {
+   "description": "link and inline action text",
+   "group": "ui",
+   "key": "link",
+   "kind": "color",
+   "var": "--ui-link"
+  },
+  {
+   "description": "selected row background",
+   "group": "ui",
+   "key": "selection",
+   "kind": "color",
+   "var": "--ui-selection"
+  },
+  {
+   "description": "question waiting (needs me, 1st)",
+   "group": "signal",
+   "key": "ask",
+   "kind": "color",
+   "var": "--signal-ask"
+  },
+  {
+   "description": "question chip background",
+   "group": "signal",
+   "key": "ask-bg",
+   "kind": "color",
+   "var": "--signal-ask-bg"
+  },
+  {
+   "description": "question label and chip text",
+   "group": "signal",
+   "key": "ask-text",
+   "kind": "color",
+   "var": "--signal-ask-text"
+  },
+  {
+   "description": "stopped on an error (needs me, 2nd)",
+   "group": "signal",
+   "key": "error",
+   "kind": "color",
+   "var": "--signal-error"
+  },
+  {
+   "description": "error chip background",
+   "group": "signal",
+   "key": "error-bg",
+   "kind": "color",
+   "var": "--signal-error-bg"
+  },
+  {
+   "description": "error label and chip text",
+   "group": "signal",
+   "key": "error-text",
+   "kind": "color",
+   "var": "--signal-error-text"
+  },
+  {
+   "description": "my turn / unread answer (needs me, 3rd)",
+   "group": "signal",
+   "key": "turn",
+   "kind": "color",
+   "var": "--signal-turn"
+  },
+  {
+   "description": "text on turn chips",
+   "group": "signal",
+   "key": "turn-text",
+   "kind": "color",
+   "var": "--signal-turn-text"
+  },
+  {
+   "description": "turn chip background",
+   "group": "signal",
+   "key": "turn-bg",
+   "kind": "color",
+   "var": "--signal-turn-bg"
+  },
+  {
+   "description": "decisions for me",
+   "group": "signal",
+   "key": "decision",
+   "kind": "color",
+   "var": "--signal-decision"
+  },
+  {
+   "description": "cache countdown (informational)",
+   "group": "info",
+   "key": "cache",
+   "kind": "color",
+   "var": "--info-cache"
+  },
+  {
+   "description": "capacity and held warnings",
+   "group": "info",
+   "key": "warn",
+   "kind": "color",
+   "var": "--info-warn"
+  },
+  {
+   "description": "agent-to-agent threads",
+   "group": "info",
+   "key": "thread",
+   "kind": "color",
+   "var": "--info-thread"
+  },
+  {
+   "description": "progress counters",
+   "group": "info",
+   "key": "progress",
+   "kind": "color",
+   "var": "--info-progress"
+  },
+  {
+   "description": "held deliveries",
+   "group": "info",
+   "key": "held",
+   "kind": "color",
+   "var": "--info-held"
+  },
+  {
+   "description": "working bar (drawn opaque)",
+   "group": "timeline",
+   "key": "working",
+   "kind": "color",
+   "var": "--timeline-working"
+  },
+  {
+   "description": "idle track",
+   "group": "timeline",
+   "key": "idle",
+   "kind": "color",
+   "var": "--timeline-idle"
+  },
+  {
+   "description": "snoozed hatch",
+   "group": "timeline",
+   "key": "snoozed",
+   "kind": "color",
+   "var": "--timeline-snoozed"
+  },
+  {
+   "description": "now line",
+   "group": "timeline",
+   "key": "now",
+   "kind": "color",
+   "var": "--timeline-now"
+  },
+  {
+   "description": "omp glyph tint",
+   "group": "harness",
+   "key": "omp",
+   "kind": "color",
+   "var": "--harness-omp"
+  },
+  {
+   "description": "Claude Code glyph tint",
+   "group": "harness",
+   "key": "cc",
+   "kind": "color",
+   "var": "--harness-cc"
+  },
+  {
+   "description": "Codex glyph tint",
+   "group": "harness",
+   "key": "cdx",
+   "kind": "color",
+   "var": "--harness-cdx"
+  },
+  {
+   "description": "Antigravity glyph tint",
+   "group": "harness",
+   "key": "agy",
+   "kind": "color",
+   "var": "--harness-agy"
+  },
+  {
+   "description": "UI font family list",
+   "group": "font",
+   "key": "ui",
+   "kind": "font",
+   "var": "--font-ui"
+  },
+  {
+   "description": "monospace font family list",
+   "group": "font",
+   "key": "mono",
+   "kind": "font",
+   "var": "--font-mono"
+  },
+  {
+   "description": "base font size in px (11 to 18)",
+   "group": "font",
+   "key": "size",
+   "kind": "size",
+   "var": "--font-size"
+  },
+  {
+   "description": "compact | comfortable",
+   "group": "density",
+   "key": "",
+   "kind": "density",
+   "var": "--density"
+  }
+ ]
+}

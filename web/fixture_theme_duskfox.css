@@ -1,0 +1,44 @@
+/* adash theme duskfox · demo copy of GET /api/themes/duskfox.css */
+:root {
+  --brand-accent: #ea9a97;
+  --brand-pill: #433c59;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #cdcbe0;
+  --harness-cc: #cdcbe0;
+  --harness-cdx: #cdcbe0;
+  --harness-omp: #cdcbe0;
+  --info-cache: #cdcbe0;
+  --info-held: #cdcbe0;
+  --info-progress: #cdcbe0;
+  --info-thread: #a3be8c;
+  --info-warn: #f6c177;
+  --signal-ask: #c4a7e7;
+  --signal-ask-bg: #c4a7e71f;
+  --signal-ask-text: #c4a7e7;
+  --signal-decision: #ea9a97;
+  --signal-error: #eb6f92;
+  --signal-error-bg: #eb6f921f;
+  --signal-error-text: #eb6f92;
+  --signal-turn: #ea9a97;
+  --signal-turn-bg: #ea9a971f;
+  --signal-turn-text: #ea9a97;
+  --timeline-idle: #433c59;
+  --timeline-now: #569fba;
+  --timeline-snoozed: #817c9c;
+  --timeline-working: #433c59;
+  --ui-bg: #191726;
+  --ui-border: #433c59;
+  --ui-border-strong: #817c9c;
+  --ui-dim: #817c9c;
+  --ui-fg: #e0def4;
+  --ui-interact: #569fba;
+  --ui-link: #569fba;
+  --ui-muted: #cdcbe0;
+  --ui-on-interact: #232136;
+  --ui-selection: #569fba26;
+  --ui-subtle: #2d2a45;
+  --ui-surface: #232136;
+}

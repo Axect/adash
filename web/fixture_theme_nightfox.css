@@ -1,0 +1,44 @@
+/* adash theme nightfox · demo copy of GET /api/themes/nightfox.css */
+:root {
+  --brand-accent: #f4a261;
+  --brand-pill: #2b3b51;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #aeafb0;
+  --harness-cc: #aeafb0;
+  --harness-cdx: #aeafb0;
+  --harness-omp: #aeafb0;
+  --info-cache: #aeafb0;
+  --info-held: #aeafb0;
+  --info-progress: #aeafb0;
+  --info-thread: #81b29a;
+  --info-warn: #dbc074;
+  --signal-ask: #9d79d6;
+  --signal-ask-bg: #9d79d61f;
+  --signal-ask-text: #baa1e2;
+  --signal-decision: #f4a261;
+  --signal-error: #c94f6d;
+  --signal-error-bg: #c94f6d1f;
+  --signal-error-text: #cdcecf;
+  --signal-turn: #f4a261;
+  --signal-turn-bg: #f4a2611f;
+  --signal-turn-text: #f4a261;
+  --timeline-idle: #2b3b51;
+  --timeline-now: #719cd6;
+  --timeline-snoozed: #738091;
+  --timeline-working: #aeafb0;
+  --ui-bg: #131a24;
+  --ui-border: #2b3b51;
+  --ui-border-strong: #738091;
+  --ui-dim: #738091;
+  --ui-fg: #cdcecf;
+  --ui-interact: #719cd6;
+  --ui-link: #719cd6;
+  --ui-muted: #aeafb0;
+  --ui-on-interact: #192330;
+  --ui-selection: #719cd626;
+  --ui-subtle: #212e3f;
+  --ui-surface: #192330;
+}

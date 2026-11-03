@@ -1,0 +1,1641 @@
+{
+ "generatedAt": 1793152800000,
+ "backend": {
+  "kind": "tmux",
+  "available": true
+ },
+ "priorityFormula": "(impact + 2*leverage) / cost",
+ "agents": [
+  {
+   "name": "BACKEND",
+   "nameSource": "self",
+   "handle": "term_a1",
+   "paneKey": "t1:l1",
+   "project": "adash-dev",
+   "worktreePath": "~/work/adash-dev",
+   "agentType": "omp",
+   "model": "opus-5.5",
+   "title": "Build agent progress dashboard",
+   "state": "working",
+   "needsHuman": false,
+   "stateSince": 1793152500000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": "eval",
+   "prompt": "Read SPEC.md and build adash",
+   "lastMessage": "Rust collector skeleton done.\nNow wiring terminal list join.",
+   "progress": {
+    "done": 3,
+    "total": 7,
+    "current": "HTTP API",
+    "source": "omp-todo"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Backend collector",
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "FRONTEND",
+   "nameSource": "title",
+   "handle": "term_a2",
+   "paneKey": "t1:l2",
+   "project": "adash-dev",
+   "worktreePath": "~/work/adash-dev",
+   "agentType": "omp",
+   "model": "opus-5.5",
+   "title": "adash web UI",
+   "state": "done",
+   "needsHuman": true,
+   "stateSince": 1793152560000,
+   "waitedMin": 4,
+   "cache": {
+    "ttlSec": 3600,
+    "expiresAt": 1793152870000,
+    "state": "warm",
+    "basis": "omp+Anthropic: 1 h cache (cacheRetention auto), measured ~60 min"
+   },
+   "tool": null,
+   "prompt": "Read spec_ui.md",
+   "lastMessage": "Timeline view is done.\n\n- Rows that need you now carry an ASK / ERR / TURN tag\n- `[` and `]` jump between them\n- The Now column keeps the state text when space is short\n\nNext: check it against the live server.",
+   "progress": {
+    "done": 5,
+    "total": 5,
+    "current": null,
+    "source": "omp-todo"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Web UI",
+   "ambiguous": false,
+   "ask": null,
+   "unread": true,
+   "usage": {
+    "context": {
+     "used": 296000,
+     "limit": 1000000,
+     "compactions": 1
+    },
+    "session": {
+     "turns": 48,
+     "input": 1840000,
+     "output": 212000,
+     "cacheRead": 15200000,
+     "cacheWrite": 910000,
+     "cost": 12.84,
+     "startedAt": 1793140800000
+    },
+    "model": "claude-opus-5-5",
+    "thinking": "medium",
+    "account": {
+     "provider": "Anthropic",
+     "account": "d***@example.com (Max)",
+     "windows": [
+      {
+       "label": "5h",
+       "pct": 41,
+       "resetsAt": 1793160600000
+      },
+      {
+       "label": "7d",
+       "pct": 73,
+       "resetsAt": 1793412000000
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "EDITOR",
+   "nameSource": "title",
+   "handle": "term_b1",
+   "paneKey": "t2:l1",
+   "project": "paper-draft",
+   "worktreePath": "~/work/paper-draft",
+   "agentType": "omp",
+   "model": "opus-5.5",
+   "title": "Merge EN drafts into main.tex",
+   "state": "waiting",
+   "needsHuman": true,
+   "stateSince": 1793149200000,
+   "waitedMin": 60,
+   "cache": {
+    "ttlSec": 3600,
+    "expiresAt": 1793152740000,
+    "state": "cold",
+    "basis": "omp+Anthropic: 1 h cache (cacheRetention auto), measured ~60 min"
+   },
+   "tool": null,
+   "prompt": "Merge accepted drafts",
+   "lastMessage": "Approval needed: overwrite section III of main.tex?\n<diff 42 lines>",
+   "progress": {
+    "done": 2,
+    "total": 6,
+    "current": "Merge Section III",
+    "source": "omp-todo"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Manuscript merge",
+   "ambiguous": false,
+   "ask": null,
+   "decisions": [
+    {
+     "id": "d1",
+     "text": "Overwrite Section III?",
+     "options": [
+      "Overwrite",
+      "Save as new file"
+     ]
+    },
+    {
+     "id": "d2",
+     "text": "Add the citation `[Doe2018]`?",
+     "options": [
+      "Add",
+      "Drop"
+     ]
+    },
+    {
+     "id": "d3",
+     "text": "Keep the number of Eq. (12)?",
+     "options": []
+    }
+   ],
+   "decisionsFrom": "m9",
+   "draft": {
+    "text": "Thanks, looks good",
+    "readable": true,
+    "source": "screen",
+    "seenAt": 1793152740000
+   },
+   "unread": true,
+   "usage": {
+    "context": {
+     "used": 184000,
+     "limit": 200000,
+     "compactions": 3
+    },
+    "session": {
+     "turns": 112,
+     "input": 920000,
+     "output": 140000,
+     "cacheRead": 8100000,
+     "cacheWrite": 400000,
+     "cost": 7.1,
+     "startedAt": 1793120400000
+    },
+    "model": "claude-opus-5-5",
+    "thinking": "high",
+    "account": {
+     "provider": "Anthropic",
+     "account": "d***@example.com (Max)",
+     "windows": [
+      {
+       "label": "5h",
+       "pct": 93,
+       "resetsAt": 1793154300000
+      },
+      {
+       "label": "7d",
+       "pct": 73,
+       "resetsAt": 1793412000000
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "FIGURES",
+   "nameSource": "title",
+   "handle": "term_b2",
+   "paneKey": "t2:l2",
+   "project": "paper-draft",
+   "worktreePath": "~/work/paper-draft",
+   "agentType": "claude",
+   "model": "sonnet-5",
+   "title": "Redraw Fig. 6/7",
+   "state": "done",
+   "needsHuman": true,
+   "stateSince": 1793151000000,
+   "waitedMin": 30,
+   "cache": {
+    "ttlSec": 3600,
+    "expiresAt": 1793152895000,
+    "state": "cooling",
+    "basis": "claude+Anthropic: 1 h cache (cacheRetention auto), measured ~60 min"
+   },
+   "tool": null,
+   "prompt": "Redraw figures",
+   "lastMessage": "Fig 6, 7 regenerated at figures/fig6.pdf, fig7.pdf.",
+   "progress": {
+    "done": 4,
+    "total": 4,
+    "current": null,
+    "source": "claude-todo"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Figures",
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "paper-draft-codex",
+   "nameSource": "fallback",
+   "handle": "term_b3",
+   "paneKey": "t2:l3",
+   "project": "paper-draft",
+   "worktreePath": "~/work/paper-draft",
+   "agentType": "codex",
+   "model": null,
+   "title": "Bibliography audit",
+   "state": "working",
+   "needsHuman": false,
+   "stateSince": 1793152000000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": "shell",
+   "prompt": "Audit bib",
+   "lastMessage": "Checking entry 41/71...",
+   "progress": {
+    "done": 41,
+    "total": 71,
+    "current": "entry 41",
+    "source": "codex-plan"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": null,
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "PLANNER",
+   "nameSource": "title",
+   "handle": "term_c1",
+   "paneKey": "t3:l1",
+   "project": "grant-app",
+   "worktreePath": "~/work/grant-app",
+   "agentType": "omp",
+   "model": "opus-5.5",
+   "title": "Draft grant proposal",
+   "state": "done",
+   "needsHuman": true,
+   "stateSince": 1793150000000,
+   "waitedMin": 46.7,
+   "cache": {
+    "ttlSec": 3600,
+    "expiresAt": 1793152895000,
+    "state": "cooling",
+    "basis": "omp+Anthropic: 1 h cache (cacheRetention auto), measured ~60 min"
+   },
+   "tool": null,
+   "prompt": "Draft proposal",
+   "lastMessage": "Draft v2 ready at proposal_v2.md.\nPlease review section 2.",
+   "progress": {
+    "done": 3,
+    "total": 5,
+    "current": "Section 3",
+    "source": "heuristic"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Proposal writing",
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "SCOUT",
+   "nameSource": "override",
+   "handle": "term_c2",
+   "paneKey": "t3:l2",
+   "project": "grant-app",
+   "worktreePath": "~/work/grant-app",
+   "agentType": "antigravity",
+   "model": "gemini-3-pro",
+   "title": "Fellowship research",
+   "state": "error",
+   "needsHuman": true,
+   "stateSince": 1793152260000,
+   "waitedMin": 213.3,
+   "cache": {
+    "ttlSec": 300,
+    "expiresAt": 1793152740000,
+    "state": "cold",
+    "basis": "agy+Gemini: 5 min cache, measured ~5 min"
+   },
+   "tool": null,
+   "prompt": "Research fellowships",
+   "lastMessage": "Deadline: 2026-12-01.",
+   "progress": null,
+   "note": "",
+   "role": null,
+   "ambiguous": false,
+   "ask": null,
+   "lastError": {
+    "status": 403,
+    "message": "permission_error: Your organization has been disabled for this model. (request_id: req_demo…)",
+    "provider": "anthropic",
+    "model": "claude-opus-5-5",
+    "at": 1793152260000
+   },
+   "retry": {
+    "label": "Retry (agy)",
+    "how": "send /retry to the input"
+   }
+  },
+  {
+   "name": "WRITER",
+   "nameSource": "title",
+   "handle": "term_c3",
+   "paneKey": "t3:l3",
+   "project": "grant-app",
+   "worktreePath": "~/work/grant-app",
+   "agentType": "omp",
+   "model": "opus-5.5",
+   "title": "Research statement",
+   "state": "working",
+   "needsHuman": false,
+   "stateSince": 1793152700000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": "read",
+   "prompt": "Write statement",
+   "lastMessage": "Reading notes...",
+   "progress": {
+    "done": 1,
+    "total": 4,
+    "current": "Outline",
+    "source": "omp-todo"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Research statement",
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "DRAFT-2",
+   "nameSource": "fallback",
+   "handle": "term_dash_2",
+   "paneKey": "DRAFT-2:1",
+   "project": "grant-app",
+   "worktreePath": "~/work/grant-app",
+   "agentType": "omp",
+   "model": null,
+   "title": "OMP ready",
+   "state": "done",
+   "needsHuman": true,
+   "stateSince": 1793152080000,
+   "waitedMin": 12,
+   "cache": {
+    "ttlSec": 3600,
+    "expiresAt": 1793152895000,
+    "state": "cooling",
+    "basis": "omp+Anthropic: 1 h cache (cacheRetention auto), measured ~60 min"
+   },
+   "tool": null,
+   "prompt": "OMP ready",
+   "lastMessage": "Done.",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": null,
+   "ambiguous": true,
+   "ask": null
+  },
+  {
+   "name": "DRAFT-3",
+   "nameSource": "fallback",
+   "handle": "term_dash_3",
+   "paneKey": "DRAFT-3:1",
+   "project": "grant-app",
+   "worktreePath": "~/work/grant-app",
+   "agentType": "omp",
+   "model": null,
+   "title": "OMP ready",
+   "state": "error",
+   "needsHuman": true,
+   "stateSince": 1793152620000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": "bash",
+   "prompt": "OMP ready",
+   "lastMessage": "...",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": null,
+   "ambiguous": true,
+   "ask": null,
+   "lastError": {
+    "status": 429,
+    "message": "rate_limit_error: Number of request tokens has exceeded your per-minute rate limit",
+    "provider": "anthropic",
+    "model": "claude-opus-5-5",
+    "at": 1793152620000
+   }
+  },
+  {
+   "name": "DRAFT-4",
+   "nameSource": "fallback",
+   "handle": "term_dash_4",
+   "paneKey": "DRAFT-4:1",
+   "project": "grant-app",
+   "worktreePath": "~/work/grant-app",
+   "agentType": "omp",
+   "model": null,
+   "title": "OMP ready",
+   "state": "idle",
+   "needsHuman": false,
+   "stateSince": 1793152800000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": null,
+   "prompt": "OMP ready",
+   "lastMessage": "",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": null,
+   "ambiguous": true,
+   "ask": null
+  },
+  {
+   "name": "FLEET",
+   "nameSource": "title",
+   "handle": "term_fleet",
+   "paneKey": "FLEET:1",
+   "project": "galaxy-survey",
+   "worktreePath": "~/work/galaxy-survey",
+   "agentType": "omp",
+   "model": null,
+   "title": "Fleet rebalance",
+   "state": "working",
+   "needsHuman": false,
+   "stateSince": 1793152800000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": "bash",
+   "prompt": "Fleet rebalance",
+   "lastMessage": "rebalancing",
+   "progress": {
+    "done": 2,
+    "total": 8,
+    "current": "LPT placement",
+    "source": "omp-todo"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "GPU fleet",
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "CRITIC",
+   "nameSource": "title",
+   "handle": "term_critic",
+   "paneKey": "CRITIC:1",
+   "project": "galaxy-survey",
+   "worktreePath": "~/work/galaxy-survey",
+   "agentType": "claude",
+   "model": null,
+   "title": "Coverage audit",
+   "state": "waiting",
+   "needsHuman": true,
+   "stateSince": 1793152620000,
+   "waitedMin": 3,
+   "cache": {
+    "ttlSec": 3600,
+    "expiresAt": 1793153030000,
+    "state": "warm",
+    "basis": "claude+Anthropic: 1 h cache (cacheRetention auto), measured ~60 min"
+   },
+   "tool": null,
+   "prompt": "Coverage audit",
+   "lastMessage": "Approval needed: re-queue 12 pueue jobs",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Coverage audit",
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "SCORER",
+   "nameSource": "title",
+   "handle": "term_scorer",
+   "paneKey": "SCORER:1",
+   "project": "galaxy-survey",
+   "worktreePath": "~/work/galaxy-survey",
+   "agentType": "codex",
+   "model": null,
+   "title": "Scoring loop",
+   "state": "done",
+   "needsHuman": true,
+   "stateSince": 1793148300000,
+   "waitedMin": 75,
+   "cache": {
+    "ttlSec": 2400,
+    "expiresAt": 1793152740000,
+    "state": "cold",
+    "basis": "codex+OpenAI: 40 min cache (prompt caching), measured ~40 min"
+   },
+   "tool": null,
+   "prompt": "Scoring loop",
+   "lastMessage": "harvest done: 306 cells",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": null,
+   "ambiguous": false,
+   "ask": null,
+   "usage": {
+    "context": {
+     "used": 58000,
+     "limit": 272000
+    },
+    "session": {
+     "turns": 9,
+     "input": 210000,
+     "output": 30000,
+     "cost": 0.412,
+     "startedAt": 1793147400000
+    },
+    "model": "gpt-5.5-codex",
+    "thinking": "high",
+    "account": {
+     "provider": "OpenAI",
+     "account": "Plus",
+     "windows": [
+      {
+       "label": "5h",
+       "pct": 12,
+       "resetsAt": 1793167200000
+      }
+     ]
+    }
+   }
+  },
+  {
+   "name": "PROPOSER",
+   "nameSource": "title",
+   "handle": "term_proposer",
+   "paneKey": "PROPOSER:1",
+   "project": "protein-fold",
+   "worktreePath": "~/work/protein-fold",
+   "agentType": "omp",
+   "model": null,
+   "title": "v3 variant comparison",
+   "state": "asking",
+   "needsHuman": true,
+   "stateSince": 1793152080000,
+   "waitedMin": 8,
+   "cache": {
+    "ttlSec": 3600,
+    "expiresAt": 1793152895000,
+    "state": "cooling",
+    "basis": "omp+Anthropic: 1 h cache (cacheRetention auto), measured ~60 min"
+   },
+   "tool": "ask",
+   "prompt": "v3 variant comparison",
+   "lastMessage": "Variant B better by 3%.\nSee report.",
+   "progress": {
+    "done": 6,
+    "total": 8,
+    "current": "figures",
+    "source": "omp-todo"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "v3 evaluation",
+   "ambiguous": false,
+   "ask": {
+    "question": "Put the v3 variant B result in the main table, or move it to an appendix?",
+    "options": [
+     {
+      "label": "Main table",
+      "description": "One more row in Table 2"
+     },
+     {
+      "label": "Appendix",
+      "description": "New appendix C"
+     },
+     {
+      "label": "Hold",
+      "description": "Decide after more seeds"
+     }
+    ],
+    "multi": false,
+    "askedAt": 1793152080000
+   }
+  },
+  {
+   "name": "TRAINER",
+   "nameSource": "title",
+   "handle": "term_trainer",
+   "paneKey": "TRAINER:1",
+   "project": "protein-fold",
+   "worktreePath": "~/work/protein-fold",
+   "agentType": "antigravity",
+   "model": null,
+   "title": "Model retrain",
+   "state": "asking",
+   "needsHuman": true,
+   "stateSince": 1793152620000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": "ask",
+   "prompt": "Model retrain",
+   "lastMessage": "",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": null,
+   "ambiguous": false,
+   "ask": {
+    "askKind": "question",
+    "askedAt": 1793152620000,
+    "questions": [
+     {
+      "id": "q1",
+      "question": "Which channels should I retrain? Comparison: figures/variants3.png (from the `retrain` checklist)",
+      "options": [
+       {
+        "label": "Band A",
+        "description": "Band A only · see outputs/band_a_v3.md"
+       },
+       {
+        "label": "Survey A",
+        "description": ""
+       },
+       {
+        "label": "Band B",
+        "description": ""
+       }
+      ],
+      "multi": true
+     },
+     {
+      "id": "q2",
+      "question": "Training epochs?",
+      "options": [
+       {
+        "label": "200",
+        "description": "default"
+       },
+       {
+        "label": "400",
+        "description": "Convergence check"
+       },
+       {
+        "label": "100",
+        "description": "Quick check"
+       }
+      ],
+      "multi": false,
+      "recommended": 0
+     },
+     {
+      "id": "q3",
+      "question": "W&B project name?",
+      "options": [
+       {
+        "label": "retrain",
+        "description": ""
+       },
+       {
+        "label": "retrain-v3",
+        "description": ""
+       }
+      ],
+      "multi": false
+     },
+     {
+      "id": "q4",
+      "question": "Clean up the servers when done?",
+      "options": [
+       {
+        "label": "Yes",
+        "description": "Keep checkpoints only"
+       },
+       {
+        "label": "No",
+        "description": ""
+       }
+      ],
+      "multi": false
+     }
+    ],
+    "question": "Which channels should I retrain?",
+    "options": [
+     {
+      "label": "Band A",
+      "description": ""
+     },
+     {
+      "label": "Survey A",
+      "description": ""
+     },
+     {
+      "label": "Band B",
+      "description": ""
+     }
+    ],
+    "multi": true
+   }
+  },
+  {
+   "name": "MODELER",
+   "nameSource": "title",
+   "handle": "term_modeler",
+   "paneKey": "MODELER:1",
+   "project": "climate-model",
+   "worktreePath": "~/work/climate-model",
+   "agentType": "omp",
+   "model": null,
+   "title": "Report v3",
+   "state": "idle",
+   "needsHuman": false,
+   "stateSince": 1793152800000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": null,
+   "prompt": "Report v3",
+   "lastMessage": "finished earlier",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Report",
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "TRANSLATOR",
+   "nameSource": "title",
+   "handle": "term_nsb_en",
+   "paneKey": "TRANSLATOR:1",
+   "project": "paper-draft",
+   "worktreePath": "~/work/paper-draft",
+   "agentType": "omp",
+   "model": null,
+   "title": "EN retranslation",
+   "state": "asking",
+   "needsHuman": true,
+   "stateSince": 1793152800000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": null,
+   "prompt": "EN retranslation",
+   "lastMessage": "",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Translation",
+   "ambiguous": false,
+   "ask": {
+    "askKind": "permission",
+    "question": "May I overwrite main.tex in the synced folder?",
+    "options": [],
+    "askedAt": 1793152500000
+   },
+   "askKind": "permission"
+  },
+  {
+   "name": "MAPPER",
+   "nameSource": "title",
+   "handle": "term_mapper",
+   "paneKey": "MAPPER:1",
+   "project": "climate-model",
+   "worktreePath": "~/work/climate-model",
+   "agentType": "claude",
+   "model": null,
+   "title": "Parameter map",
+   "state": "done",
+   "needsHuman": true,
+   "stateSince": 1793151480000,
+   "waitedMin": 22,
+   "cache": {
+    "ttlSec": 3600,
+    "expiresAt": 1793152895000,
+    "state": "cooling",
+    "basis": "claude+Anthropic: 1 h cache (cacheRetention auto), measured ~60 min"
+   },
+   "tool": null,
+   "prompt": "Parameter map",
+   "lastMessage": "Map redrawn.\nfigures/map.pdf",
+   "progress": {
+    "done": 3,
+    "total": 3,
+    "current": null,
+    "source": "claude-todo"
+   },
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Parameter map",
+   "ambiguous": false,
+   "ask": null
+  },
+  {
+   "name": "SCRIBE",
+   "nameSource": "fallback",
+   "handle": "term_scribe",
+   "paneKey": "SCRIBE:1",
+   "project": "docs-site",
+   "worktreePath": "~/work/docs-site",
+   "agentType": "omp",
+   "model": null,
+   "title": "Update the user guide",
+   "state": "idle",
+   "needsHuman": false,
+   "stateSince": 1793152800000,
+   "waitedMin": 0,
+   "cache": null,
+   "tool": null,
+   "prompt": "Update the user guide",
+   "lastMessage": "",
+   "progress": null,
+   "snoozedUntil": null,
+   "note": "",
+   "role": "Docs",
+   "ambiguous": true,
+   "ask": null,
+   "hidden": true
+  }
+ ],
+ "projects": [
+  {
+   "name": "paper-draft",
+   "paths": [
+    "~/work/paper-draft"
+   ],
+   "goal": "Journal submission",
+   "impact": 5,
+   "leverage": 4,
+   "cost": 3,
+   "score": 4.33,
+   "deadline": "2026-11-15",
+   "counts": {
+    "working": 1,
+    "needsHuman": 2
+   },
+   "humanWaitMin": 90,
+   "progress": 0.64,
+   "bottleneck": false,
+   "agents": [
+    "EDITOR",
+    "FIGURES",
+    "paper-draft-codex",
+    "TRANSLATOR"
+   ]
+  },
+  {
+   "name": "grant-app",
+   "paths": [
+    "~/work/grant-app"
+   ],
+   "goal": "Finish the grant application, collect three reference letters and wrap up the research statement (a long goal to show truncation)",
+   "impact": 4,
+   "leverage": 3,
+   "cost": 3,
+   "score": 3.33,
+   "deadline": "2026-11-30",
+   "counts": {
+    "working": 2,
+    "needsHuman": 2
+   },
+   "humanWaitMin": 272,
+   "progress": 0.42,
+   "bottleneck": true,
+   "agents": [
+    "PLANNER",
+    "SCOUT",
+    "WRITER",
+    "DRAFT-2",
+    "DRAFT-3",
+    "DRAFT-4"
+   ]
+  },
+  {
+   "name": "adash-dev",
+   "paths": [
+    "~/work/adash-dev"
+   ],
+   "goal": "Ship adash",
+   "impact": 3,
+   "leverage": 3,
+   "cost": 3,
+   "score": 3,
+   "deadline": null,
+   "counts": {
+    "working": 1,
+    "needsHuman": 1
+   },
+   "humanWaitMin": 4,
+   "progress": 0.71,
+   "bottleneck": false,
+   "agents": [
+    "BACKEND",
+    "FRONTEND"
+   ]
+  },
+  {
+   "name": "galaxy-survey",
+   "paths": [
+    "~/work/galaxy-survey"
+   ],
+   "goal": "Validate the catalog",
+   "impact": 5,
+   "leverage": 5,
+   "cost": 4,
+   "score": 3.75,
+   "deadline": "2026-11-20",
+   "counts": {
+    "working": 1,
+    "needsHuman": 2
+   },
+   "humanWaitMin": 78,
+   "progress": 0.25,
+   "bottleneck": false,
+   "agents": [
+    "FLEET",
+    "CRITIC",
+    "SCORER"
+   ]
+  },
+  {
+   "name": "protein-fold",
+   "paths": [
+    "~/work/protein-fold"
+   ],
+   "goal": "Settle the first-paper scope",
+   "impact": 4,
+   "leverage": 4,
+   "cost": 3,
+   "score": 4,
+   "deadline": null,
+   "counts": {
+    "working": 1,
+    "needsHuman": 1
+   },
+   "humanWaitMin": 8,
+   "progress": 0.75,
+   "bottleneck": false,
+   "agents": [
+    "PROPOSER",
+    "TRAINER"
+   ]
+  },
+  {
+   "name": "climate-model",
+   "paths": [
+    "~/work/climate-model"
+   ],
+   "goal": "Second-paper framing",
+   "impact": 3,
+   "leverage": 4,
+   "cost": 3,
+   "score": 3.67,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 1
+   },
+   "humanWaitMin": 22,
+   "progress": 1,
+   "bottleneck": false,
+   "agents": [
+    "MODELER",
+    "MAPPER"
+   ]
+  },
+  {
+   "name": "lr-schedules",
+   "paths": [
+    "~/work/lr-schedules"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  },
+  {
+   "name": "orbit-sim",
+   "paths": [
+    "~/work/orbit-sim"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  },
+  {
+   "name": "ocean-sim",
+   "paths": [
+    "~/work/ocean-sim"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  },
+  {
+   "name": "event-site",
+   "paths": [
+    "~/work/event-site"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  },
+  {
+   "name": "math-lib",
+   "paths": [
+    "~/work/math-lib"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  },
+  {
+   "name": "data-lake",
+   "paths": [
+    "~/work/data-lake"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  },
+  {
+   "name": "travel-plans",
+   "paths": [
+    "~/work/travel-plans"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  },
+  {
+   "name": "docs-site",
+   "paths": [
+    "~/work/docs-site"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  },
+  {
+   "name": "sensor-fusion",
+   "paths": [
+    "~/work/sensor-fusion"
+   ],
+   "goal": "",
+   "impact": 2,
+   "leverage": 2,
+   "cost": 3,
+   "score": 2,
+   "deadline": null,
+   "counts": {
+    "working": 0,
+    "needsHuman": 0
+   },
+   "humanWaitMin": 0,
+   "progress": 0,
+   "bottleneck": false,
+   "agents": []
+  }
+ ],
+ "queue": [
+  {
+   "kind": "agent",
+   "ref": "EDITOR",
+   "project": "paper-draft",
+   "title": "Merge EN drafts into main.tex",
+   "since": 1793149200000,
+   "score": 4.33
+  },
+  {
+   "kind": "agent",
+   "ref": "FIGURES",
+   "project": "paper-draft",
+   "title": "Redraw Fig. 6/7",
+   "since": 1793151000000,
+   "score": 4.33
+  },
+  {
+   "kind": "thread",
+   "ref": "T20261028-101500-ab12",
+   "project": "paper-draft",
+   "title": "FIGURES → EDITOR review request (held)",
+   "since": 1793151300000,
+   "score": 4.33
+  },
+  {
+   "kind": "agent",
+   "ref": "PROPOSER",
+   "project": "protein-fold",
+   "title": "v3 variant comparison",
+   "since": 1793152320000,
+   "score": 4
+  },
+  {
+   "kind": "agent",
+   "ref": "SCORER",
+   "project": "galaxy-survey",
+   "title": "Scoring loop",
+   "since": 1793148300000,
+   "score": 3.75
+  },
+  {
+   "kind": "agent",
+   "ref": "CRITIC",
+   "project": "galaxy-survey",
+   "title": "Coverage audit",
+   "since": 1793152620000,
+   "score": 3.75
+  },
+  {
+   "kind": "agent",
+   "ref": "MAPPER",
+   "project": "climate-model",
+   "title": "Parameter map",
+   "since": 1793151480000,
+   "score": 3.67
+  },
+  {
+   "kind": "humanTask",
+   "ref": "h1",
+   "project": "grant-app",
+   "title": "Email the three referees",
+   "since": 1793100000000,
+   "score": 3.33
+  },
+  {
+   "kind": "thread",
+   "ref": "T20261028-090000-ff01",
+   "project": "grant-app",
+   "title": "PLANNER → WRITER hop limit reached",
+   "since": 1793146800000,
+   "score": 3.33
+  },
+  {
+   "kind": "agent",
+   "ref": "PLANNER",
+   "project": "grant-app",
+   "title": "Draft grant proposal",
+   "since": 1793150000000,
+   "score": 3.33
+  },
+  {
+   "kind": "agent",
+   "ref": "DRAFT-2",
+   "project": "grant-app",
+   "title": "OMP ready",
+   "since": 1793152080000,
+   "score": 3.33
+  },
+  {
+   "kind": "agent",
+   "ref": "FRONTEND",
+   "project": "adash-dev",
+   "title": "adash web UI",
+   "since": 1793152560000,
+   "score": 3
+  }
+ ],
+ "threads": [
+  {
+   "id": "T20261028-101500-ab12",
+   "from": "FIGURES",
+   "to": "EDITOR",
+   "status": "held_possible_draft",
+   "hops": 1,
+   "createdAt": 1793151300000,
+   "request": "Please check that the Fig. 6 caption matches the numbers in Section III.",
+   "replyPreview": null,
+   "dir": "~/.local/share/adash/threads/T20261028-101500-ab12"
+  },
+  {
+   "id": "T20261028-090000-ff01",
+   "from": "PLANNER",
+   "to": "WRITER",
+   "status": "escalated",
+   "hops": 5,
+   "createdAt": 1793146800000,
+   "request": "Remove overlap between statement §2 and proposal §2",
+   "replyPreview": "Marked 3 overlaps, decision needed",
+   "dir": "~/.local/share/adash/threads/T20261028-090000-ff01"
+  },
+  {
+   "id": "T20261028-103000-1c2d",
+   "from": "BACKEND",
+   "to": "FRONTEND",
+   "status": "relayed",
+   "hops": 2,
+   "createdAt": 1793152200000,
+   "request": "Check the API contract field names",
+   "replyPreview": "All fields match",
+   "dir": "~/.local/share/adash/threads/T20261028-103000-1c2d"
+  },
+  {
+   "id": "T20261028-104000-9e9e",
+   "from": null,
+   "to": "WRITER",
+   "status": "queued",
+   "hops": 1,
+   "createdAt": 1793152700000,
+   "request": "Check the team page is up to date",
+   "replyPreview": null,
+   "dir": "~/.local/share/adash/threads/T20261028-104000-9e9e"
+  },
+  {
+   "id": "T20261028-104500-7777",
+   "from": "EDITOR",
+   "to": "paper-draft-codex",
+   "status": "delivery_unconfirmed",
+   "hops": 1,
+   "createdAt": 1793152750000,
+   "request": "Check the DOI of ref [41]",
+   "replyPreview": null,
+   "dir": "~/.local/share/adash/threads/T20261028-104500-7777"
+  },
+  {
+   "id": "T20261028-094500-r3ld",
+   "from": "PLANNER",
+   "to": "WRITER",
+   "status": "relay_held",
+   "heldReason": "draft",
+   "heldSince": 1793151960000,
+   "hops": 2,
+   "createdAt": 1793150400000,
+   "request": "Review the overlap between proposal §2 and the statement",
+   "replyPreview": "## Review\n\nFound **3 overlaps**:\n\n- §2.1 opening vs. WRITER §1\n- the definition of $k=n-1$ appears twice\n- reference [12] cited in both",
+   "dir": "~/.local/share/adash/threads/T20261028-094500-r3ld"
+  },
+  {
+   "id": "T-mg1",
+   "from": "FIGURES",
+   "to": "paper-draft-codex",
+   "status": "delivered",
+   "hops": 1,
+   "createdAt": 1793151600000,
+   "request": "Panel review",
+   "replyPreview": null,
+   "dir": "",
+   "magiRun": "M1",
+   "magiKind": "review",
+   "mode": "accept"
+  }
+ ],
+ "humanTasks": [
+  {
+   "id": "h1",
+   "title": "Email the three referees",
+   "project": "grant-app",
+   "due": "2026-10-30",
+   "done": false
+  },
+  {
+   "id": "h2",
+   "title": "Settle the paper-draft author order",
+   "project": "paper-draft",
+   "due": "2026-11-05",
+   "done": false
+  },
+  {
+   "id": "h3",
+   "title": "Check the systemd unit install",
+   "project": "adash-dev",
+   "due": null,
+   "done": true
+  }
+ ],
+ "meta": {
+  "cacheThresholdsMin": [
+   5,
+   60
+  ],
+  "projects": {
+   "paper-draft": {
+    "paths": [
+     "~/work/paper-draft"
+    ],
+    "goal": "Journal submission",
+    "impact": 5,
+    "leverage": 4,
+    "cost": 3,
+    "deadline": "2026-11-15",
+    "note": ""
+   },
+   "grant-app": {
+    "paths": [
+     "~/work/grant-app"
+    ],
+    "goal": "Finish the grant application",
+    "impact": 4,
+    "leverage": 3,
+    "cost": 3,
+    "deadline": "2026-11-30",
+    "note": ""
+   },
+   "adash-dev": {
+    "paths": [
+     "~/work/adash-dev"
+    ],
+    "goal": "Ship adash",
+    "impact": 3,
+    "leverage": 3,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "galaxy-survey": {
+    "paths": [
+     "~/work/galaxy-survey"
+    ],
+    "goal": "Validate the catalog",
+    "impact": 5,
+    "leverage": 5,
+    "cost": 4,
+    "deadline": "2026-11-20",
+    "note": ""
+   },
+   "protein-fold": {
+    "paths": [
+     "~/work/protein-fold"
+    ],
+    "goal": "Settle the first-paper scope",
+    "impact": 4,
+    "leverage": 4,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "climate-model": {
+    "paths": [
+     "~/work/climate-model"
+    ],
+    "goal": "Second-paper framing",
+    "impact": 3,
+    "leverage": 4,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "lr-schedules": {
+    "paths": [
+     "~/work/lr-schedules"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "orbit-sim": {
+    "paths": [
+     "~/work/orbit-sim"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "ocean-sim": {
+    "paths": [
+     "~/work/ocean-sim"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "event-site": {
+    "paths": [
+     "~/work/event-site"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "math-lib": {
+    "paths": [
+     "~/work/math-lib"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "data-lake": {
+    "paths": [
+     "~/work/data-lake"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "travel-plans": {
+    "paths": [
+     "~/work/travel-plans"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "docs-site": {
+    "paths": [
+     "~/work/docs-site"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   },
+   "sensor-fusion": {
+    "paths": [
+     "~/work/sensor-fusion"
+    ],
+    "goal": "",
+    "impact": 2,
+    "leverage": 2,
+    "cost": 3,
+    "deadline": null,
+    "note": ""
+   }
+  },
+  "humanTasks": [],
+  "agents": {
+   "BACKEND": {
+    "note": "",
+    "priority_bonus": 0
+   }
+  }
+ },
+ "magiRuns": [
+  {
+   "id": "M2",
+   "source": "EDITOR",
+   "kind": "review",
+   "mode": "accept",
+   "status": "held",
+   "phase": "held",
+   "heldReason": "possible_draft",
+   "createdAt": 1793152560000,
+   "deliveredAt": null,
+   "error": null,
+   "synthSentAt": null,
+   "targets": [
+    {
+     "name": "FIGURES",
+     "threadId": null,
+     "status": "not_asked"
+    },
+    {
+     "name": "TRANSLATOR",
+     "threadId": null,
+     "status": "not_asked"
+    }
+   ]
+  },
+  {
+   "id": "M1",
+   "source": "CRITIC",
+   "kind": "both",
+   "mode": "accept",
+   "status": "delivered",
+   "phase": "running",
+   "heldReason": null,
+   "createdAt": 1793150700000,
+   "deliveredAt": 1793150760000,
+   "error": null,
+   "synthSentAt": null,
+   "targets": [
+    {
+     "name": "SCORER",
+     "threadId": "T-mg1",
+     "status": "answered"
+    },
+    {
+     "name": "FLEET",
+     "threadId": "T-mg2",
+     "status": "delivered"
+    }
+   ]
+  }
+ ],
+ "hiddenProjects": [
+  {
+   "name": "docs-site",
+   "until": null,
+   "archived": false,
+   "agents": 1,
+   "archivedSessions": []
+  }
+ ]
+}

@@ -1,0 +1,6096 @@
+{
+"now": 1793152800000,
+"agents": [
+{
+"name": "BACKEND",
+"role": "Backend collector",
+"project": "adash-dev",
+"identity": "id-BACKEND",
+"live": true,
+"segments": [
+{
+"state": "working",
+"start": 1792908000000,
+"end": 1792909380000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792909380000,
+"end": 1792909560000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792909560000,
+"end": 1792914360000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792914360000,
+"end": 1792930680000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792930680000,
+"end": 1792932540000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792932540000,
+"end": 1792948560000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792948560000,
+"end": 1792952820000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792952820000,
+"end": 1792958280000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792958280000,
+"end": 1792963620000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792963620000,
+"end": 1792967820000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792967820000,
+"end": 1792971840000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792971840000,
+"end": 1792973340000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792973340000,
+"end": 1792975440000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792975440000,
+"end": 1792975920000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792975920000,
+"end": 1792979220000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792979220000,
+"end": 1792989000000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792989000000,
+"end": 1792994880000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792994880000,
+"end": 1792995060000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792995060000,
+"end": 1793001360000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793001360000,
+"end": 1793012700000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793012700000,
+"end": 1793016900000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793016900000,
+"end": 1793017380000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793017380000,
+"end": 1793020740000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793020740000,
+"end": 1793020920000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793020920000,
+"end": 1793023080000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793023080000,
+"end": 1793037180000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793037180000,
+"end": 1793041260000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793041260000,
+"end": 1793052060000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793052060000,
+"end": 1793054640000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793054640000,
+"end": 1793055120000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793055120000,
+"end": 1793060940000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793060940000,
+"end": 1793065140000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793065140000,
+"end": 1793067000000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793067000000,
+"end": 1793080980000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793080980000,
+"end": 1793086260000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793086260000,
+"end": 1793088720000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793088720000,
+"end": 1793089740000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793089740000,
+"end": 1793089920000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793089920000,
+"end": 1793093100000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793093100000,
+"end": 1793097300000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793097300000,
+"end": 1793098800000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793098800000,
+"end": 1793100300000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793100300000,
+"end": 1793106240000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793106240000,
+"end": 1793119140000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793119140000,
+"end": 1793124960000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793124960000,
+"end": 1793125140000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793125140000,
+"end": 1793126520000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793126520000,
+"end": 1793131920000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793131920000,
+"end": 1793132880000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793132880000,
+"end": 1793143680000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793143680000,
+"end": 1793144940000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793144940000,
+"end": 1793145120000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793145120000,
+"end": 1793148480000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793148480000,
+"end": 1793152500000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793152500000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792909525000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1792930643000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1792948528000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1792967801000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1792973300000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1792988961000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793012698000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793052042000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793055115000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793088704000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793097264000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793100282000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793119139000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793125137000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793131895000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793143640000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793151600000,
+"kind": "human",
+"text": "Add the history API"
+}
+],
+"lastHumanAt": 1793151600000
+},
+{
+"name": "FRONTEND",
+"role": "Web UI",
+"project": "adash-dev",
+"identity": "id-FRONTEND",
+"live": true,
+"segments": [
+{
+"state": "waiting",
+"start": 1792918800000,
+"end": 1792926120000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792926120000,
+"end": 1792929000000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792929000000,
+"end": 1792939800000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792939800000,
+"end": 1792944240000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792944240000,
+"end": 1792945740000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792945740000,
+"end": 1792949040000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792949040000,
+"end": 1792958340000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792958340000,
+"end": 1792960980000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792960980000,
+"end": 1792962480000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792962480000,
+"end": 1792968180000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792968180000,
+"end": 1792969680000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792969680000,
+"end": 1792973340000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792973340000,
+"end": 1792973820000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792973820000,
+"end": 1792979460000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792979460000,
+"end": 1792990260000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792990260000,
+"end": 1792992780000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792992780000,
+"end": 1793000040000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793000040000,
+"end": 1793002140000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793002140000,
+"end": 1793002320000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793002320000,
+"end": 1793004960000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793004960000,
+"end": 1793005140000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793005140000,
+"end": 1793011860000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793011860000,
+"end": 1793012040000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793012040000,
+"end": 1793013300000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793013300000,
+"end": 1793038020000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793038020000,
+"end": 1793052780000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793052780000,
+"end": 1793053980000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793053980000,
+"end": 1793064780000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793064780000,
+"end": 1793068740000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793068740000,
+"end": 1793070240000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793070240000,
+"end": 1793073420000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793073420000,
+"end": 1793073900000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793073900000,
+"end": 1793076180000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793076180000,
+"end": 1793076660000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793076660000,
+"end": 1793083260000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793083260000,
+"end": 1793083740000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793083740000,
+"end": 1793087520000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793087520000,
+"end": 1793089020000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793089020000,
+"end": 1793093520000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793093520000,
+"end": 1793104320000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793104320000,
+"end": 1793110740000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793110740000,
+"end": 1793128080000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793128080000,
+"end": 1793134680000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793134680000,
+"end": 1793134860000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793134860000,
+"end": 1793141400000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793141400000,
+"end": 1793141580000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793141580000,
+"end": 1793148480000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793148480000,
+"end": 1793149980000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793149980000,
+"end": 1793152560000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793152560000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792939785000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792945711000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1792958305000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1792962468000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1792969656000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792973807000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1792990223000,
+"kind": "human",
+"text": "Put these results in a table"
+},
+{
+"ts": 1793000040000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND"
+},
+{
+"ts": 1793002282000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793005131000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793012040000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793052762000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793064775000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793076623000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793088980000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793104306000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793128068000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793141556000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793152440000,
+"kind": "human",
+"text": "Read spec.md and build the timeline UI\nDetails are in the spec",
+"btw": true
+}
+],
+"lastHumanAt": 1793152440000
+},
+{
+"name": "EDITOR",
+"role": "Manuscript merge",
+"project": "paper-draft",
+"identity": "id-EDITOR",
+"live": true,
+"segments": [
+{
+"state": "idle",
+"start": 1792893600000,
+"end": 1792901400000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792901400000,
+"end": 1792904880000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792904880000,
+"end": 1792909080000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792909080000,
+"end": 1792912080000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792912080000,
+"end": 1792912560000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792912560000,
+"end": 1792916580000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792916580000,
+"end": 1792933740000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792933740000,
+"end": 1792944600000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792944600000,
+"end": 1792958820000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792958820000,
+"end": 1792960680000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792960680000,
+"end": 1792964880000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792964880000,
+"end": 1792971060000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792971060000,
+"end": 1792981860000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792981860000,
+"end": 1792983900000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792983900000,
+"end": 1792984380000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792984380000,
+"end": 1792991520000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792991520000,
+"end": 1792995720000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792995720000,
+"end": 1792997820000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792997820000,
+"end": 1793010000000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793010000000,
+"end": 1793013780000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793013780000,
+"end": 1793017980000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793017980000,
+"end": 1793020320000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793020320000,
+"end": 1793036100000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793036100000,
+"end": 1793042220000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793042220000,
+"end": 1793077560000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793077560000,
+"end": 1793093400000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793093400000,
+"end": 1793097540000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793097540000,
+"end": 1793099040000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793099040000,
+"end": 1793103360000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793103360000,
+"end": 1793104860000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793104860000,
+"end": 1793106000000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793106000000,
+"end": 1793107500000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793107500000,
+"end": 1793113740000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793113740000,
+"end": 1793123640000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793123640000,
+"end": 1793129280000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793129280000,
+"end": 1793129460000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793129460000,
+"end": 1793134860000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793134860000,
+"end": 1793136360000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793136360000,
+"end": 1793143260000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793143260000,
+"end": 1793147460000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793147460000,
+"end": 1793149200000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793149200000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792901398000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1792964869000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792981830000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1792995707000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793010000000,
+"kind": "agent",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND",
+"channel": "cli-tell"
+},
+{
+"ts": 1793017977000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793062800000,
+"kind": "human",
+"text": "Merge the EN drafts"
+}
+],
+"lastHumanAt": 1793062800000
+},
+{
+"name": "FIGURES",
+"role": "Figures",
+"project": "paper-draft",
+"identity": "id-FIGURES",
+"live": true,
+"segments": [
+{
+"state": "working",
+"start": 1792893600000,
+"end": 1792893960000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792893960000,
+"end": 1792894440000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792894440000,
+"end": 1792900020000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792900020000,
+"end": 1792900200000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792900200000,
+"end": 1792902600000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792902600000,
+"end": 1792903080000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792903080000,
+"end": 1792905780000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792905780000,
+"end": 1792906260000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792906260000,
+"end": 1792908180000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792908180000,
+"end": 1792908660000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792908660000,
+"end": 1792910460000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792910460000,
+"end": 1792910640000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792910640000,
+"end": 1792915140000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792915140000,
+"end": 1792931040000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792931040000,
+"end": 1792931700000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792931700000,
+"end": 1792937520000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792937520000,
+"end": 1792941720000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792941720000,
+"end": 1792952520000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792952520000,
+"end": 1792958820000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792958820000,
+"end": 1792984920000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792984920000,
+"end": 1792994580000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792994580000,
+"end": 1793001360000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793001360000,
+"end": 1793004060000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793004060000,
+"end": 1793006160000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793006160000,
+"end": 1793014860000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793014860000,
+"end": 1793023020000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793023020000,
+"end": 1793024400000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793024400000,
+"end": 1793037660000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793037660000,
+"end": 1793067780000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793067780000,
+"end": 1793071980000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793071980000,
+"end": 1793073960000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793073960000,
+"end": 1793074440000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793074440000,
+"end": 1793079600000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793079600000,
+"end": 1793080080000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793080080000,
+"end": 1793082660000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793082660000,
+"end": 1793090400000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793090400000,
+"end": 1793091000000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793091000000,
+"end": 1793103900000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793103900000,
+"end": 1793107320000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793107320000,
+"end": 1793111520000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793111520000,
+"end": 1793112300000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793112300000,
+"end": 1793128680000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793128680000,
+"end": 1793129340000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793129340000,
+"end": 1793129820000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793129820000,
+"end": 1793135760000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793135760000,
+"end": 1793137260000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793137260000,
+"end": 1793137860000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793137860000,
+"end": 1793138040000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793138040000,
+"end": 1793140500000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793140500000,
+"end": 1793144700000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793144700000,
+"end": 1793145540000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793145540000,
+"end": 1793149740000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793149740000,
+"end": 1793151000000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793151000000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792894421000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1792900196000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792903057000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793004023000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793023020000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "CRITIC"
+},
+{
+"ts": 1793090366000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793103868000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793111515000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793128673000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793137260000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793138001000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793144679000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793149725000,
+"kind": "human",
+"text": "Please recompute the scores"
+}
+],
+"lastHumanAt": 1793149725000
+},
+{
+"name": "paper-draft-codex",
+"role": null,
+"project": "paper-draft",
+"identity": "id-paper-draft-codex",
+"live": true,
+"segments": [
+{
+"state": "offline",
+"start": 1792893600000,
+"end": 1792904440000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792904440000,
+"end": 1792916140000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792916140000,
+"end": 1792945600000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792945600000,
+"end": 1792963300000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792963300000,
+"end": 1792976080000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792976080000,
+"end": 1792982800000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792982800000,
+"end": 1792987060000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792987060000,
+"end": 1792994920000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792994920000,
+"end": 1793030500000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793030500000,
+"end": 1793037520000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793037520000,
+"end": 1793043040000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793043040000,
+"end": 1793048800000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793048800000,
+"end": 1793052640000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793052640000,
+"end": 1793060680000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793060680000,
+"end": 1793094400000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793094400000,
+"end": 1793105740000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793105740000,
+"end": 1793111680000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793111680000,
+"end": 1793122480000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793122480000,
+"end": 1793126200000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793126200000,
+"end": 1793126380000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793126380000,
+"end": 1793132140000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793132140000,
+"end": 1793132620000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793132620000,
+"end": 1793135800000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793135800000,
+"end": 1793146600000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793146600000,
+"end": 1793151820000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793151820000,
+"end": 1793152000000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793152000000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792982784000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793105726000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793126358000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793146590000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793151983000,
+"kind": "human",
+"text": "Good, please commit"
+}
+],
+"lastHumanAt": 1793151983000
+},
+{
+"name": "PLANNER",
+"role": "Proposal writing",
+"project": "grant-app",
+"identity": "id-PLANNER",
+"live": true,
+"segments": [
+{
+"state": "offline",
+"start": 1792936800000,
+"end": 1792938680000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792938680000,
+"end": 1792953860000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792953860000,
+"end": 1792955360000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792955360000,
+"end": 1792960340000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792960340000,
+"end": 1792963820000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792963820000,
+"end": 1792964000000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792964000000,
+"end": 1792970840000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792970840000,
+"end": 1792971320000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792971320000,
+"end": 1792973120000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792973120000,
+"end": 1792973300000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792973300000,
+"end": 1792978520000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792978520000,
+"end": 1792989320000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792989320000,
+"end": 1792995020000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792995020000,
+"end": 1792999220000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792999220000,
+"end": 1793001020000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793001020000,
+"end": 1793014460000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793014460000,
+"end": 1793027180000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793027180000,
+"end": 1793027900000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793027900000,
+"end": 1793032100000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793032100000,
+"end": 1793037380000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793037380000,
+"end": 1793051360000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793051360000,
+"end": 1793060900000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793060900000,
+"end": 1793064860000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793064860000,
+"end": 1793071100000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793071100000,
+"end": 1793073620000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793073620000,
+"end": 1793075120000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793075120000,
+"end": 1793081780000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793081780000,
+"end": 1793093600000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793093600000,
+"end": 1793096600000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793096600000,
+"end": 1793106440000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793106440000,
+"end": 1793113280000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793113280000,
+"end": 1793114780000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793114780000,
+"end": 1793121560000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793121560000,
+"end": 1793121740000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793121740000,
+"end": 1793127320000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793127320000,
+"end": 1793128820000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793128820000,
+"end": 1793133260000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793133260000,
+"end": 1793134760000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793134760000,
+"end": 1793141780000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793141780000,
+"end": 1793145980000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793145980000,
+"end": 1793150000000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793150000000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792960320000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1792963996000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1792971282000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1792989284000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793027163000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793060900000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "FIGURES"
+},
+{
+"ts": 1793106429000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793121726000,
+"kind": "human",
+"text": "Look at proposal §2 again"
+},
+{
+"ts": 1793134800000,
+"kind": "human",
+"text": "Write proposal draft v2"
+}
+],
+"lastHumanAt": 1793134800000
+},
+{
+"name": "SCOUT",
+"role": null,
+"project": "grant-app",
+"identity": "id-SCOUT",
+"live": true,
+"segments": [
+{
+"state": "offline",
+"start": 1792922400000,
+"end": 1792935460000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792935460000,
+"end": 1792937380000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792937380000,
+"end": 1792941820000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792941820000,
+"end": 1792955860000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792955860000,
+"end": 1792957240000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792957240000,
+"end": 1792958740000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792958740000,
+"end": 1792964380000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792964380000,
+"end": 1792964860000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792964860000,
+"end": 1792970980000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792970980000,
+"end": 1792977520000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792977520000,
+"end": 1792983040000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792983040000,
+"end": 1792994080000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792994080000,
+"end": 1793005780000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793005780000,
+"end": 1793009020000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793009020000,
+"end": 1793013220000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793013220000,
+"end": 1793017060000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793017060000,
+"end": 1793030560000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793030560000,
+"end": 1793044480000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793044480000,
+"end": 1793048800000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793048800000,
+"end": 1793053000000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793053000000,
+"end": 1793057980000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793057980000,
+"end": 1793058460000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793058460000,
+"end": 1793061220000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793061220000,
+"end": 1793062720000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793062720000,
+"end": 1793067400000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793067400000,
+"end": 1793078200000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793078200000,
+"end": 1793085280000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793085280000,
+"end": 1793086780000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793086780000,
+"end": 1793089360000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793089360000,
+"end": 1793089840000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793089840000,
+"end": 1793090680000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793090680000,
+"end": 1793098780000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793098780000,
+"end": 1793100880000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793100880000,
+"end": 1793101060000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793101060000,
+"end": 1793101840000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793101840000,
+"end": 1793112640000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793112640000,
+"end": 1793117560000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793117560000,
+"end": 1793118040000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793118040000,
+"end": 1793125180000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793125180000,
+"end": 1793135980000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793135980000,
+"end": 1793139520000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793139520000,
+"end": 1793140000000,
+"src": "recorded"
+},
+{
+"state": "snoozed",
+"start": 1793140000000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792955834000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1792958711000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1792977484000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793013207000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793058436000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793089835000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793098745000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793112636000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793135972000,
+"kind": "human",
+"text": "Revert to the previous version"
+}
+],
+"lastHumanAt": 1793135972000
+},
+{
+"name": "WRITER",
+"role": "Research statement",
+"project": "grant-app",
+"identity": "id-WRITER",
+"live": true,
+"segments": [
+{
+"state": "waiting",
+"start": 1792893600000,
+"end": 1792896020000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792896020000,
+"end": 1792900400000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792900400000,
+"end": 1792901900000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792901900000,
+"end": 1792906520000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792906520000,
+"end": 1792908020000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792908020000,
+"end": 1792913300000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792913300000,
+"end": 1792921460000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792921460000,
+"end": 1792928600000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792928600000,
+"end": 1792938080000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792938080000,
+"end": 1792965440000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792965440000,
+"end": 1792977200000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792977200000,
+"end": 1792982840000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792982840000,
+"end": 1792984340000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792984340000,
+"end": 1792988600000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792988600000,
+"end": 1792998140000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792998140000,
+"end": 1793004680000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793004680000,
+"end": 1793020820000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793020820000,
+"end": 1793025020000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793025020000,
+"end": 1793030780000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793030780000,
+"end": 1793037020000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793037020000,
+"end": 1793038520000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793038520000,
+"end": 1793039540000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793039540000,
+"end": 1793055140000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793055140000,
+"end": 1793068940000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793068940000,
+"end": 1793098880000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793098880000,
+"end": 1793115260000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793115260000,
+"end": 1793119820000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793119820000,
+"end": 1793121320000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793121320000,
+"end": 1793126900000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793126900000,
+"end": 1793131100000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793131100000,
+"end": 1793133620000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793133620000,
+"end": 1793137820000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793137820000,
+"end": 1793141900000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793141900000,
+"end": 1793152700000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793152700000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792895987000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1792921460000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "PLANNER"
+},
+{
+"ts": 1792977165000,
+"kind": "human",
+"text": "Put these results in a table"
+},
+{
+"ts": 1792998108000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793020796000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793030771000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793038484000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793115226000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793121282000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793131098000,
+"kind": "human",
+"text": "continue"
+}
+],
+"lastHumanAt": 1793131098000
+},
+{
+"name": "DRAFT-2",
+"role": null,
+"project": "grant-app",
+"identity": "id-DRAFT-2",
+"live": true,
+"segments": [
+{
+"state": "offline",
+"start": 1792893600000,
+"end": 1792895580000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792895580000,
+"end": 1792910160000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792910160000,
+"end": 1792915920000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792915920000,
+"end": 1792917420000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792917420000,
+"end": 1792923600000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792923600000,
+"end": 1792934400000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792934400000,
+"end": 1792935060000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792935060000,
+"end": 1792939260000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792939260000,
+"end": 1792945440000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792945440000,
+"end": 1792945920000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792945920000,
+"end": 1792950120000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792950120000,
+"end": 1792950300000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792950300000,
+"end": 1792954140000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792954140000,
+"end": 1792962420000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792962420000,
+"end": 1792984200000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792984200000,
+"end": 1792999680000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792999680000,
+"end": 1793004060000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793004060000,
+"end": 1793004240000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793004240000,
+"end": 1793009100000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793009100000,
+"end": 1793009280000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793009280000,
+"end": 1793014680000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793014680000,
+"end": 1793025480000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793025480000,
+"end": 1793032080000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793032080000,
+"end": 1793032260000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793032260000,
+"end": 1793037000000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793037000000,
+"end": 1793037180000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793037180000,
+"end": 1793043240000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793043240000,
+"end": 1793060580000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793060580000,
+"end": 1793070720000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793070720000,
+"end": 1793077620000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793077620000,
+"end": 1793092380000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793092380000,
+"end": 1793095560000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793095560000,
+"end": 1793099760000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793099760000,
+"end": 1793104260000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793104260000,
+"end": 1793107440000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793107440000,
+"end": 1793134200000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793134200000,
+"end": 1793150280000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793150280000,
+"end": 1793152080000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793152080000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792910150000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792939245000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1792945899000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793004214000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793009264000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793032251000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793037162000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793092349000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793099728000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793150268000,
+"kind": "human",
+"text": "continue"
+}
+],
+"lastHumanAt": 1793150268000
+},
+{
+"name": "DRAFT-3",
+"role": null,
+"project": "grant-app",
+"identity": "id-DRAFT-3",
+"live": true,
+"segments": [
+{
+"state": "working",
+"start": 1792965600000,
+"end": 1792966020000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792966020000,
+"end": 1792970220000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792970220000,
+"end": 1792973220000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792973220000,
+"end": 1792989840000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792989840000,
+"end": 1792993140000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792993140000,
+"end": 1792993620000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792993620000,
+"end": 1792999320000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792999320000,
+"end": 1793000820000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793000820000,
+"end": 1793005140000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793005140000,
+"end": 1793015940000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793015940000,
+"end": 1793018040000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793018040000,
+"end": 1793033040000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793033040000,
+"end": 1793041380000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793041380000,
+"end": 1793042700000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793042700000,
+"end": 1793045400000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793045400000,
+"end": 1793071980000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793071980000,
+"end": 1793078340000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793078340000,
+"end": 1793085120000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793085120000,
+"end": 1793085600000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793085600000,
+"end": 1793092560000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793092560000,
+"end": 1793094060000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793094060000,
+"end": 1793100720000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793100720000,
+"end": 1793104920000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793104920000,
+"end": 1793111520000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793111520000,
+"end": 1793122320000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793122320000,
+"end": 1793125020000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793125020000,
+"end": 1793128080000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793128080000,
+"end": 1793130840000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793130840000,
+"end": 1793135040000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793135040000,
+"end": 1793142000000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793142000000,
+"end": 1793152800000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793152800000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792970220000,
+"kind": "agent",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND",
+"channel": "cli-tell"
+},
+{
+"ts": 1792993580000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793094048000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793122305000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793135014000,
+"kind": "human",
+"text": "continue"
+}
+],
+"lastHumanAt": 1793135014000
+},
+{
+"name": "DRAFT-4",
+"role": null,
+"project": "grant-app",
+"identity": "id-DRAFT-4",
+"live": true,
+"segments": [
+{
+"state": "working",
+"start": 1792944000000,
+"end": 1792947420000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792947420000,
+"end": 1792952880000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792952880000,
+"end": 1792957860000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792957860000,
+"end": 1792966140000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792966140000,
+"end": 1792972020000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792972020000,
+"end": 1792975140000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792975140000,
+"end": 1792985940000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792985940000,
+"end": 1792991220000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792991220000,
+"end": 1792995420000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792995420000,
+"end": 1792997520000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792997520000,
+"end": 1793015340000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793015340000,
+"end": 1793031000000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793031000000,
+"end": 1793041560000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793041560000,
+"end": 1793048340000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793048340000,
+"end": 1793049840000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793049840000,
+"end": 1793053380000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793053380000,
+"end": 1793057580000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793057580000,
+"end": 1793062440000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793062440000,
+"end": 1793073240000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793073240000,
+"end": 1793077560000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793077560000,
+"end": 1793109420000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793109420000,
+"end": 1793118780000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793118780000,
+"end": 1793124840000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793124840000,
+"end": 1793133420000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793133420000,
+"end": 1793140320000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793140320000,
+"end": 1793140500000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793140500000,
+"end": 1793145840000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793145840000,
+"end": 1793146020000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793146020000,
+"end": 1793152800000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793152800000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792952879000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792971998000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1792985908000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1792995408000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793041559000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793073233000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793118770000,
+"kind": "human",
+"text": "Put these results in a table"
+},
+{
+"ts": 1793133420000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND"
+},
+{
+"ts": 1793140471000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+}
+],
+"lastHumanAt": 1793140471000
+},
+{
+"name": "FLEET",
+"role": "GPU fleet",
+"project": "galaxy-survey",
+"identity": "id-FLEET",
+"live": true,
+"segments": [
+{
+"state": "offline",
+"start": 1792904400000,
+"end": 1792908240000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792908240000,
+"end": 1792912080000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792912080000,
+"end": 1792928340000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792928340000,
+"end": 1792940040000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792940040000,
+"end": 1792975620000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792975620000,
+"end": 1792984200000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792984200000,
+"end": 1793016540000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793016540000,
+"end": 1793032440000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793032440000,
+"end": 1793059560000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793059560000,
+"end": 1793069760000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793069760000,
+"end": 1793073720000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793073720000,
+"end": 1793073900000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793073900000,
+"end": 1793077140000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793077140000,
+"end": 1793077620000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793077620000,
+"end": 1793082960000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793082960000,
+"end": 1793093760000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793093760000,
+"end": 1793099220000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793099220000,
+"end": 1793099700000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793099700000,
+"end": 1793100780000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793100780000,
+"end": 1793100960000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793100960000,
+"end": 1793104020000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793104020000,
+"end": 1793115660000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793115660000,
+"end": 1793122200000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793122200000,
+"end": 1793126400000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793126400000,
+"end": 1793132700000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793132700000,
+"end": 1793133180000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793133180000,
+"end": 1793134620000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793134620000,
+"end": 1793134800000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793134800000,
+"end": 1793136180000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793136180000,
+"end": 1793146980000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793146980000,
+"end": 1793147700000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793147700000,
+"end": 1793147880000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793147880000,
+"end": 1793148600000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793148600000,
+"end": 1793152800000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793152800000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1793069728000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793073862000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793077618000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793093731000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793100950000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793115660000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793152793000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+}
+],
+"lastHumanAt": 1793152793000
+},
+{
+"name": "CRITIC",
+"role": "Coverage audit",
+"project": "galaxy-survey",
+"identity": "id-CRITIC",
+"live": true,
+"segments": [
+{
+"state": "waiting",
+"start": 1792980000000,
+"end": 1792986720000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792986720000,
+"end": 1792992240000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792992240000,
+"end": 1792992720000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792992720000,
+"end": 1792995600000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792995600000,
+"end": 1792995780000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792995780000,
+"end": 1792999080000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792999080000,
+"end": 1792999560000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792999560000,
+"end": 1793004960000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793004960000,
+"end": 1793006460000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793006460000,
+"end": 1793009820000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793009820000,
+"end": 1793011320000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793011320000,
+"end": 1793013360000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793013360000,
+"end": 1793014860000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793014860000,
+"end": 1793018880000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793018880000,
+"end": 1793027280000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793027280000,
+"end": 1793042460000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793042460000,
+"end": 1793043420000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793043420000,
+"end": 1793043900000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793043900000,
+"end": 1793050800000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793050800000,
+"end": 1793061600000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793061600000,
+"end": 1793065560000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793065560000,
+"end": 1793096880000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793096880000,
+"end": 1793114820000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793114820000,
+"end": 1793118300000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793118300000,
+"end": 1793122500000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793122500000,
+"end": 1793126220000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793126220000,
+"end": 1793140680000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793140680000,
+"end": 1793147580000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793147580000,
+"end": 1793148060000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793148060000,
+"end": 1793152620000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793152620000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1793006460000,
+"kind": "agent",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND",
+"channel": "cli-tell"
+},
+{
+"ts": 1793011314000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793042460000,
+"kind": "agent",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND",
+"channel": "cli-tell"
+},
+{
+"ts": 1793061575000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793114816000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793122469000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793148060000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "CRITIC"
+},
+{
+"ts": 1793152680000,
+"kind": "human",
+"text": "/skill:review-panel review the coverage audit",
+"skill": {
+"name": "review-panel",
+"path": "~/.omp/agent/skills/review-panel/SKILL.md"
+}
+}
+],
+"lastHumanAt": 1793152680000
+},
+{
+"name": "SCORER",
+"role": null,
+"project": "galaxy-survey",
+"identity": "id-SCORER",
+"live": true,
+"segments": [
+{
+"state": "waiting",
+"start": 1792893600000,
+"end": 1792901580000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792901580000,
+"end": 1792906380000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792906380000,
+"end": 1792906860000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792906860000,
+"end": 1792912920000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792912920000,
+"end": 1792918200000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792918200000,
+"end": 1792953180000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792953180000,
+"end": 1792967640000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792967640000,
+"end": 1792974180000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792974180000,
+"end": 1792992300000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792992300000,
+"end": 1793003640000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793003640000,
+"end": 1793004720000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793004720000,
+"end": 1793005200000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793005200000,
+"end": 1793008140000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793008140000,
+"end": 1793010780000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793010780000,
+"end": 1793012340000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793012340000,
+"end": 1793023140000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793023140000,
+"end": 1793028900000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793028900000,
+"end": 1793033100000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793033100000,
+"end": 1793039220000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793039220000,
+"end": 1793045880000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793045880000,
+"end": 1793047980000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793047980000,
+"end": 1793057160000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793057160000,
+"end": 1793065380000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793065380000,
+"end": 1793079060000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793079060000,
+"end": 1793082180000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793082180000,
+"end": 1793086380000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793086380000,
+"end": 1793088300000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793088300000,
+"end": 1793090760000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793090760000,
+"end": 1793096520000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793096520000,
+"end": 1793100720000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793100720000,
+"end": 1793103720000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793103720000,
+"end": 1793106840000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793106840000,
+"end": 1793115660000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793115660000,
+"end": 1793118060000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793118060000,
+"end": 1793125200000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793125200000,
+"end": 1793126700000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793126700000,
+"end": 1793132520000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793132520000,
+"end": 1793147520000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793147520000,
+"end": 1793148300000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793148300000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792906857000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1792967640000,
+"kind": "agent",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND",
+"channel": "cli-tell"
+},
+{
+"ts": 1793003619000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793005174000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793033062000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793045870000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793079050000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793086342000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793090729000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793100695000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793118027000,
+"kind": "human",
+"text": "Put these results in a table"
+},
+{
+"ts": 1793126683000,
+"kind": "human",
+"text": "continue"
+}
+],
+"lastHumanAt": 1793126683000
+},
+{
+"name": "PROPOSER",
+"role": "v3 evaluation",
+"project": "protein-fold",
+"identity": "id-PROPOSER",
+"live": true,
+"segments": [
+{
+"state": "waiting",
+"start": 1792893600000,
+"end": 1792897320000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792897320000,
+"end": 1792898940000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792898940000,
+"end": 1792899120000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792899120000,
+"end": 1792903860000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792903860000,
+"end": 1792908060000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792908060000,
+"end": 1792910340000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792910340000,
+"end": 1792919100000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792919100000,
+"end": 1792922460000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792922460000,
+"end": 1792922940000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792922940000,
+"end": 1792930020000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792930020000,
+"end": 1792930500000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792930500000,
+"end": 1792935720000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792935720000,
+"end": 1792946520000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792946520000,
+"end": 1792951080000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792951080000,
+"end": 1792961880000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792961880000,
+"end": 1792965360000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792965360000,
+"end": 1792967400000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792967400000,
+"end": 1792973040000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792973040000,
+"end": 1792983840000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792983840000,
+"end": 1792985880000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792985880000,
+"end": 1792986060000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792986060000,
+"end": 1792987740000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792987740000,
+"end": 1792998720000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792998720000,
+"end": 1793003640000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793003640000,
+"end": 1793012760000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793012760000,
+"end": 1793015760000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793015760000,
+"end": 1793017260000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793017260000,
+"end": 1793022720000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793022720000,
+"end": 1793028960000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793028960000,
+"end": 1793040360000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793040360000,
+"end": 1793044920000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793044920000,
+"end": 1793048820000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793048820000,
+"end": 1793050320000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793050320000,
+"end": 1793051220000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793051220000,
+"end": 1793064120000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793064120000,
+"end": 1793070060000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793070060000,
+"end": 1793070240000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793070240000,
+"end": 1793076120000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793076120000,
+"end": 1793080320000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793080320000,
+"end": 1793085120000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793085120000,
+"end": 1793095920000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793095920000,
+"end": 1793097540000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793097540000,
+"end": 1793098020000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793098020000,
+"end": 1793099640000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793099640000,
+"end": 1793101140000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793101140000,
+"end": 1793107680000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793107680000,
+"end": 1793118480000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793118480000,
+"end": 1793122320000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793122320000,
+"end": 1793137980000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793137980000,
+"end": 1793140680000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793140680000,
+"end": 1793144880000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793144880000,
+"end": 1793151540000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793151540000,
+"end": 1793151720000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793151720000,
+"end": 1793152320000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793152320000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792897320000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "FIGURES"
+},
+{
+"ts": 1792908036000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1792922920000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792961880000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "PLANNER"
+},
+{
+"ts": 1792983825000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1792986060000,
+"kind": "agent",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND",
+"channel": "cli-tell"
+},
+{
+"ts": 1792998707000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793012751000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793017252000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793044904000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793070222000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793080313000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793101104000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793118463000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793137965000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793151720000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND"
+}
+],
+"lastHumanAt": 1793137965000
+},
+{
+"name": "TRAINER",
+"role": null,
+"project": "protein-fold",
+"identity": "id-TRAINER",
+"live": true,
+"segments": [
+{
+"state": "working",
+"start": 1792911600000,
+"end": 1792912080000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792912080000,
+"end": 1792922880000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792922880000,
+"end": 1792929060000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792929060000,
+"end": 1792929240000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792929240000,
+"end": 1792932900000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792932900000,
+"end": 1792940280000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792940280000,
+"end": 1792949520000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792949520000,
+"end": 1792952640000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792952640000,
+"end": 1792986600000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792986600000,
+"end": 1792990560000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792990560000,
+"end": 1793008860000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793008860000,
+"end": 1793013540000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793013540000,
+"end": 1793031660000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793031660000,
+"end": 1793037840000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793037840000,
+"end": 1793052660000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793052660000,
+"end": 1793054640000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793054640000,
+"end": 1793060820000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793060820000,
+"end": 1793071620000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793071620000,
+"end": 1793074980000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793074980000,
+"end": 1793079180000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793079180000,
+"end": 1793081160000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793081160000,
+"end": 1793083920000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793083920000,
+"end": 1793087880000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793087880000,
+"end": 1793092080000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793092080000,
+"end": 1793093520000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793093520000,
+"end": 1793093700000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793093700000,
+"end": 1793094540000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793094540000,
+"end": 1793106360000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793106360000,
+"end": 1793112480000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793112480000,
+"end": 1793113980000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793113980000,
+"end": 1793117340000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793117340000,
+"end": 1793128140000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793128140000,
+"end": 1793134140000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793134140000,
+"end": 1793144940000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793144940000,
+"end": 1793148600000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793148600000,
+"end": 1793152800000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793152800000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792922864000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1792929238000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792949503000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793071605000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793079158000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793083889000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793092080000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "CRITIC"
+},
+{
+"ts": 1793093661000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793106344000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793144905000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793152777000,
+"kind": "human",
+"text": "Read the brief and start",
+"askAnswer": [
+{
+"question": "Which channels should I retrain?",
+"picked": [
+"Band A",
+"Band B"
+]
+},
+{
+"question": "W&B project name?",
+"picked": [],
+"text": "retrain-v2"
+}
+]
+}
+],
+"lastHumanAt": 1793152777000
+},
+{
+"name": "MODELER",
+"role": "Report",
+"project": "climate-model",
+"identity": "id-MODELER",
+"live": true,
+"segments": [
+{
+"state": "waiting",
+"start": 1792893600000,
+"end": 1792893720000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792893720000,
+"end": 1792900080000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792900080000,
+"end": 1792900560000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792900560000,
+"end": 1792903440000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792903440000,
+"end": 1792903620000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792903620000,
+"end": 1792905840000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792905840000,
+"end": 1792906320000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792906320000,
+"end": 1792913220000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792913220000,
+"end": 1792913700000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792913700000,
+"end": 1792916760000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792916760000,
+"end": 1792925940000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792925940000,
+"end": 1792934040000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792934040000,
+"end": 1792937640000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792937640000,
+"end": 1792943280000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792943280000,
+"end": 1792954980000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792954980000,
+"end": 1792958940000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792958940000,
+"end": 1792959420000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792959420000,
+"end": 1792962000000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792962000000,
+"end": 1792972800000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792972800000,
+"end": 1792979160000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792979160000,
+"end": 1792980660000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792980660000,
+"end": 1792982220000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792982220000,
+"end": 1793005440000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793005440000,
+"end": 1793016720000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793016720000,
+"end": 1793019060000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793019060000,
+"end": 1793029860000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793029860000,
+"end": 1793036700000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793036700000,
+"end": 1793037180000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793037180000,
+"end": 1793038200000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793038200000,
+"end": 1793046180000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793046180000,
+"end": 1793058240000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793058240000,
+"end": 1793089860000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793089860000,
+"end": 1793106540000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793106540000,
+"end": 1793112000000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793112000000,
+"end": 1793112480000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793112480000,
+"end": 1793114040000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793114040000,
+"end": 1793118840000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793118840000,
+"end": 1793119800000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793119800000,
+"end": 1793128860000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793128860000,
+"end": 1793152800000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793152800000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792893700000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792900533000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1792906320000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1792913662000,
+"kind": "human",
+"text": "Narrow the scope of section 2 and redo it"
+},
+{
+"ts": 1793016682000,
+"kind": "human",
+"text": "Put these results in a table"
+},
+{
+"ts": 1793029841000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793037155000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1793106517000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793112455000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1793118828000,
+"kind": "human",
+"text": "Read the brief and start"
+}
+],
+"lastHumanAt": 1793118828000
+},
+{
+"name": "TRANSLATOR",
+"role": "Translation",
+"project": "paper-draft",
+"identity": "id-TRANSLATOR",
+"live": true,
+"segments": [
+{
+"state": "idle",
+"start": 1792893600000,
+"end": 1792899960000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792899960000,
+"end": 1792903440000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792903440000,
+"end": 1792938900000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792938900000,
+"end": 1792943400000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1792943400000,
+"end": 1792958700000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792958700000,
+"end": 1792965960000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792965960000,
+"end": 1792968480000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792968480000,
+"end": 1792979280000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792979280000,
+"end": 1792979880000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792979880000,
+"end": 1792984080000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792984080000,
+"end": 1792986780000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792986780000,
+"end": 1793004540000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793004540000,
+"end": 1793008260000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793008260000,
+"end": 1793012460000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793012460000,
+"end": 1793019360000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793019360000,
+"end": 1793020860000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793020860000,
+"end": 1793021940000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793021940000,
+"end": 1793032740000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793032740000,
+"end": 1793038020000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793038020000,
+"end": 1793049660000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793049660000,
+"end": 1793052060000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793052060000,
+"end": 1793069760000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793069760000,
+"end": 1793085540000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793085540000,
+"end": 1793089200000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793089200000,
+"end": 1793092020000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793092020000,
+"end": 1793106600000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793106600000,
+"end": 1793108520000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793108520000,
+"end": 1793113260000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793113260000,
+"end": 1793117460000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793117460000,
+"end": 1793123340000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793123340000,
+"end": 1793127540000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793127540000,
+"end": 1793130120000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793130120000,
+"end": 1793130300000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793130300000,
+"end": 1793137320000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793137320000,
+"end": 1793137800000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793137800000,
+"end": 1793142420000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793142420000,
+"end": 1793142600000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793142600000,
+"end": 1793147580000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793147580000,
+"end": 1793147760000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793147760000,
+"end": 1793152800000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793152800000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792899936000,
+"kind": "human",
+"text": "continue"
+},
+{
+"ts": 1792965923000,
+"kind": "human",
+"text": "Read the brief and start"
+},
+{
+"ts": 1792979275000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793004507000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793012424000,
+"kind": "human",
+"text": "Put these results in a table"
+},
+{
+"ts": 1793032740000,
+"kind": "agent",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "BACKEND",
+"channel": "cli-tell"
+},
+{
+"ts": 1793049660000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "FIGURES"
+},
+{
+"ts": 1793085534000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793108480000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793117433000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793137778000,
+"kind": "human",
+"text": "Please recompute the scores"
+},
+{
+"ts": 1793147729000,
+"kind": "human",
+"text": "continue"
+}
+],
+"lastHumanAt": 1793147729000
+},
+{
+"name": "MAPPER",
+"role": "Parameter map",
+"project": "climate-model",
+"identity": "id-MAPPER",
+"live": true,
+"segments": [
+{
+"state": "offline",
+"start": 1792958400000,
+"end": 1792962660000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792962660000,
+"end": 1792967880000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792967880000,
+"end": 1792969320000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1792969320000,
+"end": 1792978680000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792978680000,
+"end": 1792980420000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792980420000,
+"end": 1792980600000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792980600000,
+"end": 1792982700000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792982700000,
+"end": 1792984200000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792984200000,
+"end": 1792987440000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792987440000,
+"end": 1792998240000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1792998240000,
+"end": 1792999680000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1792999680000,
+"end": 1793000160000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793000160000,
+"end": 1793002440000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793002440000,
+"end": 1793002620000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793002620000,
+"end": 1793007420000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793007420000,
+"end": 1793008920000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793008920000,
+"end": 1793009820000,
+"src": "reconstructed"
+},
+{
+"state": "waiting",
+"start": 1793009820000,
+"end": 1793014020000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793014020000,
+"end": 1793014980000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793014980000,
+"end": 1793031060000,
+"src": "reconstructed"
+},
+{
+"state": "offline",
+"start": 1793031060000,
+"end": 1793042700000,
+"src": "reconstructed"
+},
+{
+"state": "idle",
+"start": 1793042700000,
+"end": 1793049540000,
+"src": "reconstructed"
+},
+{
+"state": "working",
+"start": 1793049540000,
+"end": 1793050500000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793050500000,
+"end": 1793050680000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793050680000,
+"end": 1793057400000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793057400000,
+"end": 1793061600000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793061600000,
+"end": 1793065320000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793065320000,
+"end": 1793065500000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793065500000,
+"end": 1793068860000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793068860000,
+"end": 1793070360000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793070360000,
+"end": 1793073300000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793073300000,
+"end": 1793077500000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793077500000,
+"end": 1793082000000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793082000000,
+"end": 1793086200000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793086200000,
+"end": 1793088180000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793088180000,
+"end": 1793089680000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793089680000,
+"end": 1793096700000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793096700000,
+"end": 1793098200000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793098200000,
+"end": 1793103120000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793103120000,
+"end": 1793103300000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793103300000,
+"end": 1793104800000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793104800000,
+"end": 1793115600000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793115600000,
+"end": 1793121840000,
+"src": "recorded"
+},
+{
+"state": "idle",
+"start": 1793121840000,
+"end": 1793127780000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793127780000,
+"end": 1793131560000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793131560000,
+"end": 1793142360000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793142360000,
+"end": 1793145960000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793145960000,
+"end": 1793146140000,
+"src": "recorded"
+},
+{
+"state": "working",
+"start": 1793146140000,
+"end": 1793151480000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793151480000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [
+{
+"ts": 1792967880000,
+"kind": "relay",
+"text": "[adash T… from PLANNER] Review request: read request.md and answer as instructed.",
+"from": "PLANNER"
+},
+{
+"ts": 1792978658000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793002594000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793008910000,
+"kind": "human",
+"text": "Show me why you decided that"
+},
+{
+"ts": 1793049507000,
+"kind": "human",
+"text": "Put these results in a table"
+},
+{
+"ts": 1793050677000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793061593000,
+"kind": "human",
+"text": "Put these results in a table"
+},
+{
+"ts": 1793070357000,
+"kind": "human",
+"text": "Revert to the previous version"
+},
+{
+"ts": 1793077470000,
+"kind": "human",
+"text": "Go ahead"
+},
+{
+"ts": 1793086188000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+},
+{
+"ts": 1793089643000,
+"kind": "human",
+"text": "Good, please commit"
+},
+{
+"ts": 1793103272000,
+"kind": "human",
+"text": "Fix the figure axis labels"
+}
+],
+"lastHumanAt": 1793103272000
+},
+{
+"name": "OLDRUN",
+"role": "Earlier run",
+"project": "galaxy-survey",
+"identity": "id-OLDRUN",
+"live": false,
+"segments": [
+{
+"state": "working",
+"start": 1793080800000,
+"end": 1793102400000,
+"src": "recorded"
+},
+{
+"state": "waiting",
+"start": 1793102400000,
+"end": 1793120400000,
+"src": "recorded"
+},
+{
+"state": "offline",
+"start": 1793120400000,
+"end": 1793152800000,
+"src": "recorded"
+}
+],
+"interactions": [],
+"lastHumanAt": null
+}
+],
+"threads": [
+{
+"id": "T20261028-101500-ab12",
+"from": "FIGURES",
+"to": "EDITOR",
+"createdAt": 1793151300000,
+"deliveredAt": 1793151420000,
+"answeredAt": null,
+"relayedAt": null,
+"status": "held_possible_draft"
+},
+{
+"id": "T20261028-090000-ff01",
+"from": "PLANNER",
+"to": "WRITER",
+"createdAt": 1793146800000,
+"deliveredAt": 1793146920000,
+"answeredAt": 1793149200000,
+"relayedAt": null,
+"status": "escalated"
+},
+{
+"id": "T20261028-103000-1c2d",
+"from": "BACKEND",
+"to": "FRONTEND",
+"createdAt": 1793152200000,
+"deliveredAt": 1793152320000,
+"answeredAt": 1793154600000,
+"relayedAt": 1793154720000,
+"status": "relayed"
+},
+{
+"id": "T20261028-104000-9e9e",
+"from": null,
+"to": "WRITER",
+"createdAt": 1793152700000,
+"deliveredAt": null,
+"answeredAt": null,
+"relayedAt": null,
+"status": "queued"
+},
+{
+"id": "T20261028-104500-7777",
+"from": "EDITOR",
+"to": "paper-draft-codex",
+"createdAt": 1793152750000,
+"deliveredAt": 1793152870000,
+"answeredAt": null,
+"relayedAt": null,
+"status": "delivery_unconfirmed"
+},
+{
+"id": "T20261027-210000-aa01",
+"from": "PLANNER",
+"to": "WRITER",
+"createdAt": 1793098800000,
+"deliveredAt": 1793098980000,
+"answeredAt": 1793106000000,
+"relayedAt": 1793106060000,
+"status": "relayed"
+},
+{
+"id": "T20261028-020000-bb02",
+"from": "CRITIC",
+"to": "SCORER",
+"createdAt": 1793124000000,
+"deliveredAt": 1793124060000,
+"answeredAt": 1793127600000,
+"relayedAt": 1793127720000,
+"status": "relayed"
+},
+{
+"id": "T-mg1",
+"from": "FIGURES",
+"to": "paper-draft-codex",
+"createdAt": 1793151600000,
+"deliveredAt": 1793151600000,
+"answeredAt": null,
+"relayedAt": null,
+"status": "delivered",
+"magiRun": "M1",
+"magiKind": "review",
+"mode": "accept"
+},
+{
+"id": "T-mg2",
+"from": "FIGURES",
+"to": "TRANSLATOR",
+"createdAt": 1793151600000,
+"deliveredAt": 1793151600000,
+"answeredAt": 1793152320000,
+"relayedAt": 1793152380000,
+"status": "relayed",
+"magiRun": "M1",
+"magiKind": "review",
+"mode": "accept"
+},
+{
+"id": "T-inf1",
+"from": "PLANNER",
+"to": "SCOUT",
+"createdAt": 1793134800000,
+"deliveredAt": 1793134800000,
+"answeredAt": 1793136000000,
+"relayedAt": null,
+"status": "answered",
+"inferred": true
+}
+],
+"from": 1792893600000
+}

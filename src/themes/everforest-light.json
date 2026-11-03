@@ -1,0 +1,84 @@
+{
+ "id": "everforest-light",
+ "family": "everforest",
+ "label": "Everforest Light (medium)",
+ "dark": false,
+ "source": "https://github.com/sainnhe/everforest/blob/85a86eb62409e3ec88713bff3d1b9d7374e112e4/autoload/everforest.vim (everforest#get_palette, background 'medium', &background=light)",
+ "colors": {
+  "bg": [
+   "#fdf6e3",
+   "bg0"
+  ],
+  "bg_alt": [
+   "#f4f0d9",
+   "bg1"
+  ],
+  "bg_dark": [
+   "#efebd4",
+   "bg_dim"
+  ],
+  "line": [
+   "#e0dcc7",
+   "bg4"
+  ],
+  "comment": [
+   "#939f91",
+   "grey1"
+  ],
+  "fg_dim": [
+   "#829181",
+   "grey2"
+  ],
+  "fg": [
+   "#5c6a72",
+   "fg"
+  ],
+  "red": [
+   "#f85552",
+   "red"
+  ],
+  "orange": [
+   "#f57d26",
+   "orange"
+  ],
+  "yellow": [
+   "#dfa000",
+   "yellow"
+  ],
+  "green": [
+   "#8da101",
+   "green"
+  ],
+  "cyan": [
+   "#35a77c",
+   "aqua"
+  ],
+  "blue": [
+   "#3a94c5",
+   "blue"
+  ],
+  "purple": [
+   "#df69ba",
+   "purple"
+  ]
+ },
+ "extra": {
+  "bg2": "#efebd4",
+  "bg3": "#e6e2cc",
+  "bg5": "#bdc3af",
+  "bg_visual": "#eaedc8",
+  "bg_red": "#fde3da",
+  "bg_yellow": "#faedcd",
+  "bg_green": "#f0f1d2",
+  "bg_blue": "#e9f0e9",
+  "bg_purple": "#fae8e2",
+  "grey0": "#a6b0a0",
+  "statusline1": "#93b259",
+  "statusline2": "#708089",
+  "statusline3": "#e66868"
+ },
+ "roles": {
+  "ask": "blue",
+  "turn": "fg_dim"
+ }
+}

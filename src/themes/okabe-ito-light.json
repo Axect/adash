@@ -1,0 +1,81 @@
+{
+ "id": "okabe-ito-light",
+ "family": "okabe-ito",
+ "label": "Okabe–Ito Light",
+ "dark": false,
+ "source": "https://jfly.uni-koeln.de/color/ (Okabe & Ito, Color Universal Design); neutrals from adash light",
+ "cvd": true,
+ "colors": {
+  "bg": [
+   "#ffffff",
+   "adash light surface"
+  ],
+  "bg_alt": [
+   "#f8fafc",
+   "adash light subtle"
+  ],
+  "bg_dark": [
+   "#f1f5f9",
+   "adash light bg"
+  ],
+  "line": [
+   "#e2e8f0",
+   "adash light border"
+  ],
+  "comment": [
+   "#94a3b8",
+   "adash light dim"
+  ],
+  "fg_dim": [
+   "#64748b",
+   "adash light muted"
+  ],
+  "fg": [
+   "#0f172a",
+   "adash light fg"
+  ],
+  "red": [
+   "#d55e00",
+   "vermillion"
+  ],
+  "orange": [
+   "#e69f00",
+   "orange"
+  ],
+  "yellow": [
+   "#f0e442",
+   "yellow"
+  ],
+  "green": [
+   "#009e73",
+   "bluish green"
+  ],
+  "cyan": [
+   "#56b4e9",
+   "sky blue"
+  ],
+  "blue": [
+   "#0072b2",
+   "blue"
+  ],
+  "magenta": [
+   "#cc79a7",
+   "reddish purple"
+  ]
+ },
+ "extra": {
+  "orange": "#e69f00",
+  "sky_blue": "#56b4e9",
+  "bluish_green": "#009e73",
+  "yellow": "#f0e442",
+  "blue": "#0072b2",
+  "vermillion": "#d55e00",
+  "reddish_purple": "#cc79a7",
+  "black": "#000000"
+ },
+ "roles": {
+  "ask": "blue",
+  "turn": "green",
+  "interact": "fg_dim"
+ }
+}

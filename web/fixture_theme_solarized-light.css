@@ -1,0 +1,44 @@
+/* adash theme solarized-light · demo copy of GET /api/themes/solarized-light.css */
+:root {
+  --brand-accent: #cb4b16;
+  --brand-pill: #586e75;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #586e75;
+  --harness-cc: #586e75;
+  --harness-cdx: #586e75;
+  --harness-omp: #586e75;
+  --info-cache: #586e75;
+  --info-held: #586e75;
+  --info-progress: #586e75;
+  --info-thread: #586e75;
+  --info-warn: #586e75;
+  --signal-ask: #6c71c4;
+  --signal-ask-bg: #6c71c414;
+  --signal-ask-text: #586e75;
+  --signal-decision: #586e75;
+  --signal-error: #dc322f;
+  --signal-error-bg: #dc322f0f;
+  --signal-error-text: #586e75;
+  --signal-turn: #cb4b16;
+  --signal-turn-bg: #cb4b1614;
+  --signal-turn-text: #586e75;
+  --timeline-idle: #eee8d5;
+  --timeline-now: #002b36;
+  --timeline-snoozed: #93a1a1;
+  --timeline-working: #93a1a1;
+  --ui-bg: #fdf6e3;
+  --ui-border: #eee8d5;
+  --ui-border-strong: #93a1a1;
+  --ui-dim: #93a1a1;
+  --ui-fg: #586e75;
+  --ui-interact: #002b36;
+  --ui-link: #002b36;
+  --ui-muted: #586e75;
+  --ui-on-interact: #fdf6e3;
+  --ui-selection: #002b360a;
+  --ui-subtle: #fdf6e3;
+  --ui-surface: #fdf6e3;
+}

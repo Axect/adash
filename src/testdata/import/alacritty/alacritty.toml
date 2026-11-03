@@ -1,0 +1,5 @@
+[general]
+import = ["colors.toml"]
+
+[font]
+size = 12

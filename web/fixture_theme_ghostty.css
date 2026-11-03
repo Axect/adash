@@ -1,0 +1,44 @@
+/* adash theme ghostty · imported from a Ghostty config (Dracula values) for the demo */
+:root {
+  --brand-accent: #ff5555;
+  --brand-pill: #4d4d4d;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #bfbfbf;
+  --harness-cc: #bfbfbf;
+  --harness-cdx: #bfbfbf;
+  --harness-omp: #bfbfbf;
+  --info-cache: #bfbfbf;
+  --info-held: #bfbfbf;
+  --info-progress: #bfbfbf;
+  --info-thread: #50fa7b;
+  --info-warn: #f1fa8c;
+  --signal-ask: #bd93f9;
+  --signal-ask-bg: #bd93f91f;
+  --signal-ask-text: #bd93f9;
+  --signal-decision: #9aedfe;
+  --signal-error: #ff5555;
+  --signal-error-bg: #ff55551f;
+  --signal-error-text: #ff6e67;
+  --signal-turn: #9aedfe;
+  --signal-turn-bg: #9aedfe1f;
+  --signal-turn-text: #9aedfe;
+  --timeline-idle: #4d4d4d;
+  --timeline-now: #8be9fd;
+  --timeline-snoozed: #4d4d4d;
+  --timeline-working: #4d4d4d;
+  --ui-bg: #282a36;
+  --ui-border: #4d4d4d;
+  --ui-border-strong: #4d4d4d;
+  --ui-dim: #4d4d4d;
+  --ui-fg: #f8f8f2;
+  --ui-interact: #8be9fd;
+  --ui-link: #8be9fd;
+  --ui-muted: #bfbfbf;
+  --ui-on-interact: #282a36;
+  --ui-selection: #8be9fd26;
+  --ui-subtle: #282a36;
+  --ui-surface: #282a36;
+}

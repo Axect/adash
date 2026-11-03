@@ -1,0 +1,44 @@
+/* adash theme dracula · demo copy of GET /api/themes/dracula.css */
+:root {
+  --brand-accent: #ffb86c;
+  --brand-pill: #6272a4;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #f8f8f2c7;
+  --harness-cc: #f8f8f2c7;
+  --harness-cdx: #f8f8f2c7;
+  --harness-omp: #f8f8f2c7;
+  --info-cache: #f8f8f2c7;
+  --info-held: #f8f8f2c7;
+  --info-progress: #f8f8f2c7;
+  --info-thread: #50fa7b;
+  --info-warn: #f1fa8c;
+  --signal-ask: #bd93f9;
+  --signal-ask-bg: #bd93f91f;
+  --signal-ask-text: #bd93f9;
+  --signal-decision: #ffb86c;
+  --signal-error: #ff5555;
+  --signal-error-bg: #ff55551f;
+  --signal-error-text: #f8f8f2;
+  --signal-turn: #ffb86c;
+  --signal-turn-bg: #ffb86c1f;
+  --signal-turn-text: #ffb86c;
+  --timeline-idle: #44475a;
+  --timeline-now: #8be9fd;
+  --timeline-snoozed: #6272a4;
+  --timeline-working: #44475a;
+  --ui-bg: #282a36;
+  --ui-border: #44475a;
+  --ui-border-strong: #6272a4;
+  --ui-dim: #6272a4;
+  --ui-fg: #f8f8f2;
+  --ui-interact: #8be9fd;
+  --ui-link: #8be9fd;
+  --ui-muted: #f8f8f2c7;
+  --ui-on-interact: #282a36;
+  --ui-selection: #8be9fd26;
+  --ui-subtle: #282a36;
+  --ui-surface: #282a36;
+}

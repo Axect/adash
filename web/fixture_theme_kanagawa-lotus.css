@@ -1,0 +1,44 @@
+/* adash theme kanagawa-lotus · demo copy of GET /api/themes/kanagawa-lotus.css */
+:root {
+  --brand-accent: #e98a00;
+  --brand-pill: #545464;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #43436c;
+  --harness-cc: #43436c;
+  --harness-cdx: #43436c;
+  --harness-omp: #43436c;
+  --info-cache: #43436c;
+  --info-held: #43436c;
+  --info-progress: #43436c;
+  --info-thread: #545464;
+  --info-warn: #545464;
+  --signal-ask: #624c83;
+  --signal-ask-bg: #624c831f;
+  --signal-ask-text: #624c83;
+  --signal-decision: #545464;
+  --signal-error: #c84053;
+  --signal-error-bg: #c840531f;
+  --signal-error-text: #545464;
+  --signal-turn: #836f4a;
+  --signal-turn-bg: #836f4a1f;
+  --signal-turn-text: #545464;
+  --timeline-idle: #716e61;
+  --timeline-now: #4d699b;
+  --timeline-snoozed: #8a8980;
+  --timeline-working: #1f1f28;
+  --ui-bg: #d5cea3;
+  --ui-border: #716e61;
+  --ui-border-strong: #8a8980;
+  --ui-dim: #8a8980;
+  --ui-fg: #545464;
+  --ui-interact: #4d699b;
+  --ui-link: #4d699b;
+  --ui-muted: #43436c;
+  --ui-on-interact: #f2ecbc;
+  --ui-selection: #4d699b26;
+  --ui-subtle: #e7dba0;
+  --ui-surface: #f2ecbc;
+}

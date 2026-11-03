@@ -1,0 +1,44 @@
+/* adash theme rose-pine-dawn · demo copy of GET /api/themes/rose-pine-dawn.css */
+:root {
+  --brand-accent: #b4637a;
+  --brand-pill: #464261;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #464261c7;
+  --harness-cc: #464261c7;
+  --harness-cdx: #464261c7;
+  --harness-omp: #464261c7;
+  --info-cache: #464261c7;
+  --info-held: #464261c7;
+  --info-progress: #464261c7;
+  --info-thread: #464261;
+  --info-warn: #464261;
+  --signal-ask: #907aa9;
+  --signal-ask-bg: #907aa91f;
+  --signal-ask-text: #464261;
+  --signal-decision: #464261;
+  --signal-error: #b4637a;
+  --signal-error-bg: #b4637a1f;
+  --signal-error-text: #464261;
+  --signal-turn: #56949f;
+  --signal-turn-bg: #56949f1f;
+  --signal-turn-text: #464261;
+  --timeline-idle: #dfdad9;
+  --timeline-now: #286983;
+  --timeline-snoozed: #9893a5;
+  --timeline-working: #464261;
+  --ui-bg: #f2e9e1;
+  --ui-border: #dfdad9;
+  --ui-border-strong: #9893a5;
+  --ui-dim: #9893a5;
+  --ui-fg: #464261;
+  --ui-interact: #286983;
+  --ui-link: #286983;
+  --ui-muted: #464261c7;
+  --ui-on-interact: #faf4ed;
+  --ui-selection: #28698326;
+  --ui-subtle: #fffaf3;
+  --ui-surface: #faf4ed;
+}

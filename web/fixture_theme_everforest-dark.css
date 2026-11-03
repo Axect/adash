@@ -1,0 +1,44 @@
+/* adash theme everforest-dark · demo copy of GET /api/themes/everforest-dark.css */
+:root {
+  --brand-accent: #e69875;
+  --brand-pill: #4f585e;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #9da9a0;
+  --harness-cc: #9da9a0;
+  --harness-cdx: #9da9a0;
+  --harness-omp: #9da9a0;
+  --info-cache: #9da9a0;
+  --info-held: #9da9a0;
+  --info-progress: #9da9a0;
+  --info-thread: #a7c080;
+  --info-warn: #dbbc7f;
+  --signal-ask: #d699b6;
+  --signal-ask-bg: #d699b61f;
+  --signal-ask-text: #d3c6aa;
+  --signal-decision: #d3c6aa;
+  --signal-error: #e67e80;
+  --signal-error-bg: #e67e801f;
+  --signal-error-text: #d3c6aa;
+  --signal-turn: #e69875;
+  --signal-turn-bg: #e698751f;
+  --signal-turn-text: #d3c6aa;
+  --timeline-idle: #4f585e;
+  --timeline-now: #7fbbb3;
+  --timeline-snoozed: #859289;
+  --timeline-working: #4f585e;
+  --ui-bg: #232a2e;
+  --ui-border: #4f585e;
+  --ui-border-strong: #859289;
+  --ui-dim: #859289;
+  --ui-fg: #d3c6aa;
+  --ui-interact: #7fbbb3;
+  --ui-link: #7fbbb3;
+  --ui-muted: #9da9a0;
+  --ui-on-interact: #2d353b;
+  --ui-selection: #7fbbb326;
+  --ui-subtle: #343f44;
+  --ui-surface: #2d353b;
+}

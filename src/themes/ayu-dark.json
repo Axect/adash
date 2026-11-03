@@ -1,0 +1,165 @@
+{
+ "id": "ayu-dark",
+ "family": "ayu",
+ "label": "Ayu Dark",
+ "dark": true,
+ "source": "https://github.com/ayu-theme/ayu-colors/blob/master/themes/dark.yaml (hex as emitted by official npm package ayu@9.1.0 .hex())",
+ "colors": {
+  "bg": [
+   "#10141c",
+   "editor.bg"
+  ],
+  "bg_alt": [
+   "#141821",
+   "ui.panel.bg"
+  ],
+  "bg_dark": [
+   "#0d1017",
+   "ui.bg"
+  ],
+  "line": [
+   "#1b1f29",
+   "ui.line"
+  ],
+  "comment": [
+   "#5a6673",
+   "syntax.comment"
+  ],
+  "fg_dim": [
+   "#5a6378",
+   "ui.fg"
+  ],
+  "fg": [
+   "#bfbdb6",
+   "editor.fg"
+  ],
+  "red": [
+   "#f07178",
+   "syntax.markup"
+  ],
+  "orange": [
+   "#ff8f40",
+   "syntax.keyword"
+  ],
+  "yellow": [
+   "#ffb454",
+   "syntax.func"
+  ],
+  "green": [
+   "#aad94c",
+   "syntax.string"
+  ],
+  "cyan": [
+   "#95e6cb",
+   "syntax.regexp"
+  ],
+  "blue": [
+   "#59c2ff",
+   "syntax.entity"
+  ],
+  "purple": [
+   "#d2a6ff",
+   "syntax.constant"
+  ]
+ },
+ "extra": {
+  "palette.gray.l1": "#333b44",
+  "palette.gray.l2": "#404953",
+  "palette.gray.l3": "#4d5763",
+  "palette.gray.l4": "#5a6673",
+  "palette.gray.l5": "#667381",
+  "palette.red.l1": "#ef616b",
+  "palette.red.l2": "#f07178",
+  "palette.red.l3": "#f39193",
+  "palette.red.l4": "#f6adae",
+  "palette.red.l5": "#f9c8c7",
+  "palette.pink.l1": "#e1753a",
+  "palette.pink.l2": "#ed834b",
+  "palette.pink.l3": "#f29668",
+  "palette.pink.l4": "#f6b18f",
+  "palette.pink.l5": "#facab3",
+  "palette.orange.l1": "#e5730e",
+  "palette.orange.l2": "#f67e1a",
+  "palette.orange.l3": "#ff8f40",
+  "palette.orange.l4": "#ffad7a",
+  "palette.orange.l5": "#ffc9a8",
+  "palette.peach.l1": "#b09165",
+  "palette.peach.l2": "#c2a070",
+  "palette.peach.l3": "#d5b07c",
+  "palette.peach.l4": "#e6c08a",
+  "palette.peach.l5": "#f0d1a5",
+  "palette.yellow.l1": "#c8872d",
+  "palette.yellow.l2": "#dc9534",
+  "palette.yellow.l3": "#f0a33a",
+  "palette.yellow.l4": "#ffb454",
+  "palette.yellow.l5": "#ffcb8f",
+  "palette.green.l1": "#81a637",
+  "palette.green.l2": "#8eb73e",
+  "palette.green.l3": "#9cc845",
+  "palette.green.l4": "#aad94c",
+  "palette.green.l5": "#b8eb53",
+  "palette.teal.l1": "#69a591",
+  "palette.teal.l2": "#74b59f",
+  "palette.teal.l3": "#7fc5ae",
+  "palette.teal.l4": "#8ad5bc",
+  "palette.teal.l5": "#95e6cb",
+  "palette.indigo.l1": "#30a5cc",
+  "palette.indigo.l2": "#39bae6",
+  "palette.indigo.l3": "#4cc9f5",
+  "palette.indigo.l4": "#6dd6ff",
+  "palette.indigo.l5": "#9ae2ff",
+  "palette.blue.l1": "#05a2e5",
+  "palette.blue.l2": "#2eb2f6",
+  "palette.blue.l3": "#59c2ff",
+  "palette.blue.l4": "#85d0ff",
+  "palette.blue.l5": "#aadeff",
+  "palette.purple.l1": "#b969fd",
+  "palette.purple.l2": "#c589fe",
+  "palette.purple.l3": "#d2a6ff",
+  "palette.purple.l4": "#dab8ff",
+  "palette.purple.l5": "#e3c9ff",
+  "syntax.tag": "#39bae6",
+  "syntax.special": "#e6c08a",
+  "syntax.operator": "#f29668",
+  "terminal.black": "#0a0000",
+  "terminal.white": "#ffffff",
+  "terminal.brightBlack": "#0a0000",
+  "terminal.brightWhite": "#ffffff",
+  "terminal.red": "#e6495a",
+  "terminal.green": "#97c142",
+  "terminal.yellow": "#e89d37",
+  "terminal.blue": "#17acf2",
+  "terminal.magenta": "#c385fe",
+  "terminal.cyan": "#84ceb5",
+  "terminal.brightRed": "#f07178",
+  "terminal.brightGreen": "#aad94c",
+  "terminal.brightYellow": "#ffb454",
+  "terminal.brightBlue": "#59c2ff",
+  "terminal.brightMagenta": "#d2a6ff",
+  "terminal.brightCyan": "#95e6cb",
+  "vcs.added": "#70bf56",
+  "vcs.modified": "#73b8ff",
+  "vcs.removed": "#f26d78",
+  "surface.base": "#0d1017",
+  "surface.lift": "#10141c",
+  "surface.over": "#ffffff",
+  "surface.sunk": "#010102",
+  "editor.line": "#161a24",
+  "editor.selection.active": "#3388ff40",
+  "editor.selection.inactive": "#80b5ff26",
+  "editor.findMatch.active": "#4c4126",
+  "editor.findMatch.inactive": "#4c412680",
+  "editor.lineNumber.active": "#5a6378",
+  "editor.lineNumber.normal": "#5a6378a6",
+  "editor.indentGuide.active": "#5a6378a1",
+  "editor.indentGuide.normal": "#5a637842",
+  "ui.selection.active": "#47526640",
+  "ui.selection.normal": "#47526633",
+  "ui.panel.shadow": "#00000080",
+  "ui.popup.bg": "#0f131a",
+  "ui.popup.shadow": "#00000080",
+  "common.accent.tint": "#e6b450",
+  "common.accent.on": "#765b24",
+  "common.error": "#d95757"
+ }
+}

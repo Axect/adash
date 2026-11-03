@@ -1,0 +1,44 @@
+/* adash theme catppuccin-latte · demo copy of GET /api/themes/catppuccin-latte.css */
+:root {
+  --brand-accent: #fe640b;
+  --brand-pill: #4c4f69;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #4c4f69d9;
+  --harness-cc: #4c4f69d9;
+  --harness-cdx: #4c4f69d9;
+  --harness-omp: #4c4f69d9;
+  --info-cache: #4c4f69d9;
+  --info-held: #4c4f69d9;
+  --info-progress: #4c4f69d9;
+  --info-thread: #4c4f69;
+  --info-warn: #4c4f69;
+  --signal-ask: #8839ef;
+  --signal-ask-bg: #8839ef1f;
+  --signal-ask-text: #4c4f69;
+  --signal-decision: #4c4f69;
+  --signal-error: #d20f39;
+  --signal-error-bg: #d20f391f;
+  --signal-error-text: #4c4f69;
+  --signal-turn: #179299;
+  --signal-turn-bg: #1792991f;
+  --signal-turn-text: #4c4f69;
+  --timeline-idle: #ccd0da;
+  --timeline-now: #4c4f69;
+  --timeline-snoozed: #9ca0b0;
+  --timeline-working: #9ca0b0;
+  --ui-bg: #dce0e8;
+  --ui-border: #ccd0da;
+  --ui-border-strong: #9ca0b0;
+  --ui-dim: #9ca0b0;
+  --ui-fg: #4c4f69;
+  --ui-interact: #4c4f69;
+  --ui-link: #4c4f69;
+  --ui-muted: #4c4f69d9;
+  --ui-on-interact: #eff1f5;
+  --ui-selection: #4c4f6926;
+  --ui-subtle: #e6e9ef;
+  --ui-surface: #eff1f5;
+}

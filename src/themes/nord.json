@@ -1,0 +1,69 @@
+{
+ "id": "nord",
+ "family": "nord",
+ "label": "Nord",
+ "dark": true,
+ "source": "https://www.nordtheme.com/docs/colors-and-palettes",
+ "colors": {
+  "bg": [
+   "#2e3440",
+   "nord0"
+  ],
+  "bg_alt": [
+   "#3b4252",
+   "nord1"
+  ],
+  "line": [
+   "#434c5e",
+   "nord2"
+  ],
+  "comment": [
+   "#4c566a",
+   "nord3"
+  ],
+  "fg_dim": [
+   "#d8dee9",
+   "nord4"
+  ],
+  "fg": [
+   "#eceff4",
+   "nord6"
+  ],
+  "red": [
+   "#bf616a",
+   "nord11"
+  ],
+  "orange": [
+   "#d08770",
+   "nord12"
+  ],
+  "yellow": [
+   "#ebcb8b",
+   "nord13"
+  ],
+  "green": [
+   "#a3be8c",
+   "nord14"
+  ],
+  "cyan": [
+   "#88c0d0",
+   "nord8"
+  ],
+  "blue": [
+   "#81a1c1",
+   "nord9"
+  ],
+  "purple": [
+   "#b48ead",
+   "nord15"
+  ]
+ },
+ "extra": {
+  "nord5": "#e5e9f0",
+  "nord7": "#8fbcbb",
+  "nord10": "#5e81ac"
+ },
+ "turn": [
+  "x:nord7"
+ ]
+}

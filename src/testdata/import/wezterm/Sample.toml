@@ -1,0 +1,10 @@
+[metadata]
+name = "Sample Night"
+
+[colors]
+background = "#1e2030"
+foreground = "#d8dae6"
+cursor_bg = "#d8dae6"
+selection_bg = "#3e4452"
+ansi = ["#1b1d2b", "#e06c75", "#98c379", "#e5c07b", "#61afef", "#c678dd", "#56b6c2", "#abb2bf"]
+brights = ["#5c6370", "#ef7b84", "#a8d389", "#f0cd8b", "#71bfff", "#d688ed", "#66c6d2", "#ffffff"]

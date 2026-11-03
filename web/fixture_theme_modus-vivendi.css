@@ -1,0 +1,44 @@
+/* adash theme modus-vivendi · demo copy of GET /api/themes/modus-vivendi.css */
+:root {
+  --brand-accent: #ff5f59;
+  --brand-pill: #646464;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #989898;
+  --harness-cc: #989898;
+  --harness-cdx: #989898;
+  --harness-omp: #989898;
+  --info-cache: #989898;
+  --info-held: #989898;
+  --info-progress: #989898;
+  --info-thread: #44bc44;
+  --info-warn: #d0bc00;
+  --signal-ask: #b6a0ff;
+  --signal-ask-bg: #b6a0ff1f;
+  --signal-ask-text: #b6a0ff;
+  --signal-decision: #00d3d0;
+  --signal-error: #ff5f59;
+  --signal-error-bg: #ff5f591f;
+  --signal-error-text: #ff5f59;
+  --signal-turn: #00d3d0;
+  --signal-turn-bg: #00d3d01f;
+  --signal-turn-text: #00d3d0;
+  --timeline-idle: #646464;
+  --timeline-now: #2fafff;
+  --timeline-snoozed: #989898;
+  --timeline-working: #646464;
+  --ui-bg: #000000;
+  --ui-border: #646464;
+  --ui-border-strong: #989898;
+  --ui-dim: #989898;
+  --ui-fg: #ffffff;
+  --ui-interact: #2fafff;
+  --ui-link: #2fafff;
+  --ui-muted: #989898;
+  --ui-on-interact: #000000;
+  --ui-selection: #2fafff26;
+  --ui-subtle: #1e1e1e;
+  --ui-surface: #000000;
+}

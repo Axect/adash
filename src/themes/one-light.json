@@ -1,0 +1,71 @@
+{
+ "id": "one-light",
+ "family": "one",
+ "label": "One Light",
+ "dark": false,
+ "source": "https://github.com/atom/atom/blob/2c902d501e/packages/one-light-syntax/styles/colors.less (hsl, 2018-2021 values); hex from https://github.com/rakr/vim-one/blob/master/colors/one.vim (light block); mono-1 hex from https://github.com/navarasu/onedark.nvim/blob/master/lua/onedark/palette.lua (light.fg)",
+ "colors": {
+  "bg": [
+   "#fafafa",
+   "syntax-bg"
+  ],
+  "bg_alt": [
+   "#f0f0f0",
+   "syntax-cursor (cursor line)"
+  ],
+  "line": [
+   "#d0d0d0",
+   "visual_grey (selection)"
+  ],
+  "comment": [
+   "#a0a1a7",
+   "mono-3"
+  ],
+  "fg_dim": [
+   "#696c77",
+   "mono-2"
+  ],
+  "fg": [
+   "#383a42",
+   "mono-1 (syntax-fg)"
+  ],
+  "red": [
+   "#e45649",
+   "hue-5 (red 1)"
+  ],
+  "orange": [
+   "#986801",
+   "hue-6 (orange 1)"
+  ],
+  "yellow": [
+   "#c18401",
+   "hue-6-2 (orange 2)"
+  ],
+  "green": [
+   "#50a14f",
+   "hue-4 (green)"
+  ],
+  "cyan": [
+   "#0184bc",
+   "hue-1 (cyan)"
+  ],
+  "blue": [
+   "#4078f2",
+   "hue-2 (blue)"
+  ],
+  "purple": [
+   "#a626a4",
+   "hue-3 (purple)"
+  ]
+ },
+ "extra": {
+  "hue-5-2 (red 2)": "#ca1243",
+  "mono-4": "#c2c2c3",
+  "syntax-gutter": "#9e9e9e",
+  "syntax-accent": "#526fff",
+  "syntax-accent-2": "#0083be",
+  "vertsplit": "#e7e9e1",
+  "special_grey": "#d3d3d3",
+  "pmenu": "#dfdfdf"
+ }
+}

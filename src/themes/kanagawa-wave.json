@@ -1,0 +1,114 @@
+{
+ "id": "kanagawa-wave",
+ "family": "kanagawa",
+ "label": "Kanagawa Wave",
+ "dark": true,
+ "source": "https://github.com/rebelot/kanagawa.nvim/blob/bb85e4bfc8d89b0e62c8fa53ccdd13d12e2f77b3/lua/kanagawa/colors.lua + lua/kanagawa/themes.lua (themes.wave)",
+ "colors": {
+  "bg": [
+   "#1f1f28",
+   "sumiInk3"
+  ],
+  "bg_alt": [
+   "#2a2a37",
+   "sumiInk4"
+  ],
+  "bg_dark": [
+   "#16161d",
+   "sumiInk0"
+  ],
+  "line": [
+   "#54546d",
+   "sumiInk6"
+  ],
+  "comment": [
+   "#727169",
+   "fujiGray"
+  ],
+  "fg_dim": [
+   "#c8c093",
+   "oldWhite"
+  ],
+  "fg": [
+   "#dcd7ba",
+   "fujiWhite"
+  ],
+  "red": [
+   "#c34043",
+   "autumnRed"
+  ],
+  "orange": [
+   "#ffa066",
+   "surimiOrange"
+  ],
+  "yellow": [
+   "#c0a36e",
+   "boatYellow2"
+  ],
+  "green": [
+   "#76946a",
+   "autumnGreen"
+  ],
+  "cyan": [
+   "#6a9589",
+   "waveAqua1"
+  ],
+  "blue": [
+   "#7e9cd8",
+   "crystalBlue"
+  ],
+  "purple": [
+   "#957fb8",
+   "oniViolet"
+  ],
+  "magenta": [
+   "#d27e99",
+   "sakuraPink"
+  ]
+ },
+ "extra": {
+  "sumiInk1": "#181820",
+  "sumiInk2": "#1a1a22",
+  "sumiInk5": "#363646",
+  "waveBlue1": "#223249",
+  "waveBlue2": "#2d4f67",
+  "winterGreen": "#2b3328",
+  "winterYellow": "#49443c",
+  "winterRed": "#43242b",
+  "winterBlue": "#252535",
+  "autumnYellow": "#dca561",
+  "samuraiRed": "#e82424",
+  "roninYellow": "#ff9e3b",
+  "dragonBlue": "#658594",
+  "oniViolet2": "#b8b4d0",
+  "springViolet1": "#938aa9",
+  "springViolet2": "#9cabca",
+  "springBlue": "#7fb4ca",
+  "lightBlue": "#a3d4d5",
+  "waveAqua2": "#7aa89f",
+  "springGreen": "#98bb6c",
+  "boatYellow1": "#938056",
+  "carpYellow": "#e6c384",
+  "waveRed": "#e46876",
+  "peachRed": "#ff5d62",
+  "katanaGray": "#717c7c",
+  "term 0 black (sumiInk0)": "#16161d",
+  "term 1 red (autumnRed)": "#c34043",
+  "term 2 green (autumnGreen)": "#76946a",
+  "term 3 yellow (boatYellow2)": "#c0a36e",
+  "term 4 blue (crystalBlue)": "#7e9cd8",
+  "term 5 magenta (oniViolet)": "#957fb8",
+  "term 6 cyan (waveAqua1)": "#6a9589",
+  "term 7 white (oldWhite)": "#c8c093",
+  "term 8 bright black (fujiGray)": "#727169",
+  "term 9 bright red (samuraiRed)": "#e82424",
+  "term 10 bright green (springGreen)": "#98bb6c",
+  "term 11 bright yellow (carpYellow)": "#e6c384",
+  "term 12 bright blue (springBlue)": "#7fb4ca",
+  "term 13 bright magenta (springViolet1)": "#938aa9",
+  "term 14 bright cyan (waveAqua2)": "#7aa89f",
+  "term 15 bright white (fujiWhite)": "#dcd7ba",
+  "term 16 extended color 1 (surimiOrange)": "#ffa066",
+  "term 17 extended color 2 (peachRed)": "#ff5d62"
+ }
+}

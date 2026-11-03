@@ -1,0 +1,278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "base": {
+      "description": "theme to inherit from (light, dark, high-contrast, ink or a user theme)",
+      "type": "string"
+    },
+    "brand": {
+      "additionalProperties": false,
+      "properties": {
+        "accent": {
+          "description": "wordmark speed lines and favicon only",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "pill": {
+          "description": "dark pill behind the wordmark",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "density": {
+      "enum": [
+        "compact",
+        "comfortable"
+      ]
+    },
+    "family": {
+      "description": "picker group (user themes are listed under \"user\")",
+      "type": "string"
+    },
+    "font": {
+      "additionalProperties": false,
+      "properties": {
+        "mono": {
+          "description": "monospace font family list",
+          "maxLength": 200,
+          "pattern": "^\\s*(?:\"[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*\"|'[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*'|[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*)\\s*(?:,\\s*(?:\"[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*\"|'[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*'|[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*)\\s*)*$",
+          "type": "string"
+        },
+        "size": {
+          "description": "base font size in px (11 to 18)",
+          "maximum": 18,
+          "minimum": 11,
+          "type": "number"
+        },
+        "ui": {
+          "description": "UI font family list",
+          "maxLength": 200,
+          "pattern": "^\\s*(?:\"[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*\"|'[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*'|[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*)\\s*(?:,\\s*(?:\"[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*\"|'[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*'|[\\p{L}\\p{N}._-][\\p{L}\\p{N} ._-]*)\\s*)*$",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "harness": {
+      "additionalProperties": false,
+      "properties": {
+        "agy": {
+          "description": "Antigravity glyph tint",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "cc": {
+          "description": "Claude Code glyph tint",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "cdx": {
+          "description": "Codex glyph tint",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "omp": {
+          "description": "omp glyph tint",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "info": {
+      "additionalProperties": false,
+      "properties": {
+        "cache": {
+          "description": "cache countdown (informational)",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "held": {
+          "description": "held deliveries",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "progress": {
+          "description": "progress counters",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "thread": {
+          "description": "agent-to-agent threads",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "warn": {
+          "description": "capacity and held warnings",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "label": {
+      "description": "display name",
+      "type": "string"
+    },
+    "name": {
+      "pattern": "^[A-Za-z0-9_-]{1,40}$",
+      "type": "string"
+    },
+    "signal": {
+      "additionalProperties": false,
+      "properties": {
+        "ask": {
+          "description": "question waiting (needs me, 1st)",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "ask-bg": {
+          "description": "question chip background",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "ask-text": {
+          "description": "question label and chip text",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "decision": {
+          "description": "decisions for me",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "error": {
+          "description": "stopped on an error (needs me, 2nd)",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "error-bg": {
+          "description": "error chip background",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "error-text": {
+          "description": "error label and chip text",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "turn": {
+          "description": "my turn / unread answer (needs me, 3rd)",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "turn-bg": {
+          "description": "turn chip background",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "turn-text": {
+          "description": "text on turn chips",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "timeline": {
+      "additionalProperties": false,
+      "properties": {
+        "idle": {
+          "description": "idle track",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "now": {
+          "description": "now line",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "snoozed": {
+          "description": "snoozed hatch",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "working": {
+          "description": "working bar (drawn opaque)",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ui": {
+      "additionalProperties": false,
+      "properties": {
+        "bg": {
+          "description": "page and project group header band",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "border": {
+          "description": "1 px separators",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "border-strong": {
+          "description": "group borders",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "dim": {
+          "description": "tertiary text",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "fg": {
+          "description": "primary text",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "interact": {
+          "description": "buttons, focus, selection, links, my message marks",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "link": {
+          "description": "link and inline action text",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "muted": {
+          "description": "secondary text",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "on-interact": {
+          "description": "text on primary buttons (drawn on ui.interact)",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "selection": {
+          "description": "selected row background",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$",
+          "type": "string"
+        },
+        "subtle": {
+          "description": "column headers, footers",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        },
+        "surface": {
+          "description": "agent rows, cards, dialogs",
+          "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{6}[fF]{2})$",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "title": "adash theme",
+  "type": "object"
+}

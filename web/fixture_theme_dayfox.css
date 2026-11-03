@@ -1,0 +1,44 @@
+/* adash theme dayfox · demo copy of GET /api/themes/dayfox.css */
+:root {
+  --brand-accent: #955f61;
+  --brand-pill: #3d2b5a;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #643f61;
+  --harness-cc: #643f61;
+  --harness-cdx: #643f61;
+  --harness-omp: #643f61;
+  --info-cache: #643f61;
+  --info-held: #643f61;
+  --info-progress: #643f61;
+  --info-thread: #396847;
+  --info-warn: #ac5402;
+  --signal-ask: #6e33ce;
+  --signal-ask-bg: #6e33ce1f;
+  --signal-ask-text: #6e33ce;
+  --signal-decision: #7f5152;
+  --signal-error: #a5222f;
+  --signal-error-bg: #a5222f1f;
+  --signal-error-text: #a5222f;
+  --signal-turn: #955f61;
+  --signal-turn-bg: #955f611f;
+  --signal-turn-text: #7f5152;
+  --timeline-idle: #e7d2be;
+  --timeline-now: #2848a9;
+  --timeline-snoozed: #837a72;
+  --timeline-working: #837a72;
+  --ui-bg: #e4dcd4;
+  --ui-border: #e7d2be;
+  --ui-border-strong: #837a72;
+  --ui-dim: #837a72;
+  --ui-fg: #3d2b5a;
+  --ui-interact: #2848a9;
+  --ui-link: #2848a9;
+  --ui-muted: #643f61;
+  --ui-on-interact: #f6f2ee;
+  --ui-selection: #2848a926;
+  --ui-subtle: #dbd1dd;
+  --ui-surface: #f6f2ee;
+}

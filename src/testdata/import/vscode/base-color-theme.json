@@ -1,0 +1,4 @@
+// synthetic base theme
+{
+  "colors": {"editor.background": "#000000", "editorCursor.foreground": "#d8dae6",},
+}

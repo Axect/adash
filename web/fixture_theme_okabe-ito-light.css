@@ -1,0 +1,44 @@
+/* adash theme okabe-ito-light · demo copy of GET /api/themes/okabe-ito-light.css */
+:root {
+  --brand-accent: #e69f00;
+  --brand-pill: #000000;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #64748b;
+  --harness-cc: #64748b;
+  --harness-cdx: #64748b;
+  --harness-omp: #64748b;
+  --info-cache: #64748b;
+  --info-held: #64748b;
+  --info-progress: #64748b;
+  --info-thread: #0f172a;
+  --info-warn: #0f172a;
+  --signal-ask: #0072b2;
+  --signal-ask-bg: #0072b21f;
+  --signal-ask-text: #0f172a;
+  --signal-decision: #0f172a;
+  --signal-error: #d55e00;
+  --signal-error-bg: #d55e001f;
+  --signal-error-text: #0f172a;
+  --signal-turn: #009e73;
+  --signal-turn-bg: #009e731f;
+  --signal-turn-text: #0f172a;
+  --timeline-idle: #e2e8f0;
+  --timeline-now: #64748b;
+  --timeline-snoozed: #94a3b8;
+  --timeline-working: #94a3b8;
+  --ui-bg: #f1f5f9;
+  --ui-border: #e2e8f0;
+  --ui-border-strong: #94a3b8;
+  --ui-dim: #94a3b8;
+  --ui-fg: #0f172a;
+  --ui-interact: #64748b;
+  --ui-link: #64748b;
+  --ui-muted: #64748b;
+  --ui-on-interact: #ffffff;
+  --ui-selection: #64748b26;
+  --ui-subtle: #f8fafc;
+  --ui-surface: #ffffff;
+}

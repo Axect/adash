@@ -1,0 +1,44 @@
+/* adash theme dark · demo copy of GET /api/themes/dark.css */
+:root {
+  --brand-accent: #fb923c;
+  --brand-pill: #161c28;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #cbd5e1;
+  --harness-cc: #cbd5e1;
+  --harness-cdx: #cbd5e1;
+  --harness-omp: #cbd5e1;
+  --info-cache: #8b98ad;
+  --info-held: #facc15;
+  --info-progress: #8b98ad;
+  --info-thread: #2dd4bf;
+  --info-warn: #fdba74;
+  --signal-ask: #c084fc;
+  --signal-ask-bg: #2e1a47;
+  --signal-ask-text: #c084fc;
+  --signal-decision: #fbbf24;
+  --signal-error: #f87171;
+  --signal-error-bg: #3b181e;
+  --signal-error-text: #f87171;
+  --signal-turn: #fbbf24;
+  --signal-turn-bg: #33240d;
+  --signal-turn-text: #fde68a;
+  --timeline-idle: #232a38;
+  --timeline-now: #60a5fa;
+  --timeline-snoozed: #8b98ad;
+  --timeline-working: #64748b;
+  --ui-bg: #131822;
+  --ui-border: #222938;
+  --ui-border-strong: #333d52;
+  --ui-dim: #526077;
+  --ui-fg: #f1f5f9;
+  --ui-interact: #60a5fa;
+  --ui-link: #60a5fa;
+  --ui-muted: #8b98ad;
+  --ui-on-interact: #0b0e14;
+  --ui-selection: #60a5fa1a;
+  --ui-subtle: #0f131c;
+  --ui-surface: #0b0e14;
+}

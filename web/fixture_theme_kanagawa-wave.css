@@ -1,0 +1,44 @@
+/* adash theme kanagawa-wave · demo copy of GET /api/themes/kanagawa-wave.css */
+:root {
+  --brand-accent: #ffa066;
+  --brand-pill: #727169;
+  --density: comfortable;
+  --font-mono: ui-monospace, "JetBrains Mono", monospace;
+  --font-size: 12.5px;
+  --font-ui: "Pretendard", system-ui, "IBM Plex Sans KR", "Noto Sans KR", sans-serif;
+  --harness-agy: #c8c093;
+  --harness-cc: #c8c093;
+  --harness-cdx: #c8c093;
+  --harness-omp: #c8c093;
+  --info-cache: #c8c093;
+  --info-held: #c8c093;
+  --info-progress: #c8c093;
+  --info-thread: #76946a;
+  --info-warn: #c0a36e;
+  --signal-ask: #957fb8;
+  --signal-ask-bg: #957fb81f;
+  --signal-ask-text: #b8b4d0;
+  --signal-decision: #ffa066;
+  --signal-error: #c34043;
+  --signal-error-bg: #c340431f;
+  --signal-error-text: #ff5d62;
+  --signal-turn: #ffa066;
+  --signal-turn-bg: #ffa0661f;
+  --signal-turn-text: #ffa066;
+  --timeline-idle: #54546d;
+  --timeline-now: #7e9cd8;
+  --timeline-snoozed: #727169;
+  --timeline-working: #c8c093;
+  --ui-bg: #16161d;
+  --ui-border: #54546d;
+  --ui-border-strong: #727169;
+  --ui-dim: #727169;
+  --ui-fg: #dcd7ba;
+  --ui-interact: #7e9cd8;
+  --ui-link: #7e9cd8;
+  --ui-muted: #c8c093;
+  --ui-on-interact: #1f1f28;
+  --ui-selection: #7e9cd826;
+  --ui-subtle: #2a2a37;
+  --ui-surface: #1f1f28;
+}
