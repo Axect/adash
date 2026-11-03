@@ -1047,7 +1047,7 @@ body.mobile .model-btn { min-height: 36px; }
 @media (prefers-reduced-motion: reduce) { .wk polygon { animation: none; } }
 .ov-title .wk, .ov-title .tk { margin-left: 8px; } .mc-head .wk, .mc-head .tk { margin: 0 2px 0 -2px; align-self: center; }
 /* v45 rev: my-turn mark at the right end of the name column: wait time + two longer logo lines (28/20 px). */
-.tk { display: inline-flex; align-items: center; gap: 6px; flex: none; margin-left: 8px; color: var(--signal-turn-text); font: 600 var(--fs-xs)/1 var(--font-ui, inherit); white-space: nowrap; }
+.tk { display: inline-flex; align-items: center; gap: 5px; flex: none; margin-left: 8px; color: var(--signal-turn-text); font: 600 var(--fs-xs)/1 var(--font-ui, inherit); white-space: nowrap; }
 .tk-slw { position: relative; display: inline-flex; flex: none; width: 28px; height: 16px; }
 .tk-slw svg { display: block; overflow: visible; color: var(--signal-turn); }
 .tk-slw polygon { fill: var(--signal-turn); } .tk-slw .sl2 { fill-opacity: .55; }
@@ -1070,4 +1070,4 @@ body.anim-off .tk.land *, body.anim-off .tk.land, body.anim-off .wk-lift .wk { a
 .lrow .nmwrap { min-width: 3.5em; } .lrow .nm { min-width: 2.5em; }
 #lane-labels .tk { flex: none; }
 /* Fixed wait-time slot (rightmost; width = longest fmtWait string, measured): the lines never shift. */
-.tk-t { flex: none; width: var(--tk-tw, 5.5ch); text-align: right; font-variant-numeric: tabular-nums; }
+.tk-t { flex: none; width: var(--tk-tw, 4.5ch); text-align: left; font-variant-numeric: tabular-nums; }

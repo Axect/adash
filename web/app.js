@@ -1220,7 +1220,15 @@
   const WKa = (name) => (markAnim.get(name)?.kind === "lift" ? `<span class="wk-lift${markFx(name, "lift")}">${WK}</span>` : WK);
   // My-turn mark (v45, decision A): the same speed lines, stopped (two bars, turn colour) + how long it has waited.
   // Same slot and size as WK, so working → my turn reads as the lines stopping and changing colour. No motion.
-  const fmtWait = (m) => { m = Math.max(0, m || 0); const en = window.ADASH_LANG === "en"; return m < 60 ? (en ? `${Math.round(m)}m` : `${Math.round(m)}분`) : m < 1440 ? (en ? `${+(m / 60).toFixed(1)}h` : `${+(m / 60).toFixed(1)}시간`) : en ? `${Math.round(m / 1440)}d` : `${Math.round(m / 1440)}일`; };
+  // Whole units only (0–59 min, 1–23 h, 1–99 d) so the my-turn time slot stays narrow; exact time in the tooltip.
+  const fmtWait = (m) => { m = Math.max(0, m || 0); const en = window.ADASH_LANG === "en"; return m < 60 ? (en ? `${Math.floor(m)}m` : `${Math.floor(m)}분`) : m < 1440 ? (en ? `${Math.floor(m / 60)}h` : `${Math.floor(m / 60)}시간`) : en ? `${Math.min(99, Math.floor(m / 1440))}d` : `${Math.min(99, Math.floor(m / 1440))}일`; };
+  // "1시간 23분 · 14:05부터" / "1 h 23 min · since 14:05"
+  const fmtWaitExact = (m, since) => {
+    m = Math.max(0, Math.floor(m || 0)); const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60, en = window.ADASH_LANG === "en";
+    const parts = en ? [d && `${d} d`, h && `${h} h`, `${mm} min`] : [d && `${d}일`, h && `${h}시간`, `${mm}분`];
+    const at = since ? new Date(since).toLocaleString(en ? "en-GB" : "ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+    return parts.filter(Boolean).join(" ") + (at ? (en ? ` · since ${at}` : ` · ${at}부터`) : "");
+  };
   const isMyTurn = (a) => a && (a.turn === "unread" || a.turn === "other");
   // Working → my turn, seen live on this screen: a one-off landing (≈450 ms). markTrack remembers each agent's mark
   // between renders; nothing plays on the first render, on filter changes or re-renders (same mark both times).
@@ -1245,13 +1253,14 @@
   // The landing starts where the working mark was (just after the name) and the lift where the my-turn mark was
   // (right end): measure once per render and hand the distance to CSS as --from-x.
   // The wait time sits in a fixed-width slot at the right end (width of the longest string fmtWait can produce in
-  // this language and font), so the lines never move as "3분" grows to "23.9시간". Re-measured on font/size/lang change.
+  // this language and font), left-aligned against the lines, so the lines never move as "3분" grows to "23시간".
+  // Re-measured on font/size/lang change.
   function measureTkSlot() {
     const host = $("#lane-labels") || document.body, probe = document.createElement("span");
     probe.className = "tk"; probe.style.cssText = "position:absolute;visibility:hidden;left:-9999px";
     probe.innerHTML = `<span class="tk-t"></span>`; host.appendChild(probe);
     const t = probe.firstChild; let w = 0;
-    for (const m of [59, 1434, 99 * 1440, 9 * 1440]) { t.textContent = fmtWait(m); w = Math.max(w, t.getBoundingClientRect().width); }
+    for (const m of [59, 23 * 60, 99 * 1440]) { t.textContent = fmtWait(m); w = Math.max(w, t.getBoundingClientRect().width); }
     probe.remove();
     if (w) { document.documentElement.style.setProperty("--tk-tw", `${Math.ceil(w) + 1}px`); measureTkSlot.lang = window.ADASH_LANG; }
   }
@@ -1270,7 +1279,7 @@
       el.style.setProperty("--from-x", `${Math.round(dx)}px`);
     }
   }
-  const TK = (a) => `<span class="tk${markFx(a.name, "land")}" title="${esc(L2(`내 차례 · ${fmtWait(a.waitedMin)} 기다림`, `Your turn · waiting ${fmtWait(a.waitedMin)}`))}"><span class="tk-slw">${TKSVG("")}${markAnim.get(a.name)?.kind === "land" ? TKSVG(" tk-sl-n") : ""}</span><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span></span>`;
+  const TK = (a) => `<span class="tk${markFx(a.name, "land")}" title="${esc(L2(`내 차례 · ${fmtWaitExact(a.waitedMin, a.s?.stateSince ?? a.stateSince)} 기다림`, `Your turn · waiting ${fmtWaitExact(a.waitedMin, a.s?.stateSince ?? a.stateSince)}`))}"><span class="tk-slw">${TKSVG("")}${markAnim.get(a.name)?.kind === "land" ? TKSVG(" tk-sl-n") : ""}</span><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span></span>`;
   function harnessBadge(s, live = true) {
     if (!s) return `<span class="hb h-none" title="종료됨"><i class="hg"></i><span class="hn">·</span></span>`;
     const t = String(s.agentType || "").toLowerCase(), mono = HARNESS[t] || (t.slice(0, 3) || "?"), cls = HARNESS[t] ? mono : "other";
