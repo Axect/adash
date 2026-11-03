@@ -1037,3 +1037,8 @@ body.mobile .model-btn { min-height: 36px; }
 .wk.off i, body.anim-off .wk i { animation: none; }
 @media (prefers-reduced-motion: reduce) { .wk i { animation: none; } }
 .ov-title .wk { margin-left: 6px; } .mc-head .wk { margin: 0 2px 0 -2px; align-self: center; }
+/* v44 shared popover placement (placePop): viewport-fixed, clamped, inner scroll when taller than the room. */
+.pop.placed { position: fixed; right: auto; bottom: auto; z-index: 60; overflow: auto; overscroll-behavior: contain; }
+.pop.placed.sheet, body.mobile .pop.placed { left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; width: auto !important; min-width: 0 !important; max-width: none !important; max-height: 78vh !important; border-radius: 12px 12px 0 0; padding-bottom: calc(8px + env(safe-area-inset-bottom)); zoom: 1; }
+.model-pop.placed { overflow: auto; }
+.pop.placed > * { flex-shrink: 0; }

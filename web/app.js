@@ -153,6 +153,35 @@
     if (e.target.closest(".font-btn")) { p.hidden = !p.hidden; return; }
     if (!p.hidden && !e.target.closest("#font-panel")) p.hidden = true;
   }, true);
+  // Shared popover placement (v44): fixed to the viewport, below the anchor when it fits, else above, else the
+  // taller side with max-height + inner scroll; clamped left/right. Phones: a bottom sheet. Closed on resize /
+  // outside scroll (closePops).
+  function placePop(el, anchor, { align = "left" } = {}) {
+    el.classList.add("placed");
+    el.style.maxHeight = ""; el.style.left = el.style.top = el.style.right = el.style.bottom = "";
+    if (isMobile()) { el.classList.add("sheet"); return; }
+    el.classList.remove("sheet");
+    const r = anchor.getBoundingClientRect(), M = 8, vw = innerWidth, vh = innerHeight;
+    const w = Math.min(el.offsetWidth, vw - 2 * M), h = el.offsetHeight;
+    const below = vh - r.bottom - M - 4, above = r.top - M - 4;
+    let top, maxH = null;
+    if (h <= below) top = r.bottom + 4;
+    else if (h <= above) top = r.top - 4 - h;
+    else if (below >= above) { top = r.bottom + 4; maxH = below; }
+    else { maxH = above; top = M; }
+    let left = align === "right" ? r.right - w : r.left;
+    left = Math.max(M, Math.min(left, vw - w - M));
+    Object.assign(el.style, { left: `${left}px`, top: `${Math.max(M, top)}px`, maxHeight: maxH != null ? `${Math.max(120, maxH)}px` : `calc(100vh - ${2 * M}px)` });
+  }
+  const POP_SEL = ".pop:not([hidden]), #proj-menu:not([hidden]), #model-pop:not([hidden])";
+  function closePops() {
+    $$(".pop").forEach((p) => { p.hidden = true; });
+    $$("[data-pop]").forEach((b) => b.classList.remove("on"));
+    if (typeof closeModelPop === "function" && $("#model-pop") && !$("#model-pop").hidden) closeModelPop();
+  }
+  addEventListener("resize", () => { if (document.querySelector(POP_SEL)) closePops(); });
+  // A scroll anywhere but inside the open popover moves its anchor: close instead of drifting.
+  document.addEventListener("scroll", (e) => { const open = document.querySelector(POP_SEL); if (open && !(e.target instanceof Node && open.contains(e.target))) closePops(); }, true);
   // Popover menus ([data-pop] buttons → #id .pop): one open at a time; any click outside, or on a menu item,
   // closes them. The 보기 popover and the model picker stay open while their controls are used.
   document.addEventListener("click", (e) => {
@@ -162,7 +191,7 @@
     const opening = target && target.hidden;
     if (!keep) $$(".pop").forEach((p) => { p.hidden = true; });
     $$("[data-pop]").forEach((b) => b.classList.remove("on"));
-    if (opening) { target.hidden = false; pb.classList.add("on"); }
+    if (opening) { target.hidden = false; pb.classList.add("on"); placePop(target, pb, { align: pb.closest(".ov-head") ? "left" : "right" }); }
     const rt = e.target.closest("[data-rtab]");
     if (rt) { recentTab = rt.dataset.rtab; localStorage.setItem("adash.recentTab", recentTab); renderRecent(); }
     const lk = e.target.closest("[data-links]");
@@ -2435,9 +2464,7 @@
     if (!m) { m = document.createElement("div"); m.id = "proj-menu"; m.className = "pop proj-menu"; document.body.appendChild(m); }
     m.innerHTML = projMenuHtml(btn.dataset.projMenu);
     m.hidden = false;
-    const r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
-    m.style.left = `${Math.max(8, Math.min(r.right - w, window.innerWidth - w - 8))}px`;
-    m.style.top = `${r.bottom + 4 + h > window.innerHeight ? Math.max(8, r.top - h - 4) : r.bottom + 4}px`;
+    placePop(m, btn, { align: "right" });
   }
   async function projCall(p, what, body, ok) {
     try {
@@ -3359,9 +3386,8 @@ if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모
   async function openModelPop(name, btn) {
     const el = modelPopEl();
     Object.assign(mp, { name, data: null, model: null, effort: null, q: "", busy: false, err: "" });
-    el.hidden = false; el.classList.toggle("sheet", isMobile()); document.body.classList.toggle("sheet-open", isMobile());
-    if (!isMobile()) { const r = btn.getBoundingClientRect(); el.style.left = `${Math.max(8, Math.min(r.left, innerWidth - 360))}px`; el.style.top = `${Math.min(r.bottom + 4, innerHeight - 420)}px`; }
-    else { el.style.left = el.style.top = ""; }
+    el.hidden = false; document.body.classList.toggle("sheet-open", isMobile());
+    mp.anchor = btn;
     renderModelPop();
     try { mp.data = await api("GET", `/api/agents/${enc(name)}/models`, undefined, { quiet: true }); }
     catch (e) { mp.err = e.message; }
@@ -3375,7 +3401,7 @@ if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모
     const el = $("#model-pop"); if (!el || el.hidden) return;
     const a = agentBy(mp.name), d = mp.data;
     const head = `<div class="mp-head"><b>${esc(L2("모델", "Model"))}</b><span class="muted small">${esc(mp.name || "")}${d?.harness ? ` · ${esc(d.harness)}` : ""}</span><span class="spacer"></span><button type="button" id="mp-close" aria-label="${esc(L2("닫기", "Close"))}">✕</button></div>`;
-    if (!d) { el.innerHTML = head + `<p class="muted small">${esc(mp.err ? L2(`불러오지 못함: ${mp.err}`, `Could not load: ${mp.err}`) : L2("불러오는 중…", "Loading…"))}</p>`; return; }
+    if (!d) { el.innerHTML = head + `<p class="muted small">${esc(mp.err ? L2(`불러오지 못함: ${mp.err}`, `Could not load: ${mp.err}`) : L2("불러오는 중…", "Loading…"))}</p>`; if (mp.anchor) placePop(el, mp.anchor); return; }
     const working = a && (a.state === "working" || kindOf(a) === "working");
     const cur = d.current || {}, q = mp.q.trim().toLowerCase();
     const list = (d.models || []).filter((m) => !q || `${m.id} ${m.label || ""}`.toLowerCase().includes(q));
@@ -3395,6 +3421,7 @@ if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모
       ${why ? `<p class="mp-why small">${esc(why)}</p>` : ""}
       ${mp.err ? `<p class="mp-err small">${esc(mp.err)}</p>` : ""}
       <div class="mp-foot"><span class="muted small">${mp.busy ? esc(L2("적용 중… 하네스 확인을 기다리는 중", "Applying… waiting for the harness to confirm")) : ""}</span><span class="spacer"></span><button type="button" id="mp-apply" class="primary"${!changed || off || mp.busy ? " disabled" : ""}>${esc(mp.busy ? L2("적용 중…", "Applying…") : L2("적용", "Apply"))}</button></div>`;
+    if (mp.anchor?.isConnected) placePop(el, mp.anchor); else if (!isMobile()) placePop(el, document.querySelector(`[data-model-pick="${CSS.escape(mp.name || "")}"]`) || el);
     if (keepFocus && el.querySelector("#mp-q")) { const i = el.querySelector("#mp-q"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   }
   async function applyModel() {
