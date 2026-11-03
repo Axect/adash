@@ -559,6 +559,8 @@
             { provider: "google", state: nq === "down" ? "down" : "ok", latencyMs: nq === "down" ? null : 95, checkedAt: t0 - 9000, error: null }] };
         }
         setState(fixtureData);
+        // Demo only: flip an agent between working and done+unread to see the working → my-turn landing.
+        window.__adashDemo ||= { flip: (name) => { const a = fixtureData.agents.find((x) => x.name === name); if (!a) return; const w = a.state === "working"; Object.assign(a, w ? { state: "done", needsHuman: true, unread: true, tool: null } : { state: "working", needsHuman: false, unread: false, tool: "bash" }); a.stateSince = now(); refresh(); } };
       } else {
         const r = await fetch("/api/state");
         if (r.status === 403) { const j = await r.json().catch(() => null); if (j?.error === "device_pending") return showPairing(j); }
@@ -815,6 +817,7 @@
     const scored = (state.projects || []).some((p) => (p.impact != null && !(+p.impact === 3 && +p.leverage === 3 && +p.cost === 3)) || (p.score != null && Math.abs(+p.score - 3) > 1e-6));
     const recent = agents.flatMap((a) => a.inter.filter((i) => i.kind === "human").map((i) => ({ ...i, agent: a.name, a }))).sort((p, q) => q.ts - p.ts).slice(0, 20);
     const agentMsgs = agents.flatMap((a) => a.inter.filter((i) => i.kind === "agent" || i.kind === "relay").map((i) => ({ ...i, agent: a.name, a }))).sort((p, q) => q.ts - p.ts).slice(0, 40);
+    trackMarks(agents);
     model = { rows, groups, from, now, agents, recent, agentMsgs, counts: c, scored, hasInteractions, height: y, totalWait: [...pinfo.values()].reduce((t, p) => t + (p.waitMinWindow || 0), 0) };
   }
   const agentRows = () => model.rows.filter((r) => r.type === "a");
@@ -1208,12 +1211,32 @@
   }
   // Working mark (v44): the wordmark's speed lines drifting left. One shared keyframe; paused off-screen,
   // in hidden tabs and with reduced motion (then the lines stand still). Neutral colour only.
-  const WK = `<span class="wk" aria-hidden="true"><i></i><i></i><i></i></span>`;
+  // Both marks share the wordmark's speed lines (same two parallelograms as the logo SVG); state = class.
+  const SL = (cls) => `<span class="sl ${cls}" aria-hidden="true"><svg viewBox="1.5 6.5 20 11.5" width="16" height="9"><polygon points="8,7 21,7 17,11 4,11"/><polygon class="sl2" points="5,14 18,14 15,17.5 2,17.5"/></svg></span>`;
+  const WK = SL("wk");
+  const WKa = (name) => (markAnim.get(name)?.kind === "lift" ? `<span class="wk-lift${markFx(name, "lift")}">${WK}</span>` : WK);
   // My-turn mark (v45, decision A): the same speed lines, stopped (two bars, turn colour) + how long it has waited.
   // Same slot and size as WK, so working → my turn reads as the lines stopping and changing colour. No motion.
   const fmtWait = (m) => { m = Math.max(0, m || 0); const en = window.ADASH_LANG === "en"; return m < 60 ? (en ? `${Math.round(m)}m` : `${Math.round(m)}분`) : m < 1440 ? (en ? `${+(m / 60).toFixed(1)}h` : `${+(m / 60).toFixed(1)}시간`) : en ? `${Math.round(m / 1440)}d` : `${Math.round(m / 1440)}일`; };
   const isMyTurn = (a) => a && (a.turn === "unread" || a.turn === "other");
-  const TK = (a) => `<span class="tk" title="${esc(L2(`내 차례 · ${fmtWait(a.waitedMin)} 기다림`, `Your turn · waiting ${fmtWait(a.waitedMin)}`))}"><span class="tk-sl" aria-hidden="true"><i></i><i></i></span><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span></span>`;
+  // Working → my turn, seen live on this screen: a one-off landing (≈450 ms). markTrack remembers each agent's mark
+  // between renders; nothing plays on the first render, on filter changes or re-renders (same mark both times).
+  const markPrev = new Map(), markAnim = new Map(); // name → "wk"|"tk"|"", name → {kind: "land"|"lift", at}
+  let markSeeded = false;
+  function trackMarks(agents) {
+    const t = Date.now();
+    for (const a of agents) {
+      const m = a.kind === "working" ? "wk" : isMyTurn(a) ? "tk" : "";
+      const p = markPrev.get(a.name);
+      if (markSeeded && !document.hidden && p != null && p !== m && ((p === "wk" && m === "tk") || (p === "tk" && m === "wk"))) markAnim.set(a.name, { kind: m === "tk" ? "land" : "lift", at: t });
+      markPrev.set(a.name, m);
+    }
+    markSeeded = true;
+    for (const [n, x] of markAnim) if (t - x.at > 700) markAnim.delete(n);
+  }
+  // Class + negative delay so a re-render during the 450 ms continues the same animation instead of restarting it.
+  const markFx = (name, kind) => { const x = markAnim.get(name); return x && x.kind === kind ? ` ${kind}" style="--fx-d:-${Math.min(700, Date.now() - x.at)}ms` : ""; };
+  const TK = (a) => `<span class="tk${markFx(a.name, "land")}" title="${esc(L2(`내 차례 · ${fmtWait(a.waitedMin)} 기다림`, `Your turn · waiting ${fmtWait(a.waitedMin)}`))}"><span class="tk-slw">${SL("tk-sl")}${markAnim.get(a.name)?.kind === "land" ? SL("tk-sl-n") : ""}</span><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span></span>`;
   function harnessBadge(s, live = true) {
     if (!s) return `<span class="hb h-none" title="종료됨"><i class="hg"></i><span class="hn">·</span></span>`;
     const t = String(s.agentType || "").toLowerCase(), mono = HARNESS[t] || (t.slice(0, 3) || "?"), cls = HARNESS[t] ? mono : "other";
@@ -1459,7 +1482,7 @@
       // Left micro urgency tag (direction 1): what the row needs from me, readable without the legend.
       const utag = a.kind === "asking" ? `<span class="utag ask">ASK</span>` : a.kind === "error" ? `<span class="utag err">ERR${s?.lastError?.status ? ` ${esc(s.lastError.status)}` : ""}</span>` : isMyTurn(a) ? TK(a) : "";
       L.push(`<div class="${cls}${bulk.has(a.name) ? " picked" : ""}" data-agent="${esc(a.name)}"><input type="checkbox" class="pick" tabindex="-1" ${bulk.has(a.name) ? "checked" : ""} title="여러 개 선택 (Ctrl/Shift+클릭)">${harnessBadge(s, a.live)}${a.live ? netIcon(s) : ""}
-        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WK : utag}</span>${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
+        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : utag}</span>${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
       // Status column (v15.1): one line = [unread dot][icon chips][time][countdown][progress]. Secondary marks are
       // small same-color icon chips; if the line still overflows, fitInfoRows() folds the lowest-priority items
       // (질문 > 오류 > 결정 > 보류 > 초안 > magi > 시간) into a "+k" chip whose tooltip lists everything.
@@ -2883,7 +2906,7 @@
     const a = ov.name && agentBy(ov.name);
     const order = triageOrder();
     const k = order.indexOf(ov.name);
-    $("#ov-title").innerHTML = a ? `<span class="${a.ambiguous ? "amb" : ""}" title="${esc(`${L2("이름 출처", "name source")}: ${a.nameSource || "?"}${a.ambiguous ? ` · ${L2("이름이 모호함", "ambiguous name")}` : ""}`)}">${esc(a.name)}${a.ambiguous ? "?" : ""}</span>${kindOf(a) === "working" ? WK : isMyTurn(model.agents.find((x) => x.name === a.name)) ? TK(model.agents.find((x) => x.name === a.name)) : ""} <span class="muted small">${esc(a.project)}${a.role ? " · " + esc(a.role) : ""}</span>` : ov.name ? esc(ov.name) : "패널";
+    $("#ov-title").innerHTML = a ? `<span class="${a.ambiguous ? "amb" : ""}" title="${esc(`${L2("이름 출처", "name source")}: ${a.nameSource || "?"}${a.ambiguous ? ` · ${L2("이름이 모호함", "ambiguous name")}` : ""}`)}">${esc(a.name)}${a.ambiguous ? "?" : ""}</span>${kindOf(a) === "working" ? WKa(a.name) : isMyTurn(model.agents.find((x) => x.name === a.name)) ? TK(model.agents.find((x) => x.name === a.name)) : ""} <span class="muted small">${esc(a.project)}${a.role ? " · " + esc(a.role) : ""}</span>` : ov.name ? esc(ov.name) : "패널";
     $("#ov-nav").textContent = `내 차례 ${k >= 0 ? k + 1 : "–"}/${model.counts.mine}`;
     $("#ov-unsnooze").hidden = !a?.snoozedUntil;
     // Live agent → 종료/강제 종료; ended (offline) agent → 다시 열기.
@@ -4325,13 +4348,13 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
         const s = a.s, dn = decisionsOf(s).length;
         return `<div class="mcard${a.unread ? " unread" : ""}${a.kind === "asking" ? " asking" : ""}${a.kind === "error" ? " erred" : ""}" data-magent="${esc(a.name)}">
           <div class="mc-swipe"><span class="mc-l">확인함</span><span class="spacer"></span><span class="mc-r">미루기 60분</span></div>
-          <div class="mc-body"><div class="mc-head"><b>${esc(a.name)}</b>${a.kind === "working" ? WK : isMyTurn(a) ? TK(a) : ""}<span class="muted">${esc(a.project)}</span><span class="spacer"></span><span class="mc-st">${stateLine(a)}</span></div>
+          <div class="mc-body"><div class="mc-head"><b>${esc(a.name)}</b>${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}<span class="muted">${esc(a.project)}</span><span class="spacer"></span><span class="mc-st">${stateLine(a)}</span></div>
             <div class="mc-meta">${a.role ? `<span class="muted">${esc(a.role)}</span>` : ""}${dn ? `<span class="dec-mark">결정 ${dn}</span>` : ""}${heldRelays(a.name).length ? '<span class="held-mark">답변 보류</span>' : ""}${s?.draft?.text ? '<span class="draft-mark">초안</span>' : ""}${soonCold(s) ? `<span class="cd soon" title="${esc(cacheBasis(s))}">곧 식음</span>` : ""}</div>
             <div class="mc-first">${esc(a.kind === "error" ? s?.lastError?.message || "제공자 API 오류로 멈춤" : a.kind === "asking" && s?.ask ? askQuestions(s.ask)[0].question : firstLine(s?.lastMessage))}</div>${a.kind === "error" ? `<div class="mc-act"><button data-retry="${esc(a.name)}">${esc(retryLabel(s))}</button></div>` : ""}</div></div>`;
       }).join("") : `<p class="muted m-empty">기다리는 에이전트가 없습니다</p>`;
     } else if (mtab === "projects") {
       html = model.groups.map((g) => `<section class="mproj"><div class="mp-head"><b>${esc(g.name)}</b>${g.asking ? `<span class="ask-n">질문 ${g.asking}</span>` : ""}${g.unread ? `<span class="unread-n">미확인 ${g.unread}</span>` : ""}<span class="spacer"></span><span class="muted small">에이전트 ${g.allCount}</span><button class="g-more m" data-proj-menu="${esc(g.name)}" aria-label="프로젝트 메뉴">⋯</button></div>
-        ${g.members.map((a) => `<div class="mp-row" data-magent="${esc(a.name)}">${harnessBadge(a.s, a.live)}<span class="mp-n${a.unread ? " unread" : ""}">${esc(a.name)}${a.kind === "working" ? WK : isMyTurn(a) ? TK(a) : ""}${a.live ? netIcon(a.s) : ""}</span><span class="mp-st muted">${a.live ? stateLine(a) : `<button class="reopen-btn m" data-reopen="${esc(a.name)}">다시 열기</button>`}</span>${sparkline(a)}</div>`).join("")}${g.hidden.length ? `<div class="mp-row mp-off muted small" data-toggle-offline="${esc(g.name)}">${expandedOffline.has(g.name) ? "오프라인 접기" : `오프라인 ${g.hidden.length}개 숨김`}</div>` : ""}</section>`).join("") + hiddenProjHtml(true);
+        ${g.members.map((a) => `<div class="mp-row" data-magent="${esc(a.name)}">${harnessBadge(a.s, a.live)}<span class="mp-n${a.unread ? " unread" : ""}">${esc(a.name)}${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}${a.live ? netIcon(a.s) : ""}</span><span class="mp-st muted">${a.live ? stateLine(a) : `<button class="reopen-btn m" data-reopen="${esc(a.name)}">다시 열기</button>`}</span>${sparkline(a)}</div>`).join("")}${g.hidden.length ? `<div class="mp-row mp-off muted small" data-toggle-offline="${esc(g.name)}">${expandedOffline.has(g.name) ? "오프라인 접기" : `오프라인 ${g.hidden.length}개 숨김`}</div>` : ""}</section>`).join("") + hiddenProjHtml(true);
     } else if (mtab === "more") {
       html = `${capListHtml()}<div class="mmore"><button class="primary" data-act="m-new">새 세션</button><button data-act="m-sessions">지난 세션</button><button data-act="m-reports">보고서</button><button data-act="m-push">알림·기기 설정</button><button data-open-tab="threads">검토 요청 목록</button><button data-open-tab="tasks">내 할 일</button><button class="font-btn">표시 설정</button></div>`;
     }

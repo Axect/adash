@@ -1029,23 +1029,39 @@ body.mobile #usage-m[open] { max-height: 62vh; overflow-y: auto; overscroll-beha
 body.mobile .model-btn { min-height: 36px; }
 .mp-eff .seg button.cur { text-decoration: underline; text-underline-offset: 3px; }
 .mp-warn { margin: 0; color: var(--fg); padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--info-warn) 50%, var(--border)); border-radius: 6px; background: color-mix(in srgb, var(--info-warn) 8%, transparent); }
-/* v44 working mark: three slanted bars (wordmark speed lines) drifting left. transform/opacity only; one keyframe. */
-.wk { position: relative; display: inline-block; flex: none; width: 14px; height: 8px; margin-left: 5px; overflow: hidden; vertical-align: middle; contain: layout paint; color: var(--muted); }
-.wk i { position: absolute; top: 0; left: 0; width: 3px; height: 8px; background: currentColor; opacity: .7; transform: translateX(var(--x)) skewX(-20deg); will-change: transform, opacity; animation: wk-flow 1.2s linear infinite; }
-.wk i:nth-child(1) { --x: 1.5px; animation-delay: -0.8s; } .wk i:nth-child(2) { --x: 5.5px; animation-delay: -0.4s; } .wk i:nth-child(3) { --x: 9.5px; animation-delay: 0s; }
-@keyframes wk-flow { 0% { transform: translateX(14px) skewX(-20deg); opacity: 0; } 20% { opacity: .75; } 75% { opacity: .75; } 100% { transform: translateX(-4px) skewX(-20deg); opacity: 0; } }
-.wk.off i, body.anim-off .wk i { animation: none; }
-@media (prefers-reduced-motion: reduce) { .wk i { animation: none; } }
-.ov-title .wk { margin-left: 6px; } .mc-head .wk { margin: 0 2px 0 -2px; align-self: center; }
 /* v44 shared popover placement (placePop): viewport-fixed, clamped, inner scroll when taller than the room. */
 .pop.placed { position: fixed; right: auto; bottom: auto; z-index: 60; overflow: auto; overscroll-behavior: contain; }
 .pop.placed.sheet, body.mobile .pop.placed { left: 0 !important; right: 0 !important; bottom: 0 !important; top: auto !important; width: auto !important; min-width: 0 !important; max-width: none !important; max-height: 78vh !important; border-radius: 12px 12px 0 0; padding-bottom: calc(8px + env(safe-area-inset-bottom)); zoom: 1; }
 .model-pop.placed { overflow: auto; }
 .pop.placed > * { flex-shrink: 0; }
-/* v45 my-turn mark: the working mark's speed lines, stopped, in the turn colour + wait time. Same slot/size as .wk. */
+/* v45 speed-line marks (shared): the logo's two slanted horizontal lines, 16×9. .wk = working (lines stream left,
+   transform/opacity only, one keyframe), .tk-sl = my turn (same lines, still, turn colour). */
+.sl { display: inline-flex; flex: none; width: 16px; height: 9px; vertical-align: middle; }
+.sl svg { display: block; overflow: hidden; }
+.sl polygon { fill: currentColor; transform-box: fill-box; } .sl .sl2 { fill-opacity: .55; }
+.wk { margin-left: 5px; color: var(--muted); contain: layout paint; }
+.wk polygon { will-change: transform, opacity; animation: wk-flow 1.2s linear infinite; }
+.wk .sl2 { animation-delay: -0.6s; }
+@keyframes wk-flow { 0% { transform: translateX(60%); opacity: 0; } 25% { opacity: .9; } 70% { opacity: .9; } 100% { transform: translateX(-70%); opacity: 0; } }
+.wk.off polygon, body.anim-off .wk polygon { animation: none; }
+@media (prefers-reduced-motion: reduce) { .wk polygon { animation: none; } }
 .tk { display: inline-flex; align-items: center; gap: 4px; flex: none; margin-left: 5px; color: var(--signal-turn-text); font: 600 var(--fs-xs)/1 var(--font-ui, inherit); white-space: nowrap; }
-.tk-sl { position: relative; display: inline-block; width: 14px; height: 8px; overflow: hidden; color: var(--signal-turn); }
-.tk-sl i { position: absolute; top: 0; left: 0; width: 3px; height: 8px; background: currentColor; transform: translateX(var(--x)) skewX(-20deg); }
-.tk-sl i:nth-child(1) { --x: 1.5px; } .tk-sl i:nth-child(2) { --x: 5.5px; opacity: .55; }
-.lrow .nmwrap .utag { margin-left: 5px; }
-.ov-title .tk { margin-left: 6px; } .mc-head .tk { margin: 0 2px 0 -2px; align-self: center; }
+.tk-sl { color: var(--signal-turn); }
+.ov-title .wk, .ov-title .tk { margin-left: 6px; } .mc-head .wk, .mc-head .tk { margin: 0 2px 0 -2px; align-self: center; }
+/* v45 working → my turn landing (once, ≈450 ms): the streaming lines settle, stretch to the logo's long pair with a
+   small overshoot (scaleX 1.08 → 1) and cross-fade from neutral to the turn colour; then the wait time fades in.
+   transform/opacity only; --fx-d keeps a re-render mid-way from restarting it. */
+.tk-slw { position: relative; display: inline-flex; flex: none; }
+.tk-sl-n { position: absolute; inset: 0; color: var(--muted); opacity: 0; }
+.tk.land .tk-slw .sl svg { transform-origin: 20% 50%; animation: tk-land 450ms cubic-bezier(.2, .7, .3, 1) var(--fx-d, 0ms) both; }
+.tk.land .tk-sl { animation: tk-in 450ms ease-out var(--fx-d, 0ms) both; }
+.tk.land .tk-sl-n { animation: tk-out 450ms ease-out var(--fx-d, 0ms) both; }
+.tk.land .tk-t { animation: tk-in 220ms ease-out calc(var(--fx-d, 0ms) + 330ms) both; }
+@keyframes tk-land { 0% { transform: translateX(-3px) scaleX(.5); } 70% { transform: translateX(0) scaleX(1.08); } 100% { transform: none; } }
+@keyframes tk-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes tk-out { 0% { opacity: 1; } 60% { opacity: .6; } 100% { opacity: 0; } }
+/* my turn → working (after I send): the still pair shrinks a little and starts streaming. */
+.wk-lift { display: inline-flex; } .wk-lift .wk { animation: wk-lift 300ms ease-in var(--fx-d, 0ms) both; }
+@keyframes wk-lift { from { transform: scaleX(1.15); opacity: .4; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tk.land .tk-slw .sl svg, .tk.land .tk-sl, .tk.land .tk-sl-n, .tk.land .tk-t, .wk-lift .wk { animation: none; } .tk.land .tk-sl-n { opacity: 0; } }
+body.anim-off .tk.land *, body.anim-off .wk-lift .wk { animation: none !important; }
