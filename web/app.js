@@ -118,6 +118,7 @@
     $("#fp-chat").value = fontCfg.chat; $("#fp-chat-v").textContent = `${fontCfg.chat}px`;
     $("#fp-ui").value = fontCfg.ui; $("#fp-ui-v").textContent = `${fontCfg.ui}%`;
     if (save) localStorage.setItem("adash.font", JSON.stringify(fontCfg));
+    if (typeof measureTkSlot === "function") requestAnimationFrame(measureTkSlot);
   }
   const bumpChat = (d) => { fontCfg.chat += d; applyFont(); };
   $("#fp-font").addEventListener("change", (e) => { fontCfg.font = e.target.value; applyFont(); if (fontCfg.font === "custom") $("#fp-custom").focus(); });
@@ -1241,6 +1242,18 @@
   const TKSVG = (cls) => `<svg class="tk-sl${cls}" viewBox="0 0 32 11" width="32" height="11" aria-hidden="true"><polygon points="7,0 31,0 27,4 3,4"/><polygon class="sl2" points="11,7.5 28,7.5 25,11 8,11"/></svg>`;
   // The landing starts where the working mark was (just after the name) and the lift where the my-turn mark was
   // (right end): measure once per render and hand the distance to CSS as --from-x.
+  // The wait time sits in a fixed-width slot at the right end (width of the longest string fmtWait can produce in
+  // this language and font), so the lines never move as "3분" grows to "23.9시간". Re-measured on font/size/lang change.
+  function measureTkSlot() {
+    const host = $("#lane-labels") || document.body, probe = document.createElement("span");
+    probe.className = "tk"; probe.style.cssText = "position:absolute;visibility:hidden;left:-9999px";
+    probe.innerHTML = `<span class="tk-t"></span>`; host.appendChild(probe);
+    const t = probe.firstChild; let w = 0;
+    for (const m of [59, 1434, 99 * 1440, 9 * 1440]) { t.textContent = fmtWait(m); w = Math.max(w, t.getBoundingClientRect().width); }
+    probe.remove();
+    if (w) { document.documentElement.style.setProperty("--tk-tw", `${Math.ceil(w) + 1}px`); measureTkSlot.lang = window.ADASH_LANG; }
+  }
+  document.fonts?.ready.then(measureTkSlot);
   function placeMarkFx(root) {
     if (!root || !markAnim.size) return;
     for (const el of root.querySelectorAll(".tk.land")) {
@@ -1255,7 +1268,7 @@
       el.style.setProperty("--from-x", `${Math.round(dx)}px`);
     }
   }
-  const TK = (a) => `<span class="tk${markFx(a.name, "land")}" title="${esc(L2(`내 차례 · ${fmtWait(a.waitedMin)} 기다림`, `Your turn · waiting ${fmtWait(a.waitedMin)}`))}"><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span><span class="tk-slw">${TKSVG("")}${markAnim.get(a.name)?.kind === "land" ? TKSVG(" tk-sl-n") : ""}</span></span>`;
+  const TK = (a) => `<span class="tk${markFx(a.name, "land")}" title="${esc(L2(`내 차례 · ${fmtWait(a.waitedMin)} 기다림`, `Your turn · waiting ${fmtWait(a.waitedMin)}`))}"><span class="tk-slw">${TKSVG("")}${markAnim.get(a.name)?.kind === "land" ? TKSVG(" tk-sl-n") : ""}</span><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span></span>`;
   function harnessBadge(s, live = true) {
     if (!s) return `<span class="hb h-none" title="종료됨"><i class="hg"></i><span class="hn">·</span></span>`;
     const t = String(s.agentType || "").toLowerCase(), mono = HARNESS[t] || (t.slice(0, 3) || "?"), cls = HARNESS[t] ? mono : "other";
@@ -1543,6 +1556,7 @@
       R.push(`<div class="${cls}" data-agent="${esc(a.name)}">${a.kind === "error" ? `${chips.join("")}${st}` : `${st}${chips.join("")}`}<span class="spacer"></span><span class="ic c-more" hidden></span>${cd}${prog}</div>`);
     }
     H("#lane-labels").innerHTML = L.join("");
+    if (!document.documentElement.style.getPropertyValue("--tk-tw") || measureTkSlot.lang !== window.ADASH_LANG) measureTkSlot();
     placeMarkFx($("#lane-labels"));
     renderBoardEmpty();
     H("#lane-info").innerHTML = R.join("");
@@ -2424,6 +2438,7 @@
     // One declaration per line ("  --name: value;"); anything else, or a value with unbalanced quotes, is dropped.
     const decl = css.split("\n").map((l) => /^\s*(--[a-z][a-z0-9-]*):\s*([#\p{L}\p{N} ,._"-]+);\s*$/u.exec(l)).filter((m) => m && (m[2].split('"').length - 1) % 2 === 0).map((m) => `  ${m[1]}: ${m[2]};`);
     $("#theme-css").textContent = decl.length ? `:root:root {\n${decl.join("\n")}\n}` : "";
+    requestAnimationFrame(() => { if (typeof measureTkSlot === "function") measureTkSlot(); });
     document.body.classList.toggle("dense", getComputedStyle(document.documentElement).getPropertyValue("--density").trim() === "compact");
     // Files the server refused (built-in name, bad name, duplicate) are listed too, so a theme that never shows up is explained.
     const issues = [...themeList.filter((x) => [themeCfg.light, themeCfg.dark].includes(x.name)).flatMap((x) => [...(x.errors || []).map((m) => `${x.name} · 오류: ${m}`), ...(x.warnings || []).map((m) => `${x.name} · 경고: ${m}`)]), ...themeRefused.map((x) => `${String(x.path || "").split("/").pop()} · 불러오지 않음: ${x.reason || "?"}`)];

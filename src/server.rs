@@ -2056,8 +2056,26 @@ fn handle(sh: &Shared, mut req: Request) {
             let path = if url.trim_matches('/').is_empty() { "index.html".to_string() } else { segs.join("/") };
             match WEB.get_file(&path) {
                 Some(f) => {
+                    // revalidate every time: a new build's CSS/JS must replace the cached copy
+                    // (ETag = content hash; unchanged files answer 304)
+                    let etag = {
+                        use std::hash::{Hash, Hasher};
+                        let mut h = std::collections::hash_map::DefaultHasher::new();
+                        f.contents().hash(&mut h);
+                        format!("\"{:016x}\"", h.finish())
+                    };
+                    if hdr("If-None-Match").is_some_and(|v| v.split(',').any(|t| t.trim() == etag)) {
+                        let r = Response::from_data(Vec::new())
+                            .with_status_code(304)
+                            .with_header(Header::from_bytes("ETag", etag.as_bytes()).unwrap())
+                            .with_header(Header::from_bytes("Cache-Control", "no-cache").unwrap());
+                        let _ = req.respond(r);
+                        return;
+                    }
                     // defence in depth: scripts only from here, no plugins, no framing, no sniffing
                     let r = Response::from_data(f.contents())
+                        .with_header(Header::from_bytes("ETag", etag.as_bytes()).unwrap())
+                        .with_header(Header::from_bytes("Cache-Control", "no-cache").unwrap())
                         .with_header(ctype(mime_for(&path).unwrap_or("application/octet-stream")))
                         .with_header(Header::from_bytes("X-Content-Type-Options", "nosniff").unwrap())
                         .with_header(
