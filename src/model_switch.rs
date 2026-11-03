@@ -3,7 +3,7 @@
 //!
 //! | harness | model | effort | scope |
 //! |---|---|---|---|
-//! | omp 18.15 | no: `/model` opens a picker whose Enter assigns a *role* (default, smol, …) | `/effort <level>` → `thinking_level_change` | this session |
+//! | omp 18.15 | Alt+P "Switch Model" picker (session-only; not Alt+M or `/model`, whose Enter assigns a *role*): type the id, Enter once the highlighted row is exactly it | `/effort <level>` → `thinking_level_change` | this session |
 //! | Claude Code 2.1.316 | `/model <alias>` | `/effort <level>` | also saved as the default for new sessions |
 //! | Codex 0.164 | `/model <slug> --reasoning=<level>` | same command | this session ("for this session only") |
 //! | Antigravity | no | no | — |
@@ -91,7 +91,7 @@ fn models_of(kind: &str) -> Vec<ModelOpt> {
 
 fn caps(kind: &str) -> (bool, bool, bool, &'static str) {
     match kind {
-        "omp" => (false, true, false, "omp changes the model only through its /model picker, whose selection assigns a role (default, smol, …) in your omp settings; change it in the terminal. Effort: /effort, this session only."),
+        "omp" => (true, true, false, "Alt+P (session-only model switch) and /effort, this session only."),
         "claude" => (true, true, true, "/model and /effort; Claude Code also saves the choice as the default for new sessions."),
         "codex" => (true, true, false, "/model <model> --reasoning=<effort>, this session only."),
         _ => (false, false, false, "This harness has no command to change the model or effort of a running session; change it in the terminal."),
@@ -156,7 +156,8 @@ pub fn command(kind: &str, current_model: Option<&str>, model: Option<&str>, eff
         }
     }
     Ok(match kind {
-        "omp" => vec![format!("/effort {}", effort.unwrap_or_default())],
+        // the model goes through the Alt+P picker (see `omp_switch`); only effort is a command
+        "omp" => effort.map(|e| vec![format!("/effort {e}")]).unwrap_or_default(),
         "claude" => {
             let mut v = vec![];
             if let Some(m) = model {
@@ -212,6 +213,72 @@ pub fn confirmed(kind: &str, has_file: bool, appended: &str, screen: &str, model
     }
 }
 
+/// The row omp's picker highlights (marked with U+F054), trimmed.
+fn picker_highlight(screen: &str) -> Option<String> {
+    let start = screen.find("Switch Model")?;
+    screen[start..]
+        .lines()
+        .skip_while(|l| !l.contains('\u{f002}')) // the search line
+        .skip(1)
+        .find(|l| l.contains('\u{f054}'))
+        // the id is the first word; wide panes add context size and price columns
+        .and_then(|l| l.split('\u{f054}').nth(1)?.split_whitespace().next().map(String::from))
+}
+
+/// Did omp switch to `id`? A `model_change` record to it, or (session not written yet) the
+/// status line naming it (`Claude Sonnet 4.5` shows as `Sonnet 4.5`).
+pub fn omp_model_confirmed(has_file: bool, appended: &str, screen: &str, id: &str, label: &str) -> bool {
+    if appended.lines().filter_map(|l| serde_json::from_str::<Value>(l).ok()).any(|v| v["type"] == "model_change" && v["model"] == id) {
+        return true;
+    }
+    if has_file || screen.contains("Switch Model") {
+        return false;
+    }
+    let status = screen.lines().rev().find(|l| !l.trim().is_empty()).unwrap_or("");
+    let short = label.strip_prefix("Claude ").unwrap_or(label);
+    !label.is_empty() && (status.contains(&format!(" {label} ")) || status.contains(&format!(" {short} ")))
+}
+
+/// omp: open the session-only picker (Alt+P), type the id, check the highlighted row is
+/// exactly it, Enter, confirm. Anything unexpected closes the picker and fails.
+fn omp_switch(h: &str, path: Option<&std::path::Path>, id: &str, label: &str) -> Result<(), (u16, String)> {
+    let screen = || crate::term::screen(h).map(|v| v.join("\n")).unwrap_or_default();
+    let fail = |why: String| {
+        // Esc clears the search first, then closes the picker
+        for _ in 0..3 {
+            if !screen().contains("Switch Model") {
+                break;
+            }
+            let _ = crate::term::send_keys(h, &["Escape"]);
+            std::thread::sleep(Duration::from_millis(300));
+        }
+        crate::term::snapshot(h, "omp-model-picker");
+        Err((502, why))
+    };
+    let start = path.and_then(|p| std::fs::metadata(p).ok()).map(|m| m.len()).unwrap_or(0);
+    crate::term::send_keys(h, &["M-p"]).map_err(|e| (502, e))?;
+    std::thread::sleep(Duration::from_millis(900));
+    if !screen().contains("Session-only switch") {
+        return fail("omp's session-only model picker (Alt+P) did not open".into());
+    }
+    crate::term::send_text(h, id).map_err(|e| (502, e))?;
+    std::thread::sleep(Duration::from_millis(900));
+    match picker_highlight(&screen()) {
+        Some(sel) if sel == id => {}
+        other => return fail(format!("the picker highlighted {other:?}, not {id}; nothing changed")),
+    }
+    crate::term::send_keys(h, &["Enter"]).map_err(|e| (502, e))?;
+    for _ in 0..12 {
+        std::thread::sleep(Duration::from_millis(400));
+        let appended = path.map(|p| new_lines(p, start)).unwrap_or_default();
+        if omp_model_confirmed(path.is_some_and(|p| p.exists()), &appended, &screen(), id, label) {
+            return Ok(());
+        }
+    }
+    crate::term::snapshot(h, "omp-model-unconfirmed");
+    Err((502, format!("selected {id} in omp's picker but no model change was confirmed; check the terminal")))
+}
+
 /// `POST /api/agents/{name}/model {model?, effort?}`: type the command line(s) and confirm.
 pub fn apply(a: &Agent, model: Option<&str>, effort: Option<&str>) -> Result<Value, (u16, String)> {
     if matches!(a.state.as_str(), "working" | "asking") {
@@ -221,12 +288,30 @@ pub fn apply(a: &Agent, model: Option<&str>, effort: Option<&str>) -> Result<Val
         return Err((409, "the input box holds unsent text; send or clear it first".into()));
     }
     let h = a.handle.clone().ok_or((409, "agent has no terminal".to_string()))?;
+    // the input box read now, not the last poll's draft: typed commands would join unsent text
+    let live = crate::term::screen(&h)
+        .map(|t| ("screen".to_string(), t))
+        .or_else(|_| crate::term::tail(&h))
+        .ok()
+        .and_then(|(src, tail)| crate::threads::composer_text(&a.agent_type, &src, &tail));
+    match live {
+        Some(None) => {}
+        Some(Some(_)) => return Err((409, "the input box holds unsent text; send or clear it first".into())),
+        None => return Err((409, "the input box could not be read; use the terminal".into())),
+    }
     let cur = crate::usage::view(a);
     let lines = command(&a.agent_type, cur["model"].as_str(), model, effort, &models_of(&a.agent_type))?;
     let path = a.session_path.clone();
-    let start = path.as_deref().and_then(|p| std::fs::metadata(p).ok()).map(|m| m.len()).unwrap_or(0);
     let lk = crate::term::send_lock(&h);
     let _g = lk.plock();
+    if let (Some(m), "omp") = (model, a.agent_type.as_str()) {
+        let label = models_of("omp").into_iter().find(|x| x.id == m).map(|x| x.label).unwrap_or_default();
+        omp_switch(&h, path.as_deref(), m, &label)?;
+        if lines.is_empty() {
+            return Ok(json!({"ok": true, "name": a.name, "model": model, "effort": effort, "sent": ["Alt+P"]}));
+        }
+    }
+    let start = path.as_deref().and_then(|p| std::fs::metadata(p).ok()).map(|m| m.len()).unwrap_or(0);
     for l in &lines {
         crate::term::send_line(&h, l).map_err(|e| (502, e))?;
         std::thread::sleep(Duration::from_millis(600));
@@ -236,7 +321,9 @@ pub fn apply(a: &Agent, model: Option<&str>, effort: Option<&str>) -> Result<Val
         let appended = path.as_deref().map(|p| new_lines(p, start)).unwrap_or_default();
         let screen = crate::term::screen(&h).map(|v| v.join("\n")).unwrap_or_default();
         if confirmed(&a.agent_type, path.is_some(), &appended, &screen, model, effort) {
-            return Ok(json!({"ok": true, "name": a.name, "model": model, "effort": effort, "sent": lines}));
+            let mut sent: Vec<String> = if model.is_some() && a.agent_type == "omp" { vec!["Alt+P".into()] } else { vec![] };
+            sent.extend(lines.iter().cloned());
+            return Ok(json!({"ok": true, "name": a.name, "model": model, "effort": effort, "sent": sent}));
         }
     }
     crate::term::snapshot(&h, "model-change-unconfirmed");
@@ -262,7 +349,7 @@ mod tests {
         assert_eq!(command("codex", None, Some("gpt-7"), None, &opts()).unwrap_err().0, 400, "unknown model");
         let omp = vec![ModelOpt { id: "anthropic/claude-haiku-4-5".into(), label: "H".into(), efforts: vec!["low".into(), "medium".into()] }];
         assert_eq!(command("omp", Some("anthropic/claude-haiku-4-5"), None, Some("low"), &omp).unwrap(), vec!["/effort low"]);
-        assert_eq!(command("omp", None, Some("anthropic/claude-haiku-4-5"), None, &omp).unwrap_err().0, 409, "omp model: terminal only");
+        assert!(command("omp", None, Some("anthropic/claude-haiku-4-5"), None, &omp).unwrap().is_empty(), "omp model: the Alt+P picker, no command line");
         assert_eq!(command("antigravity", None, None, Some("low"), &[]).unwrap_err().0, 409);
         let cl = models_of("claude");
         assert_eq!(command("claude", Some("claude-opus-5-5"), Some("sonnet"), Some("high"), &cl).unwrap(), vec!["/model sonnet", "/effort high"]);
@@ -283,6 +370,18 @@ mod tests {
         let sc = "• Model changed to gpt-6-luna high for this session only";
         assert!(confirmed("codex", false, "", sc, Some("gpt-6-luna"), Some("high")));
         assert!(!confirmed("codex", false, "", sc, Some("gpt-6-sol"), None));
+    }
+
+    #[test]
+    fn omp_picker_highlight_and_confirmation() {
+        let screen = "╭─ Switch Model ─\n│  Session-only switch — role models stay unchanged\n│  \u{f002} > anthropic/claude-sonnet-4-5\n│\n│ \u{f054} anthropic/claude-sonnet-4-5          200k \u{e70f}  $3/15\n│   anthropic/claude-sonnet-4-5-20250929\n│ ↑/↓ models · \u{f0311} use for this session";
+        assert_eq!(picker_highlight(screen).as_deref(), Some("anthropic/claude-sonnet-4-5"));
+        assert_eq!(picker_highlight("no picker"), None);
+        let rec = r#"{"type":"model_change","model":"openai-codex/gpt-6-luna"}"#;
+        assert!(omp_model_confirmed(true, rec, "", "openai-codex/gpt-6-luna", "GPT-6 Luna"));
+        assert!(!omp_model_confirmed(true, "", " · Sonnet 4.5 · ", "anthropic/claude-sonnet-4-5", "Claude Sonnet 4.5"), "a written session needs the record");
+        assert!(omp_model_confirmed(false, "", "x\n ⟦⟧ · Sonnet 4.5 · ~/w · 17%", "anthropic/claude-sonnet-4-5", "Claude Sonnet 4.5"));
+        assert!(!omp_model_confirmed(false, "", "x\n · Haiku 4.5 · ", "anthropic/claude-sonnet-4-5", "Claude Sonnet 4.5"));
     }
 
     #[test]
