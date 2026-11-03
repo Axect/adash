@@ -1213,7 +1213,9 @@
   // Working mark (v44): the wordmark's speed lines drifting left. One shared keyframe; paused off-screen,
   // in hidden tabs and with reduced motion (then the lines stand still). Neutral colour only.
   // Both marks share the wordmark's speed lines (same two parallelograms as the logo SVG); state = class.
-  const SL = (cls) => `<span class="sl ${cls}" aria-hidden="true"><svg viewBox="1.5 6.5 20 11.5" width="16" height="9"><polygon points="8,7 21,7 17,11 4,11"/><polygon class="sl2" points="5,14 18,14 15,17.5 2,17.5"/></svg></span>`;
+  // The wordmark's two speed lines (index.html, icons/favicon.svg and docs/media/logo.svg use the same points).
+  const SPEED = { top: "7,7 22,7 18,11 3,11", bot: "6,14 16,14 13,17.5 3,17.5", box: "2.5 6.5 20 11.5" };
+  const SL = (cls) => `<span class="sl ${cls}" aria-hidden="true"><svg viewBox="${SPEED.box}" width="16" height="9"><polygon points="${SPEED.top}"/><polygon class="sl2" points="${SPEED.bot}"/></svg></span>`;
   const WK = SL("wk");
   const WKa = (name) => (markAnim.get(name)?.kind === "lift" ? `<span class="wk-lift${markFx(name, "lift")}">${WK}</span>` : WK);
   // My-turn mark (v45, decision A): the same speed lines, stopped (two bars, turn colour) + how long it has waited.
@@ -1239,7 +1241,7 @@
   const markFx = (name, kind) => { const x = markAnim.get(name); return x && x.kind === kind ? ` ${kind}" style="--fx-d:-${Math.min(700, Date.now() - x.at)}ms` : ""; };
   // My-turn mark (v45 rev): two longer logo lines (top 28px, bottom 20px, right-aligned, turn colour) at the right end
   // of the name column, the wait time to their left. Never covers the name: the name column ellipsizes first.
-  const TKSVG = (cls) => `<svg class="tk-sl${cls}" viewBox="0 0 32 11" width="32" height="11" aria-hidden="true"><polygon points="7,0 31,0 27,4 3,4"/><polygon class="sl2" points="11,7.5 28,7.5 25,11 8,11"/></svg>`;
+  const TKSVG = (cls) => `<svg class="tk-sl${cls}" viewBox="${SPEED.box}" width="28" height="16" aria-hidden="true"><polygon points="${SPEED.top}"/><polygon class="sl2" points="${SPEED.bot}"/></svg>`;
   // The landing starts where the working mark was (just after the name) and the lift where the my-turn mark was
   // (right end): measure once per render and hand the distance to CSS as --from-x.
   // The wait time sits in a fixed-width slot at the right end (width of the longest string fmtWait can produce in
