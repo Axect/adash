@@ -1042,26 +1042,27 @@ body.mobile .model-btn { min-height: 36px; }
 .wk { margin-left: 5px; color: var(--muted); contain: layout paint; }
 .wk polygon { will-change: transform, opacity; animation: wk-flow 1.2s linear infinite; }
 .wk .sl2 { animation-delay: -0.6s; }
-@keyframes wk-flow { 0% { transform: translateX(60%); opacity: 0; } 25% { opacity: .9; } 70% { opacity: .9; } 100% { transform: translateX(-70%); opacity: 0; } }
+@keyframes wk-flow { 0% { transform: translateX(-70%); opacity: 0; } 25% { opacity: .9; } 70% { opacity: .9; } 100% { transform: translateX(60%); opacity: 0; } }
 .wk.off polygon, body.anim-off .wk polygon { animation: none; }
 @media (prefers-reduced-motion: reduce) { .wk polygon { animation: none; } }
-.tk { display: inline-flex; align-items: center; gap: 4px; flex: none; margin-left: 5px; color: var(--signal-turn-text); font: 600 var(--fs-xs)/1 var(--font-ui, inherit); white-space: nowrap; }
-.tk-sl { color: var(--signal-turn); }
-.ov-title .wk, .ov-title .tk { margin-left: 6px; } .mc-head .wk, .mc-head .tk { margin: 0 2px 0 -2px; align-self: center; }
-/* v45 working → my turn landing (once, ≈450 ms): the streaming lines settle, stretch to the logo's long pair with a
-   small overshoot (scaleX 1.08 → 1) and cross-fade from neutral to the turn colour; then the wait time fades in.
-   transform/opacity only; --fx-d keeps a re-render mid-way from restarting it. */
-.tk-slw { position: relative; display: inline-flex; flex: none; }
-.tk-sl-n { position: absolute; inset: 0; color: var(--muted); opacity: 0; }
-.tk.land .tk-slw .sl svg { transform-origin: 20% 50%; animation: tk-land 450ms cubic-bezier(.2, .7, .3, 1) var(--fx-d, 0ms) both; }
-.tk.land .tk-sl { animation: tk-in 450ms ease-out var(--fx-d, 0ms) both; }
-.tk.land .tk-sl-n { animation: tk-out 450ms ease-out var(--fx-d, 0ms) both; }
-.tk.land .tk-t { animation: tk-in 220ms ease-out calc(var(--fx-d, 0ms) + 330ms) both; }
-@keyframes tk-land { 0% { transform: translateX(-3px) scaleX(.5); } 70% { transform: translateX(0) scaleX(1.08); } 100% { transform: none; } }
+.ov-title .wk, .ov-title .tk { margin-left: 8px; } .mc-head .wk, .mc-head .tk { margin: 0 2px 0 -2px; align-self: center; }
+/* v45 rev: my-turn mark at the right end of the name column: wait time + two longer logo lines (28/20 px). */
+.tk { display: inline-flex; align-items: center; gap: 6px; flex: none; margin-left: 8px; color: var(--signal-turn-text); font: 600 var(--fs-xs)/1 var(--font-ui, inherit); white-space: nowrap; }
+.tk-slw { position: relative; display: inline-flex; flex: none; width: 32px; height: 11px; }
+.tk-slw svg { display: block; overflow: visible; color: var(--signal-turn); }
+.tk-slw polygon { fill: currentColor; } .tk-slw .sl2 { fill-opacity: .55; }
+.tk-slw .tk-sl-n { position: absolute; inset: 0; color: var(--muted); opacity: 0; }
+/* Landing (once, ≈600 ms): the lines run right from the name (--from-x, measured) to the right end, slow down,
+   stretch to the long pair with a small overshoot and cross-fade neutral → turn colour; then the wait time fades in. */
+.tk.land .tk-slw { transform-origin: 100% 50%; animation: tk-run 600ms cubic-bezier(.15, .75, .3, 1) var(--fx-d, 0ms) both; }
+.tk.land .tk-slw > svg:first-child { animation: tk-in 600ms ease-out var(--fx-d, 0ms) both; }
+.tk.land .tk-sl-n { animation: tk-out 600ms ease-out var(--fx-d, 0ms) both; }
+.tk.land .tk-t { animation: tk-in 220ms ease-out calc(var(--fx-d, 0ms) + 480ms) both; }
+@keyframes tk-run { 0% { transform: translateX(var(--from-x, 0px)) scaleX(.5); } 72% { transform: translateX(0) scaleX(1.08); } 100% { transform: none; } }
 @keyframes tk-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes tk-out { 0% { opacity: 1; } 60% { opacity: .6; } 100% { opacity: 0; } }
-/* my turn → working (after I send): the still pair shrinks a little and starts streaming. */
-.wk-lift { display: inline-flex; } .wk-lift .wk { animation: wk-lift 300ms ease-in var(--fx-d, 0ms) both; }
-@keyframes wk-lift { from { transform: scaleX(1.15); opacity: .4; } to { transform: none; opacity: 1; } }
-@media (prefers-reduced-motion: reduce) { .tk.land .tk-slw .sl svg, .tk.land .tk-sl, .tk.land .tk-sl-n, .tk.land .tk-t, .wk-lift .wk { animation: none; } .tk.land .tk-sl-n { opacity: 0; } }
-body.anim-off .tk.land *, body.anim-off .wk-lift .wk { animation: none !important; }
+@keyframes tk-out { 0% { opacity: 1; } 55% { opacity: .7; } 100% { opacity: 0; } }
+/* Lift (my turn → working, after I send): the long pair shrinks back from the right end to the name and streams again. */
+.wk-lift { display: inline-flex; } .wk-lift .wk { transform-origin: 0 50%; animation: wk-lift 380ms cubic-bezier(.3, .6, .4, 1) var(--fx-d, 0ms) both; }
+@keyframes wk-lift { from { transform: translateX(var(--from-x, 0px)) scaleX(2); opacity: .5; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .tk.land .tk-slw, .tk.land .tk-slw > svg, .tk.land .tk-t, .wk-lift .wk { animation: none; } .tk.land .tk-sl-n { display: none; } }
+body.anim-off .tk.land *, body.anim-off .tk.land, body.anim-off .wk-lift .wk { animation: none !important; } body.anim-off .tk-sl-n { display: none; }

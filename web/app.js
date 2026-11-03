@@ -1236,7 +1236,26 @@
   }
   // Class + negative delay so a re-render during the 450 ms continues the same animation instead of restarting it.
   const markFx = (name, kind) => { const x = markAnim.get(name); return x && x.kind === kind ? ` ${kind}" style="--fx-d:-${Math.min(700, Date.now() - x.at)}ms` : ""; };
-  const TK = (a) => `<span class="tk${markFx(a.name, "land")}" title="${esc(L2(`내 차례 · ${fmtWait(a.waitedMin)} 기다림`, `Your turn · waiting ${fmtWait(a.waitedMin)}`))}"><span class="tk-slw">${SL("tk-sl")}${markAnim.get(a.name)?.kind === "land" ? SL("tk-sl-n") : ""}</span><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span></span>`;
+  // My-turn mark (v45 rev): two longer logo lines (top 28px, bottom 20px, right-aligned, turn colour) at the right end
+  // of the name column, the wait time to their left. Never covers the name: the name column ellipsizes first.
+  const TKSVG = (cls) => `<svg class="tk-sl${cls}" viewBox="0 0 32 11" width="32" height="11" aria-hidden="true"><polygon points="7,0 31,0 27,4 3,4"/><polygon class="sl2" points="11,7.5 28,7.5 25,11 8,11"/></svg>`;
+  // The landing starts where the working mark was (just after the name) and the lift where the my-turn mark was
+  // (right end): measure once per render and hand the distance to CSS as --from-x.
+  function placeMarkFx(root) {
+    if (!root || !markAnim.size) return;
+    for (const el of root.querySelectorAll(".tk.land")) {
+      const row = el.closest(".lrow, .mc-head, .ov-title"), nm = row?.querySelector(".nm, b, span"), svg = el.querySelector(".tk-slw");
+      if (!nm || !svg) continue;
+      const dx = Math.min(0, nm.getBoundingClientRect().right + 5 - svg.getBoundingClientRect().left);
+      el.style.setProperty("--from-x", `${Math.round(dx)}px`);
+    }
+    for (const el of root.querySelectorAll(".wk-lift")) {
+      const row = el.closest(".lrow"); if (!row) continue;
+      const dx = Math.max(0, row.getBoundingClientRect().right - 40 - el.getBoundingClientRect().left);
+      el.style.setProperty("--from-x", `${Math.round(dx)}px`);
+    }
+  }
+  const TK = (a) => `<span class="tk${markFx(a.name, "land")}" title="${esc(L2(`내 차례 · ${fmtWait(a.waitedMin)} 기다림`, `Your turn · waiting ${fmtWait(a.waitedMin)}`))}"><span class="tk-t">${esc(fmtWait(a.waitedMin))}</span><span class="tk-slw">${TKSVG("")}${markAnim.get(a.name)?.kind === "land" ? TKSVG(" tk-sl-n") : ""}</span></span>`;
   function harnessBadge(s, live = true) {
     if (!s) return `<span class="hb h-none" title="종료됨"><i class="hg"></i><span class="hn">·</span></span>`;
     const t = String(s.agentType || "").toLowerCase(), mono = HARNESS[t] || (t.slice(0, 3) || "?"), cls = HARNESS[t] ? mono : "other";
@@ -1482,7 +1501,7 @@
       // Left micro urgency tag (direction 1): what the row needs from me, readable without the legend.
       const utag = a.kind === "asking" ? `<span class="utag ask">ASK</span>` : a.kind === "error" ? `<span class="utag err">ERR${s?.lastError?.status ? ` ${esc(s.lastError.status)}` : ""}</span>` : isMyTurn(a) ? TK(a) : "";
       L.push(`<div class="${cls}${bulk.has(a.name) ? " picked" : ""}" data-agent="${esc(a.name)}"><input type="checkbox" class="pick" tabindex="-1" ${bulk.has(a.name) ? "checked" : ""} title="여러 개 선택 (Ctrl/Shift+클릭)">${harnessBadge(s, a.live)}${a.live ? netIcon(s) : ""}
-        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : utag}</span>${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
+        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : ""}</span>${a.kind === "working" ? "" : utag}${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
       // Status column (v15.1): one line = [unread dot][icon chips][time][countdown][progress]. Secondary marks are
       // small same-color icon chips; if the line still overflows, fitInfoRows() folds the lowest-priority items
       // (질문 > 오류 > 결정 > 보류 > 초안 > magi > 시간) into a "+k" chip whose tooltip lists everything.
@@ -1524,6 +1543,7 @@
       R.push(`<div class="${cls}" data-agent="${esc(a.name)}">${a.kind === "error" ? `${chips.join("")}${st}` : `${st}${chips.join("")}`}<span class="spacer"></span><span class="ic c-more" hidden></span>${cd}${prog}</div>`);
     }
     H("#lane-labels").innerHTML = L.join("");
+    placeMarkFx($("#lane-labels"));
     renderBoardEmpty();
     H("#lane-info").innerHTML = R.join("");
     renderHiddenProj();
