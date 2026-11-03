@@ -1406,7 +1406,7 @@
         // Gray: what it would be (질문 / 오류 / 미확인) + until when, and an unsnooze button. No colour, no weight.
         const until = new Date(a.snoozedUntil).toLocaleTimeString(window.ADASH_LANG === "en" ? "en-GB" : "ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
         const what = { asking: L2("질문", "Question"), error: s?.lastError ? errLabel(s.lastError) : L2("오류", "Error"), unread: L2("미확인", "Unread") }[a.held] || "";
-        st = `<span class="st-txt snz" data-p="0" data-tip="${esc(L2(`${until}까지 미룸 · 강조 끔`, `Snoozed until ${until} · highlights off`))}"><span class="st-c">${what ? `${esc(what)} · ` : ""}${esc(L2(`미룸 ~${until}`, `Snoozed ~${until}`))}</span></span><button type="button" class="unsnz-btn" data-p="1" data-unsnooze="${esc(a.name)}">${esc(L2("해제", "Unsnooze"))}</button>`;
+        st = `<span class="st-txt snz" data-p="0" data-tip="${esc(L2(`${until}까지 미룸 · 강조 끔`, `Snoozed until ${until} · highlights off`))}"><span class="st-c">${what ? `${esc(what)} · ` : ""}${esc(L2(`미룸 ~${until}`, `Snoozed ~${until}`))}</span></span><button type="button" class="unsnz-btn" data-p="0" data-unsnooze="${esc(a.name)}">${esc(L2("해제", "Unsnooze"))}</button>`;
       }
       else if (a.kind === "working") st = `<span class="st-txt work" data-p="0" data-tip="${esc(`작업 중${s?.tool ? ` · ${s.tool}` : ""}`)}"><span class="st-c">작업 중</span>${s?.tool ? `<span class="st-a"> · <code>${esc(s.tool)}</code></span>` : ""}</span>`;
       else { const t = a.lastHumanAt ? ago(a.lastHumanAt) : SEG_KO[a.kind] || a.kind; st = `<span class="st-txt idle" data-p="0" data-tip="${esc(a.lastHumanAt ? `내 마지막 메시지 ${t}` : t)}"><span class="st-a">${esc(t)}</span></span>`; }
