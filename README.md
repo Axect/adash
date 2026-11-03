@@ -1,9 +1,16 @@
-# adash
+<h1 align="center">
+  <img src="docs/media/logo.svg" alt="adash" width="240">
+</h1>
 
-[![CI](https://github.com/Axect/adash/actions/workflows/ci.yml/badge.svg)](https://github.com/Axect/adash/actions/workflows/ci.yml)
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+<p align="center">
+  <strong>A local dashboard for running many coding agents (omp, Claude Code, Codex, Antigravity) in tmux: see which agent is waiting on you.</strong>
+</p>
 
-**A local dashboard for running many coding agents (omp, Claude Code, Codex, Antigravity) in tmux: see which agent is waiting on you.**
+<p align="center">
+  <a href="https://github.com/Axect/adash/actions/workflows/ci.yml"><img src="https://github.com/Axect/adash/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://crates.io/crates/adash"><img src="https://img.shields.io/crates/v/adash.svg" alt="crates.io"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
+</p>
 
 ![adash demo](docs/media/demo.gif)
 
