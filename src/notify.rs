@@ -203,6 +203,6 @@ mod tests {
 
     #[test]
     fn chat_url_opens_the_agent() {
-        assert!(chat_url("HD-SciML Argon").ends_with("/?agent=HD-SciML%20Argon"));
+        assert!(chat_url("PLANNER · grant").ends_with("/?agent=PLANNER%20%C2%B7%20grant"));
     }
 }
