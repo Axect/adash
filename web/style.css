@@ -1029,3 +1029,4 @@ body.mobile #usage-m[open] { max-height: 62vh; overflow-y: auto; overscroll-beha
 .mp-foot { display: flex; align-items: center; gap: 8px; }
 body.mobile .model-btn { min-height: 36px; }
 .mp-eff .seg button.cur { text-decoration: underline; text-underline-offset: 3px; }
+.mp-warn { margin: 0; color: var(--fg); padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--info-warn) 50%, var(--border)); border-radius: 6px; background: color-mix(in srgb, var(--info-warn) 8%, transparent); }

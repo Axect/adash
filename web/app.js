@@ -257,18 +257,30 @@
     if (/^\/api\/agents\/[^/]+\/open$/.test(path)) return { ok: true, app: /\.md$/i.test(body.path) ? "markdown-editor" : "xdg-open" };
     m = path.match(/^\/api\/agents\/([^/]+)\/models$/);
     if (m && method === "GET") {
+      // Mirrors the server: omp switches effort only (its /model picker rewrites the configured roles), Claude Code
+      // both (and the choice becomes its default), Codex both (session only), Antigravity neither.
       const a = fixtureData.agents.find((x) => x.name === decodeURIComponent(m[1]));
-      const agy = /antigravity|agy/.test(a?.agentType || "");
-      return { harness: a?.agentType || "omp", current: { model: a?.usage?.model || a?.model || null, effort: a?.usage?.thinking || null },
-        models: [["claude-opus-5-5", "Claude Opus 5.5", "anthropic"], ["claude-sonnet-5", "Claude Sonnet 5", "anthropic"], ["claude-haiku-4-5", "Claude Haiku 4.5", "anthropic"], ["gpt-5.2-codex", "GPT-5.2 Codex", "openai"], ["gemini-3-pro", "Gemini 3 Pro", "google"], ["glm-5", "GLM-5", "zai"]].map(([id, label, provider]) => ({ id, label, provider })),
-        efforts: agy ? [] : ["minimal", "low", "medium", "high", "xhigh"], canSetModel: !agy, canSetEffort: !agy, how: agy ? "Antigravity picks the model in its own window: open the terminal and use the model menu." : null };
+      const h = /antigravity|agy/.test(a?.agentType || "") ? "agy" : /claude/.test(a?.agentType || "") ? "claude" : /codex/.test(a?.agentType || "") ? "codex" : "omp";
+      const E = ["low", "medium", "high"], EX = ["minimal", "low", "medium", "high", "xhigh"];
+      const models = h === "claude" ? [["opus", "Opus (claude-opus-5-5)", E.concat("max")], ["sonnet", "Sonnet (claude-sonnet-5)", E], ["haiku", "Haiku (claude-haiku-4-5)", []], ["fable", "Fable", E]]
+        : h === "codex" ? [["gpt-5.2-codex", "GPT-5.2 Codex", EX], ["gpt-5.2", "GPT-5.2", EX], ["gpt-5.1-codex-mini", "GPT-5.1 Codex mini", ["medium", "high"]]]
+        : h === "omp" ? [["anthropic/claude-opus-5-5", "Claude Opus 5.5", EX], ["anthropic/claude-sonnet-5", "Claude Sonnet 5", EX], ["openai/gpt-5.2-codex", "GPT-5.2 Codex", EX]] : [];
+      const curModel = h === "claude" ? "opus" : h === "codex" ? "gpt-5.2-codex" : h === "omp" ? "anthropic/" + (a?.usage?.model || a?.model || "claude-opus-5-5") : null;
+      const cur = models.find((x) => x[0] === curModel);
+      return { harness: a?.agentType || "omp", current: { model: curModel, effort: a?.usage?.thinking || (cur?.[2].length ? "medium" : null) }, models: models.map(([id, label, efforts]) => ({ id, label, efforts })), efforts: cur?.[2] || [],
+        canSetModel: h === "claude" || h === "codex", canSetEffort: h !== "agy", persistsDefault: h === "claude",
+        how: h === "omp" ? "omp: switch models with /model in the terminal (it changes the configured roles)." : h === "agy" ? "Antigravity: pick the model in its own window (terminal → model menu)." : null };
     }
     m = path.match(/^\/api\/agents\/([^/]+)\/model$/);
     if (m && method === "POST") {
       const a = fixtureData.agents.find((x) => x.name === decodeURIComponent(m[1]));
-      if (new URLSearchParams(location.search).get("modelerr")) { const e = new Error("model switch failed: harness did not acknowledge /model"); e.status = 502; throw e; }
-      setTimeout(() => { if (!a) return; if (body.model) { a.model = body.model; if (a.usage) a.usage.model = body.model; } if (body.effort) { a.usage = a.usage || {}; a.usage.thinking = body.effort; } refresh(); }, 900);
-      return { ok: true, pending: true };
+      const fail = new URLSearchParams(location.search).get("modelerr");
+      return new Promise((res, rej) => setTimeout(() => {
+        if (fail || (a && a.state === "working")) { const e = new Error(fail ? "the harness did not confirm the switch" : "working: wait until it finishes"); e.status = fail ? 502 : 409; return rej(e); }
+        if (a && body.model) { const id = String(body.model).split("/").pop(); a.model = id; if (a.usage) a.usage.model = id; }
+        if (a && body.effort) { a.usage = a.usage || {}; a.usage.thinking = body.effort; }
+        res({ ok: true, sent: body });
+      }, 900));
     }
     m = path.match(/^\/api\/agents\/([^/]+)\/snooze$/);
     if (m && method === "POST") {
@@ -3154,14 +3166,15 @@
   const leftTo = (t) => { const m = (t - nowTick()) / 60000; return m <= 0 ? "곧 초기화" : `초기화까지 ${fmtMin(m) || "1분 미만"}`; };
   function usageHtml(a, compact = false) {
     const u = a.usage;
-    if (!u && !cacheExp(a)) return "";
+    // Phone: the sheet also carries the model line (the info list is not shown there), so it exists whenever a model is known.
+    if (!u && !cacheExp(a) && !(compact && (a.model || a.agentType))) return "";
     const c = u?.context, ss = u?.session, ac = u?.account;
     const parts = [];
     if (c && (c.used != null || c.pct != null)) {
       const pct = c.pct ?? (c.limit ? (100 * c.used) / c.limit : null);
       parts.push(`<div class="u-row"><span class="u-k">컨텍스트</span>${pct != null ? ubar(pct) : ""}<span class="u-v${pct >= 90 ? " hi" : pct >= 70 ? " mid" : ""}">${pct != null ? `<b class="u-num">${pct.toFixed(1)}%</b>` : ""}${c.used != null ? ` · ${fmtTok(c.used)}${c.limit ? ` / ${fmtTok(c.limit)}` : ""}` : ""}</span></div>${c.compactions ? `<div class="u-sub muted small">${t_(`컴팩션 ${c.compactions}회`)}${c.lastCompactionAt ? ` · 마지막 ${ago(c.lastCompactionAt)}` : ""}</div>` : ""}`);
     }
-if (compact && (u?.model || u?.thinking || a.model)) parts.push(`<div class="u-row"><span class="u-k">모델</span><span class="u-v"><button type="button" class="model-btn" data-model-pick="${esc(a.name)}">${esc(u?.model || a.model || "")}${u?.thinking ? ` · thinking ${esc(u.thinking)}` : ""} <span class="muted">▾</span></button></span></div>`);
+if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모델</span><span class="u-v"><button type="button" class="model-btn" data-model-pick="${esc(a.name)}">${esc(u?.model || a.model || L2("알 수 없음", "unknown"))}${u?.thinking ? ` · thinking ${esc(u.thinking)}` : ""} <span class="muted">▾</span></button></span></div>`);
     if (ss) {
       const tok = [["입력 토큰", ss.input], ["출력 토큰", ss.output], ["캐시 읽기", ss.cacheRead], ["캐시 쓰기", ss.cacheWrite]].filter(([, v]) => v != null);
       parts.push(`<div class="u-row"><span class="u-k">이 세션</span><span class="u-v">${[ss.turns != null ? `턴 ${ss.turns}` : "", ss.cost != null ? `<b class="u-num">${fmtCost(ss.cost)}</b>` : "", ss.startedAt ? `${fmtMin((nowTick() - ss.startedAt) / 60000) || "1분 미만"} 경과` : ""].filter(Boolean).join(" · ")}</span></div>${tok.length ? `<div class="u-sub u-tok">${tok.map(([k, v]) => `<span><span class="muted">${k}</span> ${fmtTok(v)}</span>`).join("")}</div>` : ""}`);
@@ -3350,6 +3363,8 @@ if (compact && (u?.model || u?.thinking || a.model)) parts.push(`<div class="u-r
     mp.model = mp.data?.current?.model || null; mp.effort = mp.data?.current?.effort || null;
     renderModelPop();
   }
+  // Effort steps follow the model: models[].efforts of the picked model (falls back to the top-level list).
+  const mpEfforts = () => { const d = mp.data; const m = (d?.models || []).find((x) => x.id === mp.model); return m && Array.isArray(m.efforts) ? m.efforts : d?.efforts || []; };
   function renderModelPop(keepFocus) {
     const el = $("#model-pop"); if (!el || el.hidden) return;
     const a = agentBy(mp.name), d = mp.data;
@@ -3357,37 +3372,38 @@ if (compact && (u?.model || u?.thinking || a.model)) parts.push(`<div class="u-r
     if (!d) { el.innerHTML = head + `<p class="muted small">${esc(mp.err ? L2(`불러오지 못함: ${mp.err}`, `Could not load: ${mp.err}`) : L2("불러오는 중…", "Loading…"))}</p>`; return; }
     const working = a && (a.state === "working" || kindOf(a) === "working");
     const cur = d.current || {}, q = mp.q.trim().toLowerCase();
-    const list = (d.models || []).filter((m) => !q || `${m.id} ${m.label || ""} ${m.provider || ""}`.toLowerCase().includes(q));
-    const canM = d.canSetModel !== false, canE = d.canSetEffort !== false && (d.efforts || []).length > 0;
+    const list = (d.models || []).filter((m) => !q || `${m.id} ${m.label || ""}`.toLowerCase().includes(q));
+    const canM = d.canSetModel !== false, effs = mpEfforts(), canE = d.canSetEffort !== false && effs.length > 0;
+    if (mp.effort && !effs.includes(mp.effort)) mp.effort = effs.includes(cur.effort) ? cur.effort : null;
     const changed = (mp.model && mp.model !== cur.model) || (mp.effort && mp.effort !== cur.effort);
-    const why = !canM && !canE ? (d.how || L2("이 하네스는 여기서 모델을 바꿀 수 없습니다", "This harness can't switch models from here"))
+    const off = (!canM && !canE) || working;
+    const why = !canM && d.canSetEffort === false ? d.how || L2("이 하네스는 여기서 모델을 바꿀 수 없습니다", "This harness can't switch models from here")
       : working ? L2("작업 중에는 바꿀 수 없습니다. 작업이 끝난 뒤 다시 여세요", "Can't switch while it is working. Open this again when it finishes") : "";
     el.innerHTML = head + `
-      <input id="mp-q" type="search" placeholder="${esc(L2("모델 찾기", "Find a model"))}" value="${esc(mp.q)}" autocomplete="off"${canM ? "" : " disabled"}>
-      <div class="mp-list" role="listbox">${list.map((m) => `<button type="button" role="option" class="mp-m${m.id === mp.model ? " on" : ""}" data-mp-model="${esc(m.id)}" aria-selected="${m.id === mp.model}"${canM && !working ? "" : " disabled"}><span class="mp-id">${esc(m.label || m.id)}</span><span class="muted small">${esc([m.label && m.label !== m.id ? m.id : "", m.provider || ""].filter(Boolean).join(" · "))}</span>${m.id === cur.model ? `<span class="mp-cur">${esc(L2("현재", "current"))}</span>` : ""}</button>`).join("") || `<p class="muted small">${esc(L2("일치하는 모델 없음", "No matching model"))}</p>`}</div>
-      ${canE ? `<div class="mp-eff"><span class="muted small">effort</span><div class="seg">${d.efforts.map((x) => `<button type="button" data-mp-effort="${esc(x)}" class="${x === mp.effort ? "on" : ""}${x === cur.effort ? " cur" : ""}"${x === cur.effort ? ` title="${esc(L2("현재", "current"))}"` : ""}${working ? " disabled" : ""}>${esc(x)}</button>`).join("")}</div></div>` : !canM ? "" : `<p class="muted small">${esc(d.how || L2("이 하네스는 effort 를 바꿀 수 없습니다", "This harness can't change effort"))}</p>`}
+      ${(d.models || []).length ? `<input id="mp-q" type="search" placeholder="${esc(L2("모델 찾기", "Find a model"))}" value="${esc(mp.q)}" autocomplete="off"${canM && !working ? "" : " disabled"}>
+      <div class="mp-list" role="listbox">${list.map((m) => `<button type="button" role="option" class="mp-m${m.id === mp.model ? " on" : ""}" data-mp-model="${esc(m.id)}" aria-selected="${m.id === mp.model}"${canM && !working ? "" : " disabled"}><span class="mp-id">${esc(m.label || m.id)}</span><span class="muted small">${esc(m.label && m.label !== m.id ? m.id : "")}</span>${m.id === cur.model ? `<span class="mp-cur">${esc(L2("현재", "current"))}</span>` : ""}</button>`).join("") || `<p class="muted small">${esc(L2("일치하는 모델 없음", "No matching model"))}</p>`}</div>` : ""}
+      ${!canM && d.how && d.canSetEffort !== false ? `<p class="mp-why small">${esc(d.how)}</p>` : ""}
+      ${canE ? `<div class="mp-eff"><span class="muted small">effort</span><div class="seg">${effs.map((x) => `<button type="button" data-mp-effort="${esc(x)}" class="${x === mp.effort ? "on" : ""}${x === cur.effort ? " cur" : ""}"${x === cur.effort ? ` title="${esc(L2("현재", "current"))}"` : ""}${working ? " disabled" : ""}>${esc(x)}</button>`).join("")}</div></div>`
+        : d.canSetEffort !== false && mp.model ? `<p class="muted small">${esc(L2("이 모델은 effort 단계가 없습니다", "This model has no effort levels"))}</p>` : ""}
+      ${d.persistsDefault && changed && !off ? `<p class="mp-warn small">${esc(L2("이 선택은 Claude Code 의 새 세션 기본값으로도 저장됩니다", "This choice is also saved as Claude Code's default for new sessions"))}</p>` : ""}
       ${why ? `<p class="mp-why small">${esc(why)}</p>` : ""}
-      ${mp.err && d ? `<p class="mp-err small">${esc(mp.err)}</p>` : ""}
-      <div class="mp-foot"><span class="muted small">${mp.busy ? esc(L2("적용 중… 반영을 기다리는 중", "Applying… waiting for it to take effect")) : ""}</span><span class="spacer"></span><button type="button" id="mp-apply" class="primary"${!changed || why || mp.busy ? " disabled" : ""}>${esc(mp.busy ? L2("적용 중…", "Applying…") : L2("적용", "Apply"))}</button></div>`;
-    if (keepFocus) { const i = el.querySelector("#mp-q"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
+      ${mp.err ? `<p class="mp-err small">${esc(mp.err)}</p>` : ""}
+      <div class="mp-foot"><span class="muted small">${mp.busy ? esc(L2("적용 중… 하네스 확인을 기다리는 중", "Applying… waiting for the harness to confirm")) : ""}</span><span class="spacer"></span><button type="button" id="mp-apply" class="primary"${!changed || off || mp.busy ? " disabled" : ""}>${esc(mp.busy ? L2("적용 중…", "Applying…") : L2("적용", "Apply"))}</button></div>`;
+    if (keepFocus && el.querySelector("#mp-q")) { const i = el.querySelector("#mp-q"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   }
   async function applyModel() {
     const name = mp.name, d = mp.data, cur = d?.current || {};
     const body = {}; if (mp.model && mp.model !== cur.model) body.model = mp.model; if (mp.effort && mp.effort !== cur.effort) body.effort = mp.effort;
     if (!Object.keys(body).length) return;
     mp.busy = true; mp.err = ""; renderModelPop();
+    // The server waits for the harness to confirm (session record or screen line): 200 = switched.
+    // 409 working/asking/draft/unsupported · 400 not in the list · 502 not confirmed → its {error} text.
     try { await api("POST", `/api/agents/${enc(name)}/model`, body, { quiet: true }); }
-    catch (e) { mp.busy = false; mp.err = e.message; renderModelPop(); toast(`${name}: ${e.message}`, 5000); return; }
-    // Confirmed when /api/state reports the new values (poll up to ~20 s).
-    const ok = (s) => s && (!body.model || (s.usage?.model || s.model) === body.model) && (!body.effort || s.usage?.thinking === body.effort);
-    for (let i = 0; i < 20 && mp.name === name; i++) {
-      await new Promise((r) => setTimeout(r, 1000)); await refresh();
-      if (ok(agentBy(name))) {
-        toast(L2(`${name} · ${[body.model, body.effort && `effort ${body.effort}`].filter(Boolean).join(" · ")} 로 바뀜`, `${name} switched to ${[body.model, body.effort && `effort ${body.effort}`].filter(Boolean).join(" · ")}`), 3000);
-        closeModelPop(); render(); return;
-      }
-    }
-    if (mp.name === name) { mp.busy = false; mp.err = L2("요청은 보냈지만 아직 바뀐 값이 보이지 않습니다", "Sent, but the new value has not shown up yet"); renderModelPop(); }
+    catch (e) { if (mp.name !== name) return; mp.busy = false; mp.err = e.message; renderModelPop(); toast(`${name}: ${e.message}`, 5000); return; }
+    const label = (d.models || []).find((m) => m.id === body.model)?.label || body.model;
+    toast(L2(`${name} · ${[label, body.effort && `effort ${body.effort}`].filter(Boolean).join(" · ")} 로 바뀜`, `${name} switched to ${[label, body.effort && `effort ${body.effort}`].filter(Boolean).join(" · ")}`), 3000);
+    if (mp.name === name) closeModelPop();
+    await refresh(); render();
   }
   function renderInfo() {
     const a = ov.name && agentBy(ov.name);
