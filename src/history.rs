@@ -49,6 +49,8 @@ pub fn norm_state(a: &Agent) -> &'static str {
 #[derive(Default)]
 struct Recon {
     offset: u64,
+    /// agy: highest step idx already fed (steps before it re-read only for their status)
+    seen: u64,
     len: u64,
     /// (ts, state) transitions, ascending
     trans: Vec<(i64, &'static str)>,
@@ -170,9 +172,12 @@ impl Recon {
         if kind == "antigravity" {
             // conversation db: step idx in `offset`
             if let Ok(steps) = crate::agy::read_steps(p, self.offset as i64) {
+                self.offset = crate::agy::resume_after(self.offset as i64, &steps).max(0) as u64;
                 for s in steps {
-                    self.offset = self.offset.max(s.idx as u64);
-                    if s.ts <= 0 {
+                    // a step re-read because it was still running: only its activity is new
+                    let again = (s.idx as u64) <= self.seen;
+                    self.seen = self.seen.max(s.idx as u64);
+                    if s.ts <= 0 || (again && s.kind == crate::agy::USER) {
                         continue;
                     }
                     if s.kind == crate::agy::USER {

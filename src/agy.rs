@@ -196,6 +196,18 @@ pub fn decode_step(idx: i64, kind: i64, status: i64, meta: &[u8], payload: &[u8]
 }
 
 /// (agent mid-turn, since): working unless the last step is a finished model turn.
+/// Where to read from next time: agy writes a model or tool step while it runs and later
+/// updates the same row to FINISHED, so the first unfinished step (and everything after it)
+/// is read again until it finishes. A step left unfinished far behind the end (abandoned) stops
+/// holding the window open after 200 steps.
+pub fn resume_after(prev: i64, steps: &[Step]) -> i64 {
+    let last = steps.iter().map(|s| s.idx).max().unwrap_or(prev).max(prev);
+    match steps.iter().find(|s| matches!(s.kind, MODEL | TOOL) && s.status != FINISHED) {
+        Some(s) if last - s.idx < 200 => s.idx - 1,
+        _ => last,
+    }
+}
+
 pub fn phase(steps: &[Step]) -> Option<(bool, i64)> {
     let last = steps.last()?;
     let done = last.kind == MODEL && last.status == FINISHED;

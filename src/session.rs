@@ -105,6 +105,9 @@ pub fn arg_value(args: &[String], flag: &str) -> Option<String> {
 #[derive(Default)]
 struct FileCache {
     offset: u64,
+    /// agy: highest step idx seen (`offset` is where the next read starts; it can stay behind
+    /// this while a step is still running)
+    seen: u64,
     len: u64,
     model: Option<String>,
     progress: Option<Progress>,
@@ -523,13 +526,15 @@ impl SessionCache {
         if let Ok(steps) = crate::agy::read_steps(db, fc.offset as i64) {
             for s in &steps {
                 if s.kind == crate::agy::USER && !s.text.as_deref().unwrap_or("").trim_start().starts_with("[adash ") {
-                    fc.turn.last_human = Some(s.ts);
+                    fc.turn.last_human = Some(fc.turn.last_human.map_or(s.ts, |h| h.max(s.ts)));
                 }
                 if s.kind == crate::agy::MODEL && s.status == crate::agy::FINISHED {
-                    fc.turn.last_answer = Some(s.ts);
+                    fc.turn.last_answer = Some(fc.turn.last_answer.map_or(s.ts, |h| h.max(s.ts)));
                 }
-                fc.offset = fc.offset.max(s.idx as u64);
+                fc.seen = fc.seen.max(s.idx as u64);
             }
+            // steps still running are read again next time (agy updates them in place)
+            fc.offset = crate::agy::resume_after(fc.offset as i64, &steps).max(0) as u64;
             if let Some(p) = crate::agy::phase(&steps) {
                 // keep the phase start while it doesn't change
                 if fc.turn.phase.is_none_or(|(o, _)| o != p.0) {
@@ -814,6 +819,37 @@ pub(crate) fn codex_file(p: &Proc) -> Option<(PathBuf, bool)> {
 
 #[cfg(test)]
 mod tests {
+    /// agy writes a model step while it runs and updates the same row to FINISHED later; the
+    /// agent must turn from working to done when that update lands (2026-11-04: Argon agents
+    /// stuck "working" after finishing).
+    #[test]
+    fn agy_step_finished_in_place_ends_the_turn() {
+        let dir = std::env::temp_dir().join(format!("adash-agy-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("c.db");
+        let c = rusqlite::Connection::open(&db).unwrap();
+        c.execute_batch(
+            "CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
+             INSERT INTO steps VALUES (1, 14, 3, NULL, NULL), (2, 15, 1, NULL, NULL);",
+        )
+        .unwrap();
+        let mut cache = super::SessionCache::default();
+        let t = cache.update_agy(&db).3;
+        assert_eq!(t.phase.map(|p| p.0), Some(true), "model step running: working");
+        assert!(t.last_answer.is_none());
+        let t = cache.update_agy(&db).3;
+        assert_eq!(t.phase.map(|p| p.0), Some(true), "nothing changed yet");
+        c.execute("UPDATE steps SET status = 3 WHERE idx = 2", []).unwrap();
+        let t = cache.update_agy(&db).3;
+        assert_eq!(t.phase.map(|p| p.0), Some(false), "the same row finished: done");
+        assert!(t.last_answer.is_some());
+        // a new turn after it is read normally
+        c.execute_batch("INSERT INTO steps VALUES (3, 14, 3, NULL, NULL), (4, 15, 1, NULL, NULL);").unwrap();
+        assert_eq!(cache.update_agy(&db).3.phase.map(|p| p.0), Some(true));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     use super::titles_equal;
 
     #[test]

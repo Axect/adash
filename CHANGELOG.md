@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Antigravity agents no longer stay "working" after they finish: steps still running are read again until agy marks them finished in place.
 - New-session dialog: the model field is a searchable list of every model the harness offers (omp's catalog, Claude Code's aliases and models seen in its sessions, `codex debug models`, `agy models`), grouped by provider, with each model's effort levels and the harness's own default model; Claude Code and Antigravity sessions can start with an effort.
 - The dashboard's CSS and JavaScript are revalidated on every load (ETag, `Cache-Control: no-cache`), so an upgrade takes effect without clearing the browser cache.
 - Change an agent's model and reasoning effort from the chat info panel where the harness allows it (omp, Claude Code and Codex: both; Antigravity: read-only), confirmed from the session record or the harness's reply (`GET /api/agents/{name}/models`, `POST /api/agents/{name}/model`).
