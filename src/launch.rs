@@ -114,24 +114,6 @@ fn live_models(kind: &str) -> Vec<String> {
     v
 }
 
-/// omp's own catalog (`omp models --json`, chat models) → (selector, thinking levels).
-fn omp_models() -> Vec<(String, Vec<String>)> {
-    let Some(bin) = find_bin("omp") else { return vec![] };
-    let Ok(out) = crate::platform::timeout(20).arg(bin).args(["models", "--json"]).output() else { return vec![] };
-    let v: Value = serde_json::from_slice(&out.stdout).unwrap_or(Value::Null);
-    v["models"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .filter(|m| m["kind"] == "chat")
-        .filter_map(|m| {
-            let sel = m["selector"].as_str()?.to_string();
-            let th = m["thinking"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();
-            Some((sel, th))
-        })
-        .collect()
-}
-
 fn toml_model(path: &Path) -> Option<String> {
     std::fs::read_to_string(path).ok()?.lines().find_map(|l| {
         let (k, v) = l.split_once('=')?;
@@ -139,40 +121,51 @@ fn toml_model(path: &Path) -> Option<String> {
     })
 }
 
+/// Claude Code's default model (`model` in its settings.json).
+fn claude_default() -> Option<String> {
+    let v: Value = serde_json::from_str(&std::fs::read_to_string(home().join(".claude/settings.json")).ok()?).ok()?;
+    v["model"].as_str().map(String::from)
+}
+
+/// The new-session dialog's per-harness models, efforts per model and default model. The lists
+/// are the ones the model switch uses (harness binaries, cached an hour); a harness whose list
+/// cannot be read falls back to the `--model` values of its running agents.
 pub fn catalog() -> Value {
-    let omp = omp_models();
-    let mut omp_list: Vec<String> = omp.iter().map(|m| m.0.clone()).collect();
-    for m in live_models("omp") {
-        let base = m.split(':').next().unwrap_or(&m).to_string();
-        if !omp_list.contains(&base) {
-            omp_list.push(base);
+    let entry = |id: &str, label: &str, bin: &str, mode: &str, default: Option<String>| {
+        let mut list = crate::model_switch::models_of(id);
+        if list.is_empty() {
+            list = live_models(id).into_iter().map(|m| crate::model_switch::ModelOpt { label: m.clone(), id: m, efforts: vec![] }).collect();
         }
-    }
-    let mut efforts: Vec<String> = Vec::new();
-    for (_, th) in &omp {
-        for t in th {
-            if !efforts.contains(t) {
-                efforts.push(t.clone());
+        if id == "omp" {
+            for m in live_models("omp") {
+                let base = m.split(':').next().unwrap_or(&m).to_string();
+                if !list.iter().any(|x| x.id == base) {
+                    list.push(crate::model_switch::ModelOpt { label: base.clone(), id: base, efforts: vec![] });
+                }
             }
         }
-    }
-    let default_omp = live_models("omp").into_iter().next().map(|m| m.split(':').next().unwrap_or(&m).to_string());
-    let mut codex_models = live_models("codex");
-    if let Some(m) = toml_model(&home().join(".codex/config.toml")) {
-        if !codex_models.contains(&m) {
-            codex_models.insert(0, m);
+        let mut efforts: Vec<String> = vec![];
+        for e in list.iter().flat_map(|m| m.efforts.iter()) {
+            if !efforts.contains(e) {
+                efforts.push(e.clone());
+            }
         }
-    }
-    let claude_models = live_models("claude");
-    let agy_models = live_models("antigravity");
+        let default = default.or_else(|| list.first().map(|m| m.id.clone()));
+        json!({
+            "id": id, "label": label, "installed": find_bin(bin).is_some(),
+            "models": list.iter().map(|m| m.id.clone()).collect::<Vec<_>>(),
+            "labels": list.iter().map(|m| (m.id.clone(), json!(m.label))).collect::<serde_json::Map<_, _>>(),
+            "efforts": efforts, "effortMode": mode,
+            "effortsByModel": list.iter().map(|m| (m.id.clone(), json!(m.efforts))).collect::<serde_json::Map<_, _>>(),
+            "defaultModel": default,
+        })
+    };
+    let omp_default = live_models("omp").into_iter().next().map(|m| m.split(':').next().unwrap_or(&m).to_string());
     json!({"agents": [
-        {"id": "omp", "label": "omp", "installed": find_bin("omp").is_some(), "models": omp_list, "efforts": efforts,
-         "effortMode": "suffix", "effortsByModel": omp.iter().map(|(s, t)| (s.clone(), json!(t))).collect::<serde_json::Map<_, _>>(),
-         "defaultModel": default_omp},
-        {"id": "claude", "label": "Claude Code", "installed": find_bin("claude").is_some(), "models": claude_models, "efforts": [], "effortMode": "none", "defaultModel": null},
-        {"id": "codex", "label": "Codex", "installed": find_bin("codex").is_some(), "models": codex_models.clone(), "efforts": ["low", "medium", "high", "xhigh"],
-         "effortMode": "flag", "defaultModel": codex_models.first()},
-        {"id": "antigravity", "label": "Antigravity", "installed": find_bin("agy").is_some(), "models": agy_models, "efforts": [], "effortMode": "none", "defaultModel": null},
+        entry("omp", "omp", "omp", "suffix", omp_default),
+        entry("claude", "Claude Code", "claude", "flag", claude_default()),
+        entry("codex", "Codex", "codex", "flag", toml_model(&home().join(".codex/config.toml"))),
+        entry("antigravity", "Antigravity", "agy", "dash-suffix", None),
     ]})
 }
 
@@ -188,7 +181,9 @@ pub fn model_args(agent: &str, model: Option<&str>, effort: Option<&str>) -> Res
         // omp: effort is a model suffix (`--effort` errors for omp)
         ("omp", Some(m), Some(e)) => a.extend(["--model".into(), format!("{}:{e}", m.split(':').next().unwrap_or(m))]),
         ("omp", None, Some(_)) => return Err((400, "omp effort needs a model (it is a model suffix)".into())),
-        ("codex", Some(m), Some(e)) => a.extend(["--model".into(), m.to_string(), "--effort".into(), e.to_string()]),
+        ("codex" | "claude", Some(m), Some(e)) => a.extend(["--model".into(), m.to_string(), "--effort".into(), e.to_string()]),
+        // Antigravity names the level in the model id (`gemini-4-argon-medium`)
+        ("antigravity", Some(m), Some(e)) => a.extend(["--model".into(), format!("{m}-{e}")]),
         (_, None, Some(_)) => return Err((400, "--effort requires a model".into())),
         (_, _, Some(_)) => return Err((400, format!("{agent} does not take an effort"))),
         (_, Some(m), None) => a.extend(["--model".into(), m.to_string()]),
@@ -504,7 +499,8 @@ mod tests {
         assert_eq!(model_args("omp", Some("anthropic/claude-opus-5-5:high"), Some("low")).unwrap(), vec!["--model", "anthropic/claude-opus-5-5:low"]);
         assert_eq!(model_args("codex", Some("gpt-6-sol"), Some("high")).unwrap(), vec!["--model", "gpt-6-sol", "--effort", "high"]);
         assert!(model_args("omp", None, Some("low")).is_err());
-        assert!(model_args("claude", Some("opus"), Some("low")).is_err());
+        assert_eq!(model_args("claude", Some("opus"), Some("low")).unwrap(), vec!["--model", "opus", "--effort", "low"]);
+        assert_eq!(model_args("antigravity", Some("gemini-4-argon"), Some("high")).unwrap(), vec!["--model", "gemini-4-argon-high"]);
         assert!(model_args("claude", None, None).unwrap().is_empty());
     }
 

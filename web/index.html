@@ -84,7 +84,7 @@
     </section>
     <div class="ld-sep"></div>
     <label class="ld-row"><span>에이전트</span><select id="ld-agent"></select></label>
-    <label class="ld-row"><span>모델</span><input id="ld-model" list="ld-models" autocomplete="off"><datalist id="ld-models"></datalist></label>
+    <div class="ld-row"><span>모델</span><div class="ld-combo"><input id="ld-model" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="false" aria-controls="ld-model-list" placeholder="(기본)"><div id="ld-model-list" class="ld-combo-list" role="listbox" hidden></div></div></div>
     <label class="ld-row" id="ld-effort-row"><span>effort</span><select id="ld-effort"></select></label>
     <div class="ld-two"><label class="ld-row"><span>이름</span><input id="ld-name" placeholder="(선택)"></label><label class="ld-row"><span>역할</span><input id="ld-role" placeholder="(선택)"></label></div>
     <label class="ld-row ld-prompt"><span>첫 지시</span><textarea id="ld-prompt" rows="5" placeholder="(선택) 여러 줄 가능"></textarea></label>

@@ -1220,8 +1220,9 @@
   const WKa = (name) => (markAnim.get(name)?.kind === "lift" ? `<span class="wk-lift${markFx(name, "lift")}">${WK}</span>` : WK);
   // My-turn mark (v45, decision A): the same speed lines, stopped (two bars, turn colour) + how long it has waited.
   // Same slot and size as WK, so working → my turn reads as the lines stopping and changing colour. No motion.
-  // Whole units only (0–59 min, 1–23 h, 1–99 d) so the my-turn time slot stays narrow; exact time in the tooltip.
-  const fmtWait = (m) => { m = Math.max(0, m || 0); const en = window.ADASH_LANG === "en"; return m < 60 ? (en ? `${Math.floor(m)}m` : `${Math.floor(m)}분`) : m < 1440 ? (en ? `${Math.floor(m / 60)}h` : `${Math.floor(m / 60)}시간`) : en ? `${Math.min(99, Math.floor(m / 1440))}d` : `${Math.min(99, Math.floor(m / 1440))}일`; };
+  // Short units in every language (0m–59m, 1.0h–23.9h, 1d–99d) so the my-turn time slot stays narrow; the
+  // spelled-out wait and the exact time are in the tooltip.
+  const fmtWait = (m) => { m = Math.max(0, m || 0); return m < 60 ? `${Math.floor(m)}m` : m < 1440 ? `${(Math.floor(m / 6) / 10).toFixed(1)}h` : `${Math.min(99, Math.floor(m / 1440))}d`; };
   // "1시간 23분 · 14:05부터" / "1 h 23 min · since 14:05"
   const fmtWaitExact = (m, since) => {
     m = Math.max(0, Math.floor(m || 0)); const d = Math.floor(m / 1440), h = Math.floor((m % 1440) / 60), mm = m % 60, en = window.ADASH_LANG === "en";
@@ -1253,14 +1254,14 @@
   // The landing starts where the working mark was (just after the name) and the lift where the my-turn mark was
   // (right end): measure once per render and hand the distance to CSS as --from-x.
   // The wait time sits in a fixed-width slot at the right end (width of the longest string fmtWait can produce in
-  // this language and font), left-aligned against the lines, so the lines never move as "3분" grows to "23시간".
+  // this font, "23.9h"), left-aligned against the lines, so the lines never move as "3m" grows to "23.9h".
   // Re-measured on font/size/lang change.
   function measureTkSlot() {
     const host = $("#lane-labels") || document.body, probe = document.createElement("span");
     probe.className = "tk"; probe.style.cssText = "position:absolute;visibility:hidden;left:-9999px";
     probe.innerHTML = `<span class="tk-t"></span>`; host.appendChild(probe);
     const t = probe.firstChild; let w = 0;
-    for (const m of [59, 23 * 60, 99 * 1440]) { t.textContent = fmtWait(m); w = Math.max(w, t.getBoundingClientRect().width); }
+    for (const m of [59, 1439, 99 * 1440]) { t.textContent = fmtWait(m); w = Math.max(w, t.getBoundingClientRect().width); }
     probe.remove();
     if (w) { document.documentElement.style.setProperty("--tk-tw", `${Math.ceil(w) + 1}px`); measureTkSlot.lang = window.ADASH_LANG; }
   }
@@ -1749,13 +1750,43 @@
       return `<div class="ld-repo"><div class="ld-rname">${esc(r.name)} <span class="muted">${ldIsGit(r) ? "git" : "폴더"}</span></div>${wts.map((w) => `<button type="button" class="ld-wt${ld.target === w.path ? " on" : ""}" data-ld-wt="${esc(w.path)}" title="${esc(w.path)}"><span>${esc(w.isMain ? r.name : ldBase(w.path))}</span><span class="muted">${w.branch ? esc(w.branch) : ""}${w.liveAgents ? ` · 에이전트 ${w.liveAgents}` : ""}</span></button>`).join("")}</div>`;
     }).join("") || `<p class="muted">일치하는 프로젝트 없음</p>`;
   }
+  // Model field: a searchable list of every model the harness offers (a <datalist> would hide all but the entries
+  // matching the current value). The full list opens on focus; typing filters it; groups by provider.
+  const ldAgent = () => ld.cat?.agents.find((x) => x.id === $("#ld-agent").value);
+  function ldEfforts() {
+    const a = ldAgent(); if (!a) return;
+    const m = $("#ld-model").value.trim().split(":")[0];
+    const list = (a.effortsByModel && a.effortsByModel[m]) || (m ? [] : a.efforts) || [];
+    const keep = $("#ld-effort").value;
+    $("#ld-effort-row").hidden = a.effortMode === "none" || !list.length;
+    $("#ld-effort").innerHTML = `<option value="">${L2("(기본)", "(default)")}</option>` + list.map((e) => `<option${e === keep ? " selected" : ""}>${esc(e)}</option>`).join("");
+  }
+  function ldModelList(filter) {
+    const a = ldAgent(), box = $("#ld-model-list"); if (!a) return;
+    const q = (filter || "").trim().toLowerCase(), cur = $("#ld-model").value.trim();
+    const items = (a.models || []).filter((m) => !q || `${m} ${a.labels?.[m] || ""}`.toLowerCase().includes(q));
+    const groups = new Map();
+    for (const m of items) { const g = m.includes("/") ? m.split("/")[0] : a.label || a.id; if (!groups.has(g)) groups.set(g, []); groups.get(g).push(m); }
+    box.innerHTML = items.length ? [...groups].map(([g, ms]) => `<div class="ld-combo-g">${esc(g)}</div>` + ms.map((m) => {
+      const label = a.labels?.[m] && a.labels[m] !== m ? `<span class="muted">${esc(a.labels[m])}</span>` : "";
+      return `<div class="ld-combo-o${m === cur ? " on" : ""}" role="option" data-ld-model="${esc(m)}"><span>${esc(m.includes("/") ? m.split("/").slice(1).join("/") : m)}</span>${label}</div>`;
+    }).join("")).join("") : `<div class="ld-combo-empty muted">${L2("일치하는 모델 없음 · 입력한 값 그대로 사용", "no match · the typed value is used as is")}</div>`;
+    box.hidden = false; $("#ld-model").setAttribute("aria-expanded", "true");
+    // inside the dialog: open toward the side with room (the dialog clips what overflows it)
+    const inp = $("#ld-model").getBoundingClientRect(), dlg = $("#launch-dlg").getBoundingClientRect();
+    const below = dlg.bottom - inp.bottom - 10, above = inp.top - dlg.top - 10, up = below < 180 && above > below;
+    box.classList.toggle("up", up);
+    box.style.maxHeight = `${Math.max(120, Math.min(320, up ? above : below))}px`;
+    box.querySelector(".on")?.scrollIntoView({ block: "nearest" });
+  }
+  const ldModelClose = () => { $("#ld-model-list").hidden = true; $("#ld-model").setAttribute("aria-expanded", "false"); };
   function ldAgentChanged() {
-    const a = ld.cat?.agents.find((x) => x.id === $("#ld-agent").value);
+    const a = ldAgent();
     if (!a) return;
-    $("#ld-models").innerHTML = (a.models || []).map((m) => `<option value="${esc(m)}">`).join("");
     $("#ld-model").value = a.defaultModel || "";
-    $("#ld-effort-row").hidden = a.effortMode === "none" || !(a.efforts || []).length;
-    $("#ld-effort").innerHTML = `<option value="">(기본)</option>` + (a.efforts || []).map((e) => `<option>${esc(e)}</option>`).join("");
+    ldModelClose();
+    $("#ld-effort").value = "";
+    ldEfforts();
   }
   async function openLaunch(presetProject, preset = {}) {
     const dlg = $("#launch-dlg");
@@ -1776,7 +1807,7 @@
     $("#ld-agent").innerHTML = ld.cat.agents.filter((a) => a.installed).map((a) => `<option value="${esc(a.id)}">${esc(a.label || a.id)}</option>`).join("");
     if (preset.agent && ld.cat.agents.some((x) => x.id === preset.agent && x.installed)) $("#ld-agent").value = preset.agent;
     ldAgentChanged();
-    if (preset.model) $("#ld-model").value = preset.model;
+    if (preset.model) { $("#ld-model").value = preset.model; ldEfforts(); }
     if (preset.name) $("#ld-name").value = preset.name;
     if (preset.role) $("#ld-role").value = preset.role;
     renderLdList();
@@ -1835,6 +1866,26 @@
   });
   $("#ld-search").addEventListener("input", renderLdList);
   $("#ld-agent").addEventListener("change", ldAgentChanged);
+  $("#ld-model").addEventListener("focus", () => ldModelList(""));
+  $("#ld-model").addEventListener("click", () => { if ($("#ld-model-list").hidden) ldModelList(""); });
+  $("#ld-model").addEventListener("input", (e) => { ldModelList(e.target.value); ldEfforts(); });
+  $("#ld-model").addEventListener("keydown", (e) => {
+    const box = $("#ld-model-list"), opts = [...box.querySelectorAll(".ld-combo-o")];
+    if (e.key === "Escape" && !box.hidden) { e.preventDefault(); e.stopPropagation(); ldModelClose(); return; }
+    if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Enter") return;
+    if (box.hidden) { if (e.key !== "Enter") { e.preventDefault(); ldModelList(""); } return; }
+    const i = opts.findIndex((o) => o.classList.contains("hl"));
+    if (e.key === "Enter") { if (i >= 0) { e.preventDefault(); opts[i].click(); } else ldModelClose(); return; }
+    e.preventDefault();
+    const n = opts.length ? (i + (e.key === "ArrowDown" ? 1 : -1) + opts.length) % opts.length : -1;
+    opts.forEach((o, k) => o.classList.toggle("hl", k === n));
+    opts[n]?.scrollIntoView({ block: "nearest" });
+  });
+  $("#ld-model-list").addEventListener("mousedown", (e) => {
+    const o = e.target.closest("[data-ld-model]"); if (!o) return;
+    e.preventDefault(); $("#ld-model").value = o.dataset.ldModel; ldModelClose(); ldEfforts();
+  });
+  $("#ld-model").addEventListener("blur", () => setTimeout(ldModelClose, 120));
   $("#ld-prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submitLaunch(); } });
 
   // ---------- magi review / propose (B1) ----------

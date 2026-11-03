@@ -61,8 +61,50 @@ pub fn parse_codex_models(v: &Value) -> Vec<ModelOpt> {
         .collect()
 }
 
-/// The harness's model list, cached an hour (it runs the harness binary).
-fn models_of(kind: &str) -> Vec<ModelOpt> {
+/// `agy models` (`<id>\t<label>` lines, the level as an id suffix `-low|-medium|-high`) →
+/// one entry per base model with its levels, in the listed order.
+pub fn parse_agy_models(text: &str) -> Vec<ModelOpt> {
+    let mut out: Vec<ModelOpt> = vec![];
+    for line in text.lines() {
+        let Some((id, label)) = line.split_once('\t') else { continue };
+        let id = id.trim();
+        if id.is_empty() || id.contains(' ') {
+            continue;
+        }
+        let (base, level) = match id.rsplit_once('-') {
+            Some((b, l)) if matches!(l, "low" | "medium" | "high" | "minimal" | "xhigh") => (b, Some(l)),
+            _ => (id, None),
+        };
+        // "Gemini 4 Argon (Medium)" → "Gemini 4 Argon"
+        let label = label.trim();
+        let label = label.rsplit_once(" (").filter(|_| level.is_some()).map(|x| x.0).unwrap_or(label);
+        match out.iter_mut().find(|m| m.id == base) {
+            Some(m) => m.efforts.extend(level.map(String::from)),
+            None => out.push(ModelOpt { id: base.to_string(), label: label.to_string(), efforts: level.map(String::from).into_iter().collect() }),
+        }
+    }
+    out
+}
+
+/// Claude Code: its aliases, then full model ids seen in its sessions (analytics store).
+fn claude_models() -> Vec<ModelOpt> {
+    let efforts: Vec<String> = CLAUDE_EFFORTS.iter().map(|s| s.to_string()).collect();
+    let mut v: Vec<ModelOpt> = CLAUDE_MODELS.iter().map(|(id, l)| ModelOpt { id: id.to_string(), label: l.to_string(), efforts: efforts.clone() }).collect();
+    if let Ok(db) = crate::analytics::open_read() {
+        if let Ok(mut st) = db.conn.prepare("SELECT model_raw FROM agent_turns WHERE agent_type = 'claude' AND model_raw LIKE 'claude-%' GROUP BY model_raw ORDER BY MAX(start_ts) DESC LIMIT 20") {
+            for id in st.query_map([], |r| r.get::<_, String>(0)).into_iter().flatten().flatten() {
+                if !v.iter().any(|m| m.id == id) {
+                    v.push(ModelOpt { label: id.clone(), id, efforts: efforts.clone() });
+                }
+            }
+        }
+    }
+    v
+}
+
+/// The harness's model list, cached an hour (it runs the harness binary). Shared by the model
+/// switch and the new-session dialog.
+pub fn models_of(kind: &str) -> Vec<ModelOpt> {
     static CACHE: LazyLock<Mutex<std::collections::HashMap<String, (i64, Vec<ModelOpt>)>>> = LazyLock::new(Default::default);
     if let Some((at, v)) = CACHE.plock().get(kind) {
         if now_ms() - at < 3_600_000 && !v.is_empty() {
@@ -77,10 +119,11 @@ fn models_of(kind: &str) -> Vec<ModelOpt> {
     let v = match kind {
         "omp" => run("omp", &["models", "--json"]).map(|v| parse_omp_models(&v)).unwrap_or_default(),
         "codex" => run("codex", &["debug", "models"]).map(|v| parse_codex_models(&v)).unwrap_or_default(),
-        "claude" => CLAUDE_MODELS
-            .iter()
-            .map(|(id, l)| ModelOpt { id: id.to_string(), label: l.to_string(), efforts: CLAUDE_EFFORTS.iter().map(|s| s.to_string()).collect() })
-            .collect(),
+        "claude" => claude_models(),
+        "antigravity" => crate::launch::find_bin("agy")
+            .and_then(|b| crate::platform::timeout(20).arg(b).arg("models").output().ok())
+            .map(|o| parse_agy_models(&String::from_utf8_lossy(&o.stdout)))
+            .unwrap_or_default(),
         _ => vec![],
     };
     if !v.is_empty() {
@@ -395,5 +438,12 @@ mod tests {
         );
         assert_eq!(c.len(), 1);
         assert_eq!(c[0].efforts, vec!["low", "max"]);
+        let a = parse_agy_models("Fetching available models...\ngemini-4-argon-medium\tGemini 4 Argon (Medium)\ngemini-4-argon-high\tGemini 4 Argon (High)\ngpt-oss-120b-medium\tGPT-OSS 120B (Medium)\nplain-model\tPlain\n");
+        assert_eq!(a.len(), 3);
+        assert_eq!(
+            (a[0].id.as_str(), a[0].label.as_str(), a[0].efforts.clone()),
+            ("gemini-4-argon", "Gemini 4 Argon", vec!["medium".to_string(), "high".to_string()])
+        );
+        assert_eq!((a[2].id.as_str(), a[2].efforts.len()), ("plain-model", 0));
     }
 }
