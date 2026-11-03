@@ -2,8 +2,10 @@
   <img src="docs/media/logo.svg" alt="adash" width="240">
 </h1>
 
+<h3 align="center">Your agents aren't the bottleneck. You are.</h3>
+
 <p align="center">
-  <strong>A local dashboard for running many coding agents (omp, Claude Code, Codex, Antigravity) in tmux: see which agent is waiting on you.</strong>
+  A local dashboard for omp, Claude Code, Codex and Antigravity running in tmux that shows which agent is waiting on you.
 </p>
 
 <p align="center">
@@ -14,7 +16,7 @@
 
 ![adash demo](docs/media/demo.gif)
 
-When you run ten agents at once, the agents are not the bottleneck; you are. One agent finished twenty minutes ago and is waiting for your answer, another asked a question, a third stopped on a provider error, and its prompt cache is about to expire. adash watches every agent and puts the one that needs you next at the top.
+When you run ten agents at once, one finished twenty minutes ago and is waiting for your answer, another asked a question, a third stopped on a provider error, and its prompt cache is about to expire. adash watches every agent and puts the one that needs you next at the top.
 
 It is one Rust binary. It runs your agents in its own tmux server, reads their session files, and serves a web UI at `http://127.0.0.1:7878`. Everything stays on your machine.
 
