@@ -1030,3 +1030,11 @@ body.mobile #usage-m[open] { max-height: 62vh; overflow-y: auto; overscroll-beha
 body.mobile .model-btn { min-height: 36px; }
 .mp-eff .seg button.cur { text-decoration: underline; text-underline-offset: 3px; }
 .mp-warn { margin: 0; color: var(--fg); padding: 6px 8px; border: 1px solid color-mix(in srgb, var(--info-warn) 50%, var(--border)); border-radius: 6px; background: color-mix(in srgb, var(--info-warn) 8%, transparent); }
+/* v44 working mark: three slanted bars (wordmark speed lines) drifting left. transform/opacity only; one keyframe. */
+.wk { position: relative; display: inline-block; flex: none; width: 14px; height: 8px; margin-left: 5px; overflow: hidden; vertical-align: middle; contain: layout paint; color: var(--muted); }
+.wk i { position: absolute; top: 0; left: 0; width: 3px; height: 8px; background: currentColor; opacity: .7; transform: translateX(var(--x)) skewX(-20deg); will-change: transform, opacity; animation: wk-flow 1.2s linear infinite; }
+.wk i:nth-child(1) { --x: 1.5px; animation-delay: -0.8s; } .wk i:nth-child(2) { --x: 5.5px; animation-delay: -0.4s; } .wk i:nth-child(3) { --x: 9.5px; animation-delay: 0s; }
+@keyframes wk-flow { 0% { transform: translateX(14px) skewX(-20deg); opacity: 0; } 20% { opacity: .75; } 75% { opacity: .75; } 100% { transform: translateX(-4px) skewX(-20deg); opacity: 0; } }
+.wk.off i, body.anim-off .wk i { animation: none; }
+@media (prefers-reduced-motion: reduce) { .wk i { animation: none; } }
+.ov-title .wk { margin-left: 6px; } .mc-head .wk { margin: 0 2px 0 -2px; align-self: center; }
