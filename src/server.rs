@@ -2036,6 +2036,37 @@ fn handle(sh: &Shared, mut req: Request) {
                 None => reply_json(req, 404, &json!({"error": format!("unknown theme {name}")})),
             }
         }
+        (Method::Get, ["api", "agents", name, "attachment"]) => {
+            // an image a tool returned (role "media" message): read from the session file on demand
+            let q = |k: &str| query.split('&').filter_map(|kv| kv.split_once('=')).find(|(x, _)| *x == k).map(|(_, v)| percent_decode(v));
+            let a = match agent_for(sh, name, q("identity").as_deref()) {
+                Ok(a) => a,
+                Err(e) => return reply_json(req, 404, &json!({"error": e.1})),
+            };
+            let (Some(path), Some(off), Some(i)) = (
+                a.session_path.clone(),
+                q("msg").and_then(|m| m.strip_prefix("img").and_then(|o| o.parse::<u64>().ok())),
+                q("i").and_then(|i| i.parse::<usize>().ok()),
+            ) else {
+                return reply_json(req, 400, &json!({"error": "msg=img<offset>&i=<n> and a session file are required"}));
+            };
+            let etag = format!("\"img-{off}-{i}-{}\"", crate::util::mtime_ms(&path));
+            if req.headers().iter().any(|h| h.field.equiv("If-None-Match") && h.value.as_str().split(',').any(|t| t.trim() == etag)) {
+                let _ = req.respond(Response::from_data(Vec::new()).with_status_code(304).with_header(Header::from_bytes("ETag", etag.as_bytes()).unwrap()));
+                return;
+            }
+            match crate::transcript::image_at(&a.agent_type, &path, off, i) {
+                Ok((mime, bytes)) => {
+                    let r = Response::from_data(bytes)
+                        .with_header(ctype(&mime))
+                        .with_header(Header::from_bytes("X-Content-Type-Options", "nosniff").unwrap())
+                        .with_header(Header::from_bytes("Cache-Control", "private, max-age=86400").unwrap())
+                        .with_header(Header::from_bytes("ETag", etag.as_bytes()).unwrap());
+                    let _ = req.respond(r);
+                }
+                Err(e) => reply_json(req, 404, &json!({"error": e})),
+            }
+        }
         (Method::Get, ["api", "agents", name, "file"]) => {
             let ident = query.split('&').filter_map(|kv| kv.split_once('=')).find(|(k, _)| *k == "identity").map(|(_, v)| percent_decode(v));
             let a = agent_for(sh, name, ident.as_deref()).ok();

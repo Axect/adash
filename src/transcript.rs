@@ -93,6 +93,89 @@ pub struct Msg {
     /// btw question: pending | answered | error; btw answer: "streaming" while omp writes it
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<&'static str>,
+    /// role "media": images a tool returned, `[{i, mime}]`, loaded through
+    /// `/api/agents/{name}/attachment?msg=<id>&i=<i>` (the bytes stay in the session file)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub images: Option<Vec<Value>>,
+}
+
+/// Where a tool-result image lives: an omp blob (`~/.omp/agent/blobs/<sha256>`) or inline base64.
+#[derive(Debug, PartialEq)]
+pub enum ImgData {
+    Blob(String),
+    Base64(String),
+}
+
+/// Images in one session record's tool results, in order: (mime, data). Known formats only:
+/// omp `toolResult` content `{type:"image", mimeType, data}` (data `blob:sha256:<hex>` or
+/// base64), Claude Code `tool_result` content `{type:"image", source:{type:"base64",
+/// media_type, data}}`, Codex `function_call_output` output `{type:"input_image",
+/// image_url:"data:<mime>;base64,…"}`.
+pub fn image_blocks(kind: &str, r: &Value) -> Vec<(String, ImgData)> {
+    let mut out = vec![];
+    let mut push = |mime: Option<&str>, data: Option<&str>| {
+        if let (Some(m), Some(d)) = (mime, data) {
+            if !m.starts_with("image/") {
+                return;
+            }
+            let d = match d.strip_prefix("blob:sha256:") {
+                Some(h) if h.len() == 64 && h.bytes().all(|b| b.is_ascii_hexdigit()) => ImgData::Blob(h.to_ascii_lowercase()),
+                Some(_) => return,
+                None => ImgData::Base64(d.to_string()),
+            };
+            out.push((m.to_string(), d));
+        }
+    };
+    match kind {
+        "omp" if r["type"] == "message" && r["message"]["role"] == "toolResult" => {
+            for c in r["message"]["content"].as_array().into_iter().flatten().filter(|c| c["type"] == "image") {
+                push(c["mimeType"].as_str(), c["data"].as_str());
+            }
+        }
+        "claude" if r["type"] == "user" => {
+            for tr in r["message"]["content"].as_array().into_iter().flatten().filter(|c| c["type"] == "tool_result") {
+                for c in tr["content"].as_array().into_iter().flatten().filter(|c| c["type"] == "image" && c["source"]["type"] == "base64") {
+                    push(c["source"]["media_type"].as_str(), c["source"]["data"].as_str());
+                }
+            }
+        }
+        "codex" if r["type"] == "response_item" && r["payload"]["type"] == "function_call_output" => {
+            for c in r["payload"]["output"].as_array().into_iter().flatten().filter(|c| c["type"] == "input_image") {
+                let url = c["image_url"].as_str().unwrap_or("");
+                if let Some((head, data)) = url.strip_prefix("data:").and_then(|u| u.split_once(";base64,")) {
+                    push(Some(head), Some(data));
+                }
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
+/// Bytes of image `i` of the record at byte `off` of a session file (≤ 20 MB, raster types).
+pub fn image_at(kind: &str, path: &Path, off: u64, i: usize) -> Res<(String, Vec<u8>)> {
+    use std::io::{BufRead, Seek};
+    let mut f = std::io::BufReader::new(std::fs::File::open(path).map_err(|e| e.to_string())?);
+    f.seek(std::io::SeekFrom::Start(off)).map_err(|e| e.to_string())?;
+    let mut line = Vec::new();
+    std::io::Read::take(&mut f, 256 << 20).read_until(b'\n', &mut line).map_err(|e| e.to_string())?;
+    let r: Value = serde_json::from_slice(&line).map_err(|_| "no record at that place (the session file changed)".to_string())?;
+    let (mime, data) = image_blocks(kind, &r).into_iter().nth(i).ok_or("no such image")?;
+    if !["image/png", "image/jpeg", "image/webp", "image/gif"].contains(&mime.as_str()) {
+        return Err(format!("unsupported image type {mime}"));
+    }
+    let bytes = match data {
+        ImgData::Blob(h) => {
+            let dir = crate::util::home().join(".omp/agent/blobs");
+            let ext = mime.trim_start_matches("image/").replace("jpeg", "jpg");
+            [dir.join(format!("{h}.{ext}")), dir.join(&h)].iter().find_map(|p| std::fs::read(p).ok()).ok_or("image blob is gone")?
+        }
+        ImgData::Base64(s) => crate::util::base64_decode(&s).ok_or("bad base64")?,
+    };
+    if bytes.len() > 20 << 20 {
+        return Err("image larger than 20 MB".into());
+    }
+    Ok((mime, bytes))
 }
 
 #[derive(Default)]
@@ -216,6 +299,7 @@ fn msg(id: String, role: &str, text: String, ts: Option<i64>, tool: Option<ToolR
         shell: None,
         btw_id: None,
         status: None,
+        images: None,
     }
 }
 
@@ -501,11 +585,18 @@ impl TranscriptCache {
         }
         let before = tf.pos.offset;
         let msgs = &mut tf.msgs;
-        tf.pos.read(path, |_, line| {
+        tf.pos.read(path, |off, line| {
             let Ok(r) = serde_json::from_slice::<Value>(line) else { return };
             let n = msgs.len();
             if let Some(h) = crate::harness::get(kind) {
                 h.parse_record(&r, n, msgs);
+            }
+            // images a tool returned: shown in the chat (the agent showed them to the user)
+            let imgs = image_blocks(kind, &r);
+            if !imgs.is_empty() {
+                let mut m = msg(format!("img{off}"), "media", String::new(), ts_of(&r["timestamp"]), None);
+                m.images = Some(imgs.iter().enumerate().map(|(i, (mime, _))| json!({"i": i, "mime": mime})).collect());
+                msgs.push(m);
             }
         });
         if tf.pos.offset != before {
@@ -752,5 +843,50 @@ mod tests {
         let a: Vec<String> = attachments_of(t).unwrap().into_iter().map(|a| a.path).collect();
         assert_eq!(a, vec!["/home/u/.local/share/adash/uploads/20261029/101500-ab12cd34ef.png"]);
         assert!(attachments_of("plain text /tmp/other.png").is_none());
+    }
+
+    #[test]
+    fn tool_result_images_become_a_media_message_loaded_on_demand() {
+        let png = [0x89u8, b'P', b'N', b'G', 1, 2, 3];
+        let b64 = "iVBORwECAw=="; // the bytes above
+        assert_eq!(crate::util::base64_decode(b64).unwrap(), png);
+        let omp = json!({"type":"message","id":"r1","timestamp":"2026-11-04T05:41:34.295Z","message":{"role":"toolResult","toolName":"eval","content":[
+            {"type":"text","text":"shown"},
+            {"type":"image","mimeType":"image/png","data":format!("blob:sha256:{}", "a".repeat(64))},
+            {"type":"image","mimeType":"image/png","data":b64}]}});
+        assert_eq!(image_blocks("omp", &omp), vec![("image/png".into(), ImgData::Blob("a".repeat(64))), ("image/png".into(), ImgData::Base64(b64.into()))]);
+        let claude = json!({"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t","content":[{"type":"image","source":{"type":"base64","media_type":"image/jpeg","data":"AAAA"}}]}]}});
+        assert_eq!(image_blocks("claude", &claude), vec![("image/jpeg".into(), ImgData::Base64("AAAA".into()))]);
+        let codex = json!({"type":"response_item","payload":{"type":"function_call_output","call_id":"c","output":[{"type":"input_image","image_url":"data:image/png;base64,AAAA"}]}});
+        assert_eq!(image_blocks("codex", &codex).len(), 1);
+        // a user's own message or a non-image block: nothing
+        assert!(image_blocks("omp", &json!({"type":"message","message":{"role":"user","content":[{"type":"image","mimeType":"image/png","data":"AAAA"}]}}))
+            .is_empty());
+        assert!(image_blocks(
+            "omp",
+            &json!({"type":"message","message":{"role":"toolResult","content":[{"type":"image","mimeType":"text/html","data":"AAAA"}]}})
+        )
+        .is_empty());
+
+        // in a transcript: one media message with the image list, no base64 in the JSON; the
+        // bytes come back from the record's offset
+        let dir = std::env::temp_dir().join(format!("adash-media-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let f = dir.join("s.jsonl");
+        let first =
+            json!({"type":"message","id":"a1","timestamp":"2026-11-04T05:41:00.000Z","message":{"role":"assistant","content":[{"type":"text","text":"hi"}]}})
+                .to_string();
+        let inline = json!({"type":"message","id":"r2","timestamp":"2026-11-04T05:41:34.295Z","message":{"role":"toolResult","toolName":"read","content":[{"type":"image","mimeType":"image/png","data":b64}]}}).to_string();
+        std::fs::write(&f, format!("{first}\n{inline}\n")).unwrap();
+        let mut c = TranscriptCache::default();
+        let msgs = c.update("omp", &f).clone();
+        let m = msgs.iter().find(|m| m.role == "media").expect("media message");
+        assert_eq!(m.id, format!("img{}", first.len() + 1));
+        assert_eq!(m.images.as_ref().unwrap()[0]["mime"], "image/png");
+        assert!(!serde_json::to_string(&msgs).unwrap().contains(b64), "no base64 in the transcript");
+        assert_eq!(image_at("omp", &f, first.len() as u64 + 1, 0).unwrap(), ("image/png".to_string(), png.to_vec()));
+        assert!(image_at("omp", &f, 0, 0).is_err(), "an offset without an image record");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

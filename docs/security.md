@@ -25,6 +25,7 @@ Out of scope: a compromised user account (it can read the session files and driv
 ## Files
 
 - `GET /api/agents/{name}/file` and `/stat` resolve paths only inside the agent's worktree or `$HOME`, reject `..`, and refuse credential locations (`.ssh`, `.gnupg`, `credentials*`, `*.pem`, `*.key`). Temporary files are served only when owned by you.
+- `GET /api/agents/{name}/attachment` serves only images inside the agent's own session file (the record at the given offset) or the omp blob store addressed by a SHA-256 hex name: PNG, JPEG, WebP or GIF, at most 20 MB. It takes no path from the request.
 - Served files get an allowlisted content type; anything else is sent as a download.
 - `/open` (open a file on the desktop) from a phone is limited to images, PDFs, Markdown and text.
 

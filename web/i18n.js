@@ -81,7 +81,7 @@
     // ----- recent activity -----
     "최근 내 활동": "My recent activity", "에이전트 간": "Agent-to-agent", "내가 보낸 말 최근": "My last", "이 기간에 보낸 말 없음": "Nothing sent in this window",
     "상호작용 기록 없음 (백엔드 대기)": "No interaction history (backend pending)", "답변 있음": "Answered", "이어서 대화": "Continued", "응답 없음": "No reply", "종료됨": "Ended",
-    "답함": "answered", "이후": "then", "에 내가 답장": " — I replied", "에 내가 다시 보냄": " — I wrote again", "질문에 답함": "Answered a question", "직접:": "typed:",
+    "답함": "answered", "이후": "then", "에 내가 답장": " — I replied", "에 내가 다시 보냄": " — I wrote again", "질문에 답함": "Answered a question", "도구가 보여 준 이미지": "Image from a tool", "직접:": "typed:",
     "에이전트끼리 보낸 메시지 (검토·제안 요청, 회신, adash tell) · 클릭하면 받는 쪽 채팅 열기": "Messages between agents (review/propose requests, replies, adash tell) · click to open the receiver's chat",
     "이 기간에 에이전트 간 메시지 없음": "No agent-to-agent messages in this window", "메시지": "Message", "회신 전달": "Reply relayed", "답 없음": "no answer",
     "에이전트 간 메시지 기록 없음 (백엔드가 human/agent 를 나눠 보내면 여기에 표시)": "No agent-to-agent history yet (shown once the backend splits human/agent)",

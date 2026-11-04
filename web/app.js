@@ -3680,6 +3680,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       else if (m.role === "assistant") blocks.push([m.id, `<div class="m assistant md" title="${esc(tsTitle(m.ts))}">${md(m.text, ov.name, m.id ?? m.ts)}</div>`]);
       else if (m.role === "error") blocks.push([m.id, errorBubble(m)]);
       else if (m.role === "shell") blocks.push([m.id, shellBubble(m)]);
+      else if (m.role === "media") blocks.push([m.id, mediaRow(m)]);
       else blocks.push([m.id, `<div class="m system${tx?.source === "terminal" ? " term" : ""}" title="${esc(tsTitle(m.ts))}">${esc(m.text)}</div>`]);
     }
     ov.pending.forEach((p, i) => blocks.push([`p:${i}`, `<div class="m user pending md">${p.text.trim() ? md(p.text, ov.name) : ""}${thumbs(p.urls.map((u, k) => [u, p.images[k]]))}${fileChips(p.files || [], p.sizes, false)}</div>`]));
@@ -3964,6 +3965,13 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     return `<div class="m error-msg"><div class="em-head">${ICONS.err}<b>${esc(errLabel({ status }))}</b>${prov ? `<span class="muted small">${esc(prov)}</span>` : ""}<span class="spacer"></span><span class="muted small">${at ? esc(new Date(at).toLocaleString("ko-KR")) : ""}</span></div>
       <div class="em-body">${esc(msg)}</div>
       <div class="em-act"><span class="muted small">제공자 API 오류로 멈췄습니다.</span><span class="spacer"></span><button class="primary" data-retry="${esc(ov.name)}" title="${esc(retryTip(agentBy(ov.name)))}">${esc(retryLabel(agentBy(ov.name)))}</button><button data-act="resume" title="입력창에 '계속 진행해'를 넣습니다. 보내기는 직접 누르세요.">이어서 진행</button></div></div>`;
+  }
+  // Images a tool returned (the agent showed them): thumbnails in the chat, outside the folded tool
+  // rows; a click opens the viewer. The bytes load lazily from the session file.
+  function mediaRow(m) {
+    const src = (x) => agentApiPath(`/api/agents/${enc(ov.name)}/attachment?msg=${enc(m.id)}&i=${x.i}`);
+    const imgs = (m.images || []).map((x) => [src(x), `${t_("도구가 보여 준 이미지")} ${x.i + 1}`]);
+    return `<div class="m media md" title="${esc(tsTitle(m.ts))}">${thumbs(imgs)}</div>`;
   }
   function userBubble(m) {
     const { body, paths, files, sizes } = splitAttachments(m.text, m.attachments);
