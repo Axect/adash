@@ -7,7 +7,7 @@ use crate::util::{atomic_write, state_dir};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashMap};
-use std::io::{Read, Seek, SeekFrom, Write};
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 const KEEP_MS: i64 = 14 * 86_400_000;
@@ -48,10 +48,11 @@ pub fn norm_state(a: &Agent) -> &'static str {
 /// Incremental turn parser for one session file.
 #[derive(Default)]
 struct Recon {
+    /// agy: step idx the next read starts after
     offset: u64,
+    pos: crate::util::JsonlPos,
     /// agy: highest step idx already fed (steps before it re-read only for their status)
     seen: u64,
-    len: u64,
     /// (ts, state) transitions, ascending
     trans: Vec<(i64, &'static str)>,
     turn_open: bool,
@@ -189,26 +190,16 @@ impl Recon {
             }
             return;
         }
-        let len = std::fs::metadata(p).map(|m| m.len()).unwrap_or(0);
-        if len < self.len {
+        if self.pos.moved(p) {
             *self = Recon::default();
         }
-        if len > self.offset {
-            if let Ok(mut f) = std::fs::File::open(p) {
-                if f.seek(SeekFrom::Start(self.offset)).is_ok() {
-                    let mut buf = Vec::new();
-                    let _ = f.take(len - self.offset).read_to_end(&mut buf);
-                    let end = buf.iter().rposition(|b| *b == b'\n').map(|i| i + 1).unwrap_or(0);
-                    for line in buf[..end].split(|b| *b == b'\n').filter(|l| !l.is_empty()) {
-                        if let Ok(r) = serde_json::from_slice::<Value>(line) {
-                            feed(kind, &r, self);
-                        }
-                    }
-                    self.offset += end as u64;
-                }
+        let mut pos = std::mem::take(&mut self.pos);
+        pos.read(p, |_, line| {
+            if let Ok(r) = serde_json::from_slice::<Value>(line) {
+                feed(kind, &r, self);
             }
-        }
-        self.len = len;
+        });
+        self.pos = pos;
     }
 
     /// Transitions including the close of the last turn (if the agent is not working now).

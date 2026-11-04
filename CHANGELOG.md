@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Session files are read line by line safely: a line whose newline is visible before the rest of it (a torn read during a large write) is read again next round instead of being skipped, so an agent no longer stays "working" after its last answer; a file rewritten under the reader is read again from the start. The Antigravity transcript picks up model steps updated in place.
 - One notification per event: adash terminals start omp, Claude Code and Codex with their own desktop notifications off (`notifications.silenceHarness`, default on). Clicking an adash notification opens that agent's chat on the dashboard, a finished turn within a minute of another notification of the same agent folds into it, and a newer notification of an agent replaces the one still on screen.
 - Phone access: an approved phone is recognised by its Tailscale node, so opening the dashboard from the home-screen app, another browser or after clearing site data no longer asks for a new approval code; the device list shows the node name, and revoking a device revokes its node.
 - Antigravity agents no longer stay "working" after they finish: steps still running are read again until agy marks them finished in place.

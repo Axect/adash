@@ -608,6 +608,20 @@ pub struct Ctx {
     pub sends: Vec<Send>,
 }
 
+/// A complete line that did not parse at `off`: true while it should be retried (the same place
+/// failed fewer than `JsonlPos::TORN_RETRIES` rounds).
+fn torn_wait(file: &str, off: u64) -> bool {
+    use crate::util::LockExt;
+    static TORN: std::sync::LazyLock<std::sync::Mutex<HashMap<String, (u64, u8)>>> = std::sync::LazyLock::new(Default::default);
+    let mut t = TORN.plock();
+    let e = t.entry(file.to_string()).or_insert((off, 0));
+    if e.0 != off {
+        *e = (off, 0);
+    }
+    e.1 += 1;
+    e.1 < crate::util::JsonlPos::TORN_RETRIES
+}
+
 impl Ctx {
     fn project_of(&self, cwd: &str) -> (String, Option<String>) {
         let best = self.projects.iter().filter(|(p, _)| cwd == p || cwd.starts_with(&format!("{}/", p.trim_end_matches('/')))).max_by_key(|(p, _)| p.len());
@@ -975,7 +989,16 @@ impl<'a> Ingest<'a> {
             if !relevant(kind, &line) {
                 continue;
             }
-            let Ok(v) = serde_json::from_slice::<Value>(&line) else { continue };
+            let Ok(v) = serde_json::from_slice::<Value>(&line) else {
+                // read torn (newline visible before the bytes ahead of it): retry next round,
+                // skip after a few
+                if torn_wait(&key, rec_off) {
+                    offset = rec_off;
+                    break;
+                }
+                eprintln!("adash: {key}: skipping an unreadable line at byte {rec_off}");
+                continue;
+            };
             self.record(&meta, kind, &v, rec_off, &mut st)?;
             self.db.error_row(meta.agent_type, &meta.file, st.session_id, &v, rec_off, st.model.as_deref())?;
         }

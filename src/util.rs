@@ -256,3 +256,141 @@ mod atomic_tests {
         let _ = std::fs::remove_file(&f);
     }
 }
+
+/// Read position in a JSONL file that agents append to.
+///
+/// A line can be read torn: the writer's newline is already visible while bytes before it are
+/// not yet (seen on btrfs with a large `write`), so a newline-terminated line that is not valid
+/// JSON is left for the next round instead of being stepped over; after
+/// [`JsonlPos::TORN_RETRIES`] rounds at the same place it is skipped and logged. The last bytes
+/// before `offset` are remembered: a file that shrank or was rewritten under the reader starts
+/// over.
+#[derive(Default, Clone, Debug)]
+pub struct JsonlPos {
+    pub offset: u64,
+    /// up to 64 bytes ending at `offset`, as last read
+    sig: Vec<u8>,
+    /// (offset, rounds) of a complete line that did not parse
+    torn: (u64, u8),
+}
+
+impl JsonlPos {
+    pub const TORN_RETRIES: u8 = 5;
+
+    /// True when the reader must start over (the caller resets everything parsed from the
+    /// file, including this position): the file is shorter than what was read, or the bytes
+    /// before `offset` changed.
+    pub fn moved(&self, path: &Path) -> bool {
+        if self.offset == 0 {
+            return false;
+        }
+        let len = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        if len < self.offset {
+            return true;
+        }
+        let mut now = vec![0u8; self.sig.len()];
+        let ok = std::fs::File::open(path).and_then(|mut f| {
+            use std::io::Seek;
+            f.seek(std::io::SeekFrom::Start(self.offset - self.sig.len() as u64))?;
+            f.read_exact(&mut now)
+        });
+        ok.is_err() || now != self.sig
+    }
+
+    /// Feed each new complete line (`offset of the line`, bytes without the newline) and move
+    /// past it; stops at a partial last line or a torn one.
+    pub fn read(&mut self, path: &Path, mut each: impl FnMut(u64, &[u8])) {
+        let len = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
+        if len <= self.offset {
+            return;
+        }
+        let Ok(mut f) = std::fs::File::open(path) else { return };
+        let mut buf = Vec::new();
+        {
+            use std::io::Seek;
+            if f.seek(std::io::SeekFrom::Start(self.offset)).is_err() {
+                return;
+            }
+        }
+        if f.take(len - self.offset).read_to_end(&mut buf).is_err() {
+            return;
+        }
+        let mut at = 0usize;
+        while let Some(nl) = buf[at..].iter().position(|b| *b == b'\n') {
+            let line = &buf[at..at + nl];
+            let off = self.offset + at as u64;
+            if !line.is_empty() && serde_json::from_slice::<serde::de::IgnoredAny>(line).is_err() {
+                let rounds = if self.torn.0 == off { self.torn.1 + 1 } else { 1 };
+                if rounds < Self::TORN_RETRIES {
+                    self.torn = (off, rounds);
+                    break;
+                }
+                eprintln!("adash: {}: skipping an unreadable line at byte {off} ({} bytes)", path.display(), line.len());
+            } else if !line.is_empty() {
+                each(off, line);
+            }
+            at += nl + 1;
+        }
+        if at > 0 {
+            self.offset += at as u64;
+            let keep = at.min(64);
+            self.sig = buf[at - keep..at].to_vec();
+        }
+    }
+}
+
+#[cfg(test)]
+mod jsonl_tests {
+    use super::JsonlPos;
+    use std::io::Write;
+
+    fn lines(pos: &mut JsonlPos, p: &std::path::Path) -> Vec<String> {
+        let mut out = vec![];
+        pos.read(p, |_, l| out.push(String::from_utf8_lossy(l).into_owned()));
+        out
+    }
+
+    /// 2026-11-04: an omp turn stayed "working" because its last line was read torn (newline
+    /// visible, bytes before it not yet) and stepped over for good.
+    #[test]
+    fn partial_and_torn_lines_wait_rewrites_start_over() {
+        let dir = std::env::temp_dir().join(format!("adash-jsonl-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("s.jsonl");
+        let mut f = std::fs::OpenOptions::new().create(true).append(true).open(&p).unwrap();
+        let mut pos = JsonlPos::default();
+        f.write_all(b"{\"a\":1}\n{\"b\":").unwrap();
+        assert_eq!(lines(&mut pos, &p), vec![r#"{"a":1}"#], "partial line waits");
+        f.write_all(b"2}\n").unwrap();
+        assert_eq!(lines(&mut pos, &p), vec![r#"{"b":2}"#], "the rest of it arrives");
+        // torn: the newline is there, the middle is not yet (zeros)
+        let body = br#"{"c":"done"}"#;
+        let start = std::fs::metadata(&p).unwrap().len();
+        f.write_all(&vec![0u8; body.len()]).unwrap();
+        f.write_all(b"\n").unwrap();
+        assert!(lines(&mut pos, &p).is_empty(), "torn line is not consumed");
+        assert_eq!(pos.offset, start);
+        let g = std::fs::OpenOptions::new().write(true).open(&p).unwrap();
+        std::os::unix::fs::FileExt::write_all_at(&g, body, start).unwrap();
+        assert_eq!(lines(&mut pos, &p), vec![r#"{"c":"done"}"#], "read once complete");
+        // a line that never becomes valid is skipped after a few rounds
+        f.write_all(b"not json\n{\"d\":4}\n").unwrap();
+        let mut got = vec![];
+        for _ in 0..JsonlPos::TORN_RETRIES {
+            got.extend(lines(&mut pos, &p));
+        }
+        assert_eq!(got, vec![r#"{"d":4}"#]);
+        assert!(!pos.moved(&p));
+        // rewritten under the reader (same length or longer): start over
+        let text = std::fs::read(&p).unwrap();
+        let mut changed = text.clone();
+        let n = changed.len();
+        changed[n - 3] = b'5';
+        std::fs::write(&p, &changed).unwrap();
+        assert!(pos.moved(&p));
+        std::fs::write(&p, b"{}\n").unwrap();
+        assert!(pos.moved(&p), "shorter: start over");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

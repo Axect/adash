@@ -7,7 +7,6 @@ use crate::util::{truncate, Res};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::io::{Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
@@ -98,7 +97,9 @@ pub struct Msg {
 
 #[derive(Default)]
 struct TFile {
-    offset: u64,
+    pos: crate::util::JsonlPos,
+    /// agy: step idx the next read starts after
+    step: u64,
     msgs: Vec<Msg>,
     /// last use (ms), for pruning
     used: i64,
@@ -492,30 +493,24 @@ impl TranscriptCache {
 
     /// Parse only bytes appended since the last call.
     fn update(&mut self, kind: &str, path: &Path) -> &Vec<Msg> {
-        let len = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         let tf = self.files.entry(path.to_path_buf()).or_default();
         tf.used = crate::util::now_ms();
-        if len < tf.offset {
+        if tf.pos.moved(path) {
             *tf = TFile::default();
+            tf.used = crate::util::now_ms();
         }
-        if len > tf.offset {
-            if let Ok(mut f) = std::fs::File::open(path) {
-                if f.seek(SeekFrom::Start(tf.offset)).is_ok() {
-                    let mut buf = Vec::new();
-                    let _ = f.take(len - tf.offset).read_to_end(&mut buf);
-                    let end = buf.iter().rposition(|b| *b == b'\n').map(|i| i + 1).unwrap_or(0);
-                    for line in buf[..end].split(|b| *b == b'\n').filter(|l| !l.is_empty()) {
-                        let Ok(r) = serde_json::from_slice::<Value>(line) else { continue };
-                        let n = tf.msgs.len();
-                        if let Some(h) = crate::harness::get(kind) {
-                            h.parse_record(&r, n, &mut tf.msgs);
-                        }
-                    }
-                    tf.offset += end as u64;
-                    // re-place btw entries after new records
-                    tf.btw_sig.clear();
-                }
+        let before = tf.pos.offset;
+        let msgs = &mut tf.msgs;
+        tf.pos.read(path, |_, line| {
+            let Ok(r) = serde_json::from_slice::<Value>(line) else { return };
+            let n = msgs.len();
+            if let Some(h) = crate::harness::get(kind) {
+                h.parse_record(&r, n, msgs);
             }
+        });
+        if tf.pos.offset != before {
+            // re-place btw entries after new records
+            tf.btw_sig.clear();
         }
         if kind == "omp" {
             let sig = crate::btw::sig(path);
@@ -636,25 +631,25 @@ impl TranscriptCache {
     fn agy_messages(&mut self, db: &Path) -> Option<Vec<Msg>> {
         let tf = self.files.entry(db.to_path_buf()).or_default();
         tf.used = crate::util::now_ms();
-        let steps = crate::agy::read_steps(db, tf.offset as i64).ok()?;
+        let steps = crate::agy::read_steps(db, tf.step as i64).ok()?;
+        // a running step is read again until it finishes (agy updates the row in place)
+        tf.step = crate::agy::resume_after(tf.step as i64, &steps).max(0) as u64;
         for s in steps {
-            tf.offset = tf.offset.max(s.idx as u64);
             let id = format!("agy{}", s.idx);
             let ts = Some(s.ts).filter(|t| *t > 0);
-            match s.kind {
-                crate::agy::USER => tf.msgs.push(msg(id, "user", s.text.unwrap_or_default(), ts, None)),
-                crate::agy::MODEL => {
-                    if let Some(t) = s.text.filter(|t| !t.trim().is_empty()) {
-                        tf.msgs.push(msg(id, "assistant", t, ts, None));
-                    }
-                }
-                crate::agy::TOOL => {
-                    if let Some((_, name, args)) = s.tool {
-                        let sm = summary(&name, &args);
-                        tf.msgs.push(msg(id, "tool", sm.clone(), ts, Some(tool_ref(&name, sm, &args))));
-                    }
-                }
-                _ => {}
+            let m = match s.kind {
+                crate::agy::USER => Some(msg(id.clone(), "user", s.text.unwrap_or_default(), ts, None)),
+                crate::agy::MODEL => s.text.filter(|t| !t.trim().is_empty()).map(|t| msg(id.clone(), "assistant", t, ts, None)),
+                crate::agy::TOOL => s.tool.map(|(_, name, args)| {
+                    let sm = summary(&name, &args);
+                    msg(id.clone(), "tool", sm.clone(), ts, Some(tool_ref(&name, sm, &args)))
+                }),
+                _ => None,
+            };
+            let Some(m) = m else { continue };
+            match tf.msgs.iter().rposition(|x| x.id == id) {
+                Some(i) => tf.msgs[i] = m,
+                None => tf.msgs.push(m),
             }
         }
         if tf.msgs.is_empty() {

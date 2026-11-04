@@ -5,7 +5,7 @@ use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use std::io::{BufRead, BufReader, Read, Seek, SeekFrom};
+use std::io::{BufRead, BufReader, Read};
 use std::path::{Path, PathBuf};
 use std::sync::LazyLock;
 
@@ -104,11 +104,13 @@ pub fn arg_value(args: &[String], flag: &str) -> Option<String> {
 
 #[derive(Default)]
 struct FileCache {
+    /// agy: step idx the next read starts after
     offset: u64,
+    /// JSONL files
+    pos: crate::util::JsonlPos,
     /// agy: highest step idx seen (`offset` is where the next read starts; it can stay behind
     /// this while a step is still running)
     seen: u64,
-    len: u64,
     model: Option<String>,
     progress: Option<Progress>,
     ask: Option<crate::ask::Ask>,
@@ -480,43 +482,30 @@ impl SessionCache {
         if kind == "antigravity" {
             return self.update_agy(path);
         }
-        let len = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
         let fc = self.files.entry(path.to_path_buf()).or_default();
-        if len < fc.len {
+        if fc.pos.moved(path) {
             *fc = FileCache::default();
         }
-        if len > fc.offset {
-            if let Ok(mut f) = std::fs::File::open(path) {
-                if f.seek(SeekFrom::Start(fc.offset)).is_ok() {
-                    let mut buf = Vec::new();
-                    let _ = f.take(len - fc.offset).read_to_end(&mut buf);
-                    // only consume complete lines
-                    let end = buf.iter().rposition(|b| *b == b'\n').map(|i| i + 1).unwrap_or(0);
-                    for line in buf[..end].split(|b| *b == b'\n') {
-                        if !line.is_empty() {
-                            let text = String::from_utf8_lossy(line);
-                            // open-ask tracking: only lines that can open or close a question
-                            if let Some(h) = crate::harness::get(kind) {
-                                h.feed_turn(&text, &mut fc.turn);
-                            }
-                            let relevant = text.contains("\"ask\"")
-                                || text.contains("AskUserQuestion")
-                                || (fc.ask.is_some() && (text.contains("toolResult") || text.contains("tool_result") || text.contains("\"user\"")));
-                            if relevant {
-                                if let Ok(v) = serde_json::from_str::<Value>(&text) {
-                                    if let Some(h) = crate::harness::get(kind) {
-                                        h.feed_ask(&v, &mut fc.ask);
-                                    }
-                                }
-                            }
-                            parse_line(kind, &text, fc);
-                        }
+        let mut pos = std::mem::take(&mut fc.pos);
+        pos.read(path, |_, line| {
+            let text = String::from_utf8_lossy(line);
+            // open-ask tracking: only lines that can open or close a question
+            if let Some(h) = crate::harness::get(kind) {
+                h.feed_turn(&text, &mut fc.turn);
+            }
+            let relevant = text.contains("\"ask\"")
+                || text.contains("AskUserQuestion")
+                || (fc.ask.is_some() && (text.contains("toolResult") || text.contains("tool_result") || text.contains("\"user\"")));
+            if relevant {
+                if let Ok(v) = serde_json::from_str::<Value>(&text) {
+                    if let Some(h) = crate::harness::get(kind) {
+                        h.feed_ask(&v, &mut fc.ask);
                     }
-                    fc.offset += end as u64;
                 }
             }
-        }
-        fc.len = len;
+            parse_line(kind, &text, fc);
+        });
+        fc.pos = pos;
         (fc.model.clone(), fc.progress.clone(), fc.ask.clone(), fc.turn.clone())
     }
 

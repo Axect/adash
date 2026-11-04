@@ -3,13 +3,12 @@
 use crate::util::{now_ms, LockExt};
 use serde_json::{json, Value};
 use std::collections::HashMap;
-use std::io::{BufRead, BufReader, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, Mutex};
 
 #[derive(Default, Clone)]
 pub struct Acc {
-    pub(crate) offset: u64,
+    pub(crate) pos: crate::util::JsonlPos,
     pub(crate) turns: u64,
     pub(crate) input: i64,
     pub(crate) output: i64,
@@ -179,29 +178,19 @@ pub(crate) fn feed_codex(v: &Value, a: &mut Acc) {
 }
 
 fn read(kind: &str, path: &Path) -> Acc {
-    let len = std::fs::metadata(path).map(|m| m.len()).unwrap_or(0);
     let mut acc = FILES.plock().get(path).cloned().unwrap_or_default();
-    if len < acc.offset {
+    if acc.pos.moved(path) {
         acc = Acc::default();
     }
-    if len > acc.offset {
-        if let Ok(f) = std::fs::File::open(path) {
-            let mut r = BufReader::with_capacity(1 << 20, f);
-            if r.seek(SeekFrom::Start(acc.offset)).is_ok() {
-                let mut line = Vec::new();
-                loop {
-                    line.clear();
-                    let n = r.read_until(b'\n', &mut line).unwrap_or(0);
-                    if n == 0 || line.last() != Some(&b'\n') {
-                        break;
-                    }
-                    acc.offset += n as u64;
-                    if let Ok(v) = serde_json::from_slice::<Value>(&line) {
-                        feed(kind, &v, &mut acc);
-                    }
-                }
-            }
+    let before = acc.pos.offset;
+    let mut pos = std::mem::take(&mut acc.pos);
+    pos.read(path, |_, line| {
+        if let Ok(v) = serde_json::from_slice::<Value>(line) {
+            feed(kind, &v, &mut acc);
         }
+    });
+    acc.pos = pos;
+    if acc.pos.offset != before {
         FILES.plock().insert(path.to_path_buf(), acc.clone());
     }
     acc
