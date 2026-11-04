@@ -1,6 +1,6 @@
 [package]
 name = "adash"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 rust-version = "1.87"
 description = "Your agents aren't the bottleneck. You are. A local dashboard for omp, Claude Code, Codex and Antigravity that shows which agent is waiting on you"

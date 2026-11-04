@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.2.0 — 2026-11-04
 
 - Session files are read line by line safely: a line whose newline is visible before the rest of it (a torn read during a large write) is read again next round instead of being skipped, so an agent no longer stays "working" after its last answer; a file rewritten under the reader is read again from the start. The Antigravity transcript picks up model steps updated in place.
 - One notification per event: adash terminals start omp, Claude Code and Codex with their own desktop notifications off (`notifications.silenceHarness`, default on). Clicking an adash notification opens that agent's chat on the dashboard, a finished turn within a minute of another notification of the same agent folds into it, and a newer notification of an agent replaces the one still on screen.
