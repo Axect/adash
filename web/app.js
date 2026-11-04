@@ -1259,9 +1259,10 @@
   function measureTkSlot() {
     const host = $("#lane-labels") || document.body, probe = document.createElement("span");
     probe.className = "tk"; probe.style.cssText = "position:absolute;visibility:hidden;left:-9999px";
-    probe.innerHTML = `<span class="tk-t"></span>`; host.appendChild(probe);
+    // width:auto (not the slot being measured) and offsetWidth (CSS px, unaffected by the UI zoom)
+    probe.innerHTML = `<span class="tk-t" style="width:auto"></span>`; host.appendChild(probe);
     const t = probe.firstChild; let w = 0;
-    for (const m of [59, 1439, 99 * 1440]) { t.textContent = fmtWait(m); w = Math.max(w, t.getBoundingClientRect().width); }
+    for (const m of [59, 1439, 99 * 1440]) { t.textContent = fmtWait(m); w = Math.max(w, t.offsetWidth); }
     probe.remove();
     if (w) { document.documentElement.style.setProperty("--tk-tw", `${Math.ceil(w) + 1}px`); measureTkSlot.lang = window.ADASH_LANG; }
   }
@@ -1273,6 +1274,8 @@
       if (!nm || !svg) continue;
       const dx = Math.min(0, nm.getBoundingClientRect().right + 5 - svg.getBoundingClientRect().left);
       el.style.setProperty("--from-x", `${Math.round(dx)}px`);
+      // the outgoing copy of the lines only lives for the landing
+      el.querySelector(".tk-sl-n")?.addEventListener("animationend", (e) => e.currentTarget.remove(), { once: true });
     }
     for (const el of root.querySelectorAll(".wk-lift")) {
       const row = el.closest(".lrow"); if (!row) continue;

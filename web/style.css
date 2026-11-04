@@ -1071,7 +1071,12 @@ body.mobile .model-btn { min-height: 36px; }
 body.anim-off .tk.land *, body.anim-off .tk.land, body.anim-off .wk-lift .wk { animation: none !important; } body.anim-off .tk-sl-n { display: none; }
 /* Narrow name column: the name keeps ≥3.5em (ellipsis); the wait time gives way before the lines do. */
 .lrow .nmwrap { min-width: 3.5em; } .lrow .nm { min-width: 2.5em; }
-#lane-labels .tk { flex: none; }
+/* board row: the name keeps its width; a short row gives up the time slot's spare width first,
+   then the space before the lines (::before), and only then the name ellipsizes */
+#lane-labels .lrow .nmwrap { flex: 1 1 auto; }
+#lane-labels .lrow .nmwrap::after { content: ""; flex: 0 1000 6px; margin-left: -6px; }
+#lane-labels .tk { flex: 0 1000 calc(28px + 5px + var(--tk-tw, 4.5ch)); min-width: min-content; margin-left: -6px; }
+#lane-labels .tk .tk-t { flex: 1 1 auto; width: auto; min-width: max-content; }
 /* Fixed wait-time slot (rightmost; width = longest fmtWait string, measured): the lines never shift. */
 .tk-t { flex: none; width: var(--tk-tw, 4.5ch); text-align: left; font-variant-numeric: tabular-nums; }
 /* new-session dialog: model combobox (whole list on focus, typing filters, grouped by provider) */
