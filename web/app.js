@@ -157,13 +157,20 @@
   // Shared popover placement (v44): fixed to the viewport, below the anchor when it fits, else above, else the
   // taller side with max-height + inner scroll; clamped left/right. Phones: a bottom sheet. Closed on resize /
   // outside scroll (closePops).
+  // Popovers carry the board zoom (보드 배율, CSS `zoom` on .pop): left/top/max-height are in the popover's own
+  // zoomed px, so viewport coordinates are divided by that zoom (else a 130% board put them off-screen).
+  // An element in fullscreen hides everything outside it: the popover moves into the fullscreen element.
   function placePop(el, anchor, { align = "left" } = {}) {
+    const fs = document.fullscreenElement;
+    if (fs && !fs.contains(el)) { el._home ??= el.parentElement; fs.appendChild(el); }
+    else if (!fs && el._home && el.parentElement !== el._home) el._home.appendChild(el);
     el.classList.add("placed");
     el.style.maxHeight = ""; el.style.left = el.style.top = el.style.right = el.style.bottom = "";
     if (isMobile()) { el.classList.add("sheet"); return; }
     el.classList.remove("sheet");
+    const z = el.currentCSSZoom || parseFloat(getComputedStyle(el).zoom) || 1;
     const r = anchor.getBoundingClientRect(), M = 8, vw = innerWidth, vh = innerHeight;
-    const w = Math.min(el.offsetWidth, vw - 2 * M), h = el.offsetHeight;
+    const box = el.getBoundingClientRect(), w = Math.min(box.width, vw - 2 * M), h = box.height;
     const below = vh - r.bottom - M - 4, above = r.top - M - 4;
     let top, maxH = null;
     if (h <= below) top = r.bottom + 4;
@@ -172,7 +179,7 @@
     else { maxH = above; top = M; }
     let left = align === "right" ? r.right - w : r.left;
     left = Math.max(M, Math.min(left, vw - w - M));
-    Object.assign(el.style, { left: `${left}px`, top: `${Math.max(M, top)}px`, maxHeight: maxH != null ? `${Math.max(120, maxH)}px` : `calc(100vh - ${2 * M}px)` });
+    Object.assign(el.style, { left: `${left / z}px`, top: `${Math.max(M, top) / z}px`, maxHeight: maxH != null ? `${Math.max(120, maxH) / z}px` : `calc((100vh - ${2 * M}px) / ${z})` });
   }
   const POP_SEL = ".pop:not([hidden]), #proj-menu:not([hidden]), #model-pop:not([hidden])";
   function closePops() {
