@@ -4537,16 +4537,33 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       sw.c.querySelector(".mc-body").style.transform = `translateX(${dx}px)`;
       sw.c.classList.toggle("go-r", dx > 80); sw.c.classList.toggle("go-l", dx < -80);
     }, { passive: true });
-    el.addEventListener("touchend", async () => {
+    // Commit the swipe at once: the card slides out and the toast shows before the request
+    // returns; a failed request brings the card back with an error toast.
+    el.addEventListener("touchend", () => {
       if (!sw) return;
       const { c, dx, lock } = sw; sw = null;
-      c.querySelector(".mc-body").style.transform = "";
+      const body = c.querySelector(".mc-body");
       c.classList.remove("go-r", "go-l");
-      if (lock !== "x") return;
-      const name = c.dataset.magent;
-      if (dx > 80) { await api("POST", `/api/agents/${enc(name)}/ack`).catch(() => null); const s = agentBy(name); if (s) s.unread = false; toast(`${name} 확인함`, 1500); render(); }
-      else if (dx < -80) { await api("POST", `/api/agents/${enc(name)}/snooze`, { minutes: 60 }).catch(() => null); toast(`${name} 60분 미룸`, 1500); if (!FIXTURE) refresh(); }
       c.dataset.swiped = "1"; setTimeout(() => delete c.dataset.swiped, 300);
+      const act = lock === "x" ? (dx > 80 ? "ack" : dx < -80 ? "snooze" : null) : null;
+      if (!act) { body.style.transition = "transform .18s ease-out"; body.style.transform = ""; setTimeout(() => (body.style.transition = ""), 200); return; }
+      const name = c.dataset.magent, s = agentBy(name);
+      const prev = s ? { unread: s.unread, snoozedUntil: s.snoozedUntil } : null;
+      body.style.transition = "transform .16s ease-in";
+      body.style.transform = `translateX(${dx > 0 ? "" : "-"}110%)`;
+      c.style.transition = "height .16s ease-in .12s, opacity .16s ease-in .12s";
+      c.style.height = `${c.offsetHeight}px`; c.style.overflow = "hidden";
+      requestAnimationFrame(() => { c.style.height = "0px"; c.style.opacity = "0"; });
+      if (s) { if (act === "ack") s.unread = false; else s.snoozedUntil = Date.now() + 3600e3; }
+      toast(act === "ack" ? `${name} 확인함` : `${name} 60분 미룸`, 1500);
+      setTimeout(render, 300);
+      api("POST", `/api/agents/${enc(name)}/${act}`, act === "snooze" ? { minutes: 60 } : undefined, { quiet: true })
+        .then(() => { if (!FIXTURE) refresh(); })
+        .catch((err) => {
+          if (s && prev) Object.assign(s, prev);
+          toast(`${name}: ${act === "ack" ? "확인" : "미루기"} 실패 · ${err?.message || err}`, 3000);
+          render();
+        });
     });
   }
   $("#mobile").addEventListener("click", (e) => {
