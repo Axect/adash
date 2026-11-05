@@ -11,7 +11,7 @@ adash demo        # UI on sample data, no agents needed (target/debug/adash demo
 ```
 
 - Rust: stable, edition 2021, MSRV 1.87. `cargo fmt` and `cargo clippy --all-targets -- -D warnings` must pass.
-- Web UI: edit `web/` directly; the files are embedded at build time. Check both `?fixture=1` and a live server, light and dark, desktop and 412 px wide, English (`?lang=en`) and Korean.
+- Web UI: edit `web/` directly; the files are embedded at build time. `build.rs` makes any change under `web/` (edits, new or removed files) rebuild the binary, so `cargo build` / `cargo install --path .` always ship the current UI. Check both `?fixture=1` and a live server, light and dark, desktop and 412 px wide, English (`?lang=en`) and Korean.
 - Unit tests must not touch real user files: use temp directories (see `cfg!(test)` paths) and never start desktop notifications or send keystrokes.
 
 ## Harness formats
