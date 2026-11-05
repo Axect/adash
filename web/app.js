@@ -4544,7 +4544,8 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       const { c, dx, lock } = sw; sw = null;
       const body = c.querySelector(".mc-body");
       c.classList.remove("go-r", "go-l");
-      c.dataset.swiped = "1"; setTimeout(() => delete c.dataset.swiped, 300);
+      // only a horizontal swipe swallows the click that follows; a tap still opens the chat
+      if (lock === "x") { c.dataset.swiped = "1"; setTimeout(() => delete c.dataset.swiped, 300); }
       const act = lock === "x" ? (dx > 80 ? "ack" : dx < -80 ? "snooze" : null) : null;
       if (!act) { body.style.transition = "transform .18s ease-out"; body.style.transform = ""; setTimeout(() => (body.style.transition = ""), 200); return; }
       const name = c.dataset.magent, s = agentBy(name);
