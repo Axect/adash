@@ -147,6 +147,32 @@ pub fn close(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
     )
 }
 
+/// `POST /api/agents/{name}/restart`: close it (same gates as close: a working agent or a draft
+/// needs `confirmWorking` / `discardDraft`) and start it again on the same session, so the
+/// harness re-reads its sign-in and settings. Without a session file it starts the same command.
+pub fn restart(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
+    let h = a.handle.clone().ok_or_else(|| err(409, "no_terminal", json!({})))?;
+    let main = crate::session::scan_procs().remove(&h).unwrap_or_default().into_iter().find(|p| p.kind == a.agent_type);
+    let mut cj = j.clone();
+    cj["mode"] = json!("graceful");
+    let closed = close(snap, a, &cj)?;
+    if closed["terminalClosed"] != true {
+        return Err(err(502, "close_failed", json!({"error": "the terminal did not close", "close": closed})));
+    }
+    // the closed agent is gone from the snapshot the reopen check looks at
+    let mut rest = snap.clone();
+    rest.agents.retain(|x| x.identity != a.identity);
+    let opened = if a.session_path.is_some() {
+        reopen(&rest, &a.identity)?
+    } else {
+        let p = main.ok_or_else(|| err(409, "no_command", json!({"error": "no session file and no command to start again"})))?;
+        let cmd = p.args.iter().map(|x| crate::harness::shell_quote(x)).collect::<Vec<_>>().join(" ");
+        let handle = term::create(Path::new(&p.cwd), &a.project, &a.name, Some(&cmd), None).map_err(|x| err(502, "create_failed", json!({"error": x})))?;
+        json!({"ok": true, "name": a.name, "handle": handle, "command": cmd})
+    };
+    Ok(json!({"ok": true, "name": a.name, "restarted": true, "close": closed, "open": opened}))
+}
+
 /// Launch details for a closed/offline agent: the dashboard's close record, else the
 /// analytics session (exact identity = session file) with default flags.
 fn closed_entry(key: &str) -> Option<Value> {

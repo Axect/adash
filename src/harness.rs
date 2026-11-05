@@ -65,7 +65,7 @@ pub trait Harness: Sync {
     fn feed_usage(&self, v: &Value, acc: &mut crate::usage::Acc);
 }
 
-fn shell_quote(s: &str) -> String {
+pub fn shell_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 

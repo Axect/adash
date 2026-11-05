@@ -2485,6 +2485,16 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
                 Err((c, v)) => (c, v),
             })
         }
+        (Method::Post, ["api", "agents", name, "restart"]) => {
+            let s = snap();
+            let a = find_target(&s, name).map_err(|e| (404, e))?.clone();
+            let r = crate::lifecycle::restart(&s, &a, &j);
+            refresh(sh);
+            Ok(match r {
+                Ok(v) => (200, v),
+                Err((c, v)) => (c, v),
+            })
+        }
         (Method::Post, ["api", "agents", name, "reopen"]) => {
             let s = snap();
             let r = crate::lifecycle::reopen(

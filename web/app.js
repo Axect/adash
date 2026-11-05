@@ -1559,7 +1559,8 @@
       const chips = [];
       const lastErr = a.kind === "error" ? s?.lastError || {} : null;
       // Status column keeps the retry button icon-only (↻) to fit next to "오류 403"; its tooltip names the harness method.
-      if (lastErr) chips.push(`<span class="ic c-err c-err-main" data-p="0" data-tip="${esc(errTip(s?.lastError))}">${ICONS.err}<b>${esc(errLabel(s?.lastError))}</b></span><button class="retry-btn" data-p="0" data-retry="${esc(a.name)}" data-tip="${esc(retryTip(s))}" aria-label="${esc(retryLabel(s))}">${ICONS.retry}</button>`);
+      if (lastErr && s?.state === "auth") chips.push(`<button class="retry-btn" data-p="0" data-act="restart-agent" data-name="${esc(a.name)}" data-tip="${esc(t_("다시 시작 (다른 창에서 로그인했다면)"))}" aria-label="${esc(t_("다시 시작"))}">${ICONS.retry}</button>`);
+      else if (lastErr) chips.push(`<span class="ic c-err c-err-main" data-p="0" data-tip="${esc(errTip(s?.lastError))}">${ICONS.err}<b>${esc(errLabel(s?.lastError))}</b></span><button class="retry-btn" data-p="0" data-retry="${esc(a.name)}" data-tip="${esc(retryTip(s))}" aria-label="${esc(retryLabel(s))}">${ICONS.retry}</button>`);
       const bad = !lastErr && a.kind !== "snoozed" && ((state.threads || []).some((t) => (t.from === a.name || t.to === a.name) && ["escalated", "failed"].includes(t.status) && now - (t.createdAt || 0) < 86400000) || (typeof s?.error === "string" && s.error));
       if (bad) chips.push(chip(2, "c-err", "err", "", `오류 · ${typeof s?.error === "string" ? s.error : "실패하거나 에스컬레이션된 검토 요청이 있음"}`));
       const decs = decisionsOf(s);
@@ -2288,6 +2289,34 @@
       ? "터미널을 바로 닫습니다(하네스가 정리할 시간 없음). 세션 기록은 남아 나중에 '다시 열기'로 이어 갈 수 있습니다."
       : "작업 중이면 먼저 중단하고, 하네스의 종료 명령으로 끝낸 뒤 터미널을 닫습니다. 세션 기록은 남아 나중에 '다시 열기'로 이어 갈 수 있습니다.";
     dialog(`<h3>${title}</h3><p>${what}</p>${names.length > 1 ? `<p class="muted small">${names.map(esc).join(", ")}</p>` : ""}${warn.length ? `<div class="close-warn"><b>주의</b><ul>${warn.join("")}</ul></div>` : ""}`, mode === "force" ? "강제 종료" : "종료", () => doClose(names, mode, true));
+  }
+  // 다시 시작: graceful close + reopen of the same session (the harness re-reads its sign-in).
+  // Working / asking / a draft: the same warnings as 종료, then confirmed.
+  function restartAgent(name) {
+    const warn = closeWarnings([name]);
+    if (!warn.length) return doRestart(name, false);
+    dialog(`<h3>${t_("다시 시작")} · ${esc(name)}</h3><p>${t_("정상 종료한 뒤 같은 세션으로 다시 엽니다.")}</p><div class="close-warn"><b>${t_("주의")}</b><ul>${warn.join("")}</ul></div>`, t_("다시 시작"), () => doRestart(name, true));
+  }
+  async function doRestart(name, confirmed) {
+    const wasAuth = agentBy(name)?.state === "auth";
+    toast(`${name} ${t_("다시 시작하는 중…")}`, 15000);
+    try {
+      await api("POST", `/api/agents/${enc(name)}/restart`, confirmed ? { confirmWorking: true, discardDraft: true } : {}, { quiet: true });
+      toast(`${name} ${t_("다시 시작함")}`, 3000);
+    } catch (e) {
+      toast(`${t_("다시 시작하지 않음:")} ${e.status === 409 ? CLOSE_WHY[e.reason] || e.message : e.message}`, 6000);
+      return;
+    }
+    if (!wasAuth) return;
+    // the login screen is checked about every 10 s: tell the user whether the sign-in took
+    const t0 = Date.now();
+    const check = async () => {
+      const s = agentBy(name);
+      if (s && s.state !== "auth" && s.handle) return toast(`${name}: ${t_("로그인 확인됨")}`, 5000);
+      if (Date.now() - t0 > 40000) return toast(`${name}: ${t_("아직 로그인이 필요합니다. 터미널 보기에서 로그인하세요")}`, 8000);
+      setTimeout(check, 5000);
+    };
+    setTimeout(check, 12000);
   }
   async function doClose(names, mode, confirmed) {
     const body = { mode, ...(confirmed ? { confirmWorking: true, discardDraft: true } : {}) };
@@ -3018,7 +3047,7 @@
     $("#ov-nav").textContent = `내 차례 ${k >= 0 ? k + 1 : "–"}/${model.counts.mine}`;
     $("#ov-unsnooze").hidden = !a?.snoozedUntil;
     // Live agent → 종료/강제 종료; ended (offline) agent → 다시 열기.
-    $("#ov-close-agent").hidden = $("#ov-force-agent").hidden = !a;
+    $("#ov-close-agent").hidden = $("#ov-force-agent").hidden = $("#ov-restart-agent").hidden = !a;
     $("#ov-reopen-agent").hidden = !!a;
     $$(".tabs [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === ov.tab));
     $$(".side section").forEach((s) => s.classList.toggle("on", s.dataset.pane === ov.tab));
@@ -3186,7 +3215,11 @@
   function renderAuthCard() {
     const card = $("#auth-card"), a = ov.open && ov.name ? agentBy(ov.name) : null, au = a?.state === "auth" ? a.auth : null;
     if (!au) { card.hidden = true; card.innerHTML = ""; card._h = null; return; }
-    const html = `<div class="ask-head"><span class="relay-tag err-n">${t_("로그인 필요")}</span><span class="muted small">${esc(au.reason || "")}</span><span class="spacer"></span><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button></div>
+    // another process of the same harness works since this prompt appeared: the sign-in exists,
+    // this process just has not re-read it
+    const other = (state.agents || []).find((o) => o.agentType === a.agentType && o.name !== a.name && o.handle && o.state !== "auth" && (o.stateSince || 0) > (au.since || 0));
+    const html = `<div class="ask-head"><span class="relay-tag err-n">${t_("로그인이 필요합니다")}</span><span class="muted small">${esc(au.reason || "")}</span><span class="spacer"></span><button data-act="view" data-v="terminal">${t_("터미널에서 로그인")}</button><button class="primary" data-act="restart-agent" data-name="${esc(a.name)}" title="${esc(t_("이미 다른 창에서 로그인했다면: 정상 종료 후 같은 세션으로 다시 엶"))}">${t_("다시 시작")}</button></div>
+      ${other ? `<div class="auth-row small">${esc(L2(`다른 창(${other.name})에서는 로그인돼 있어요 → 다시 시작하면 됩니다.`, `Signed in elsewhere (${other.name}) → restart this agent.`))}</div>` : `<div class="auth-row muted small">${t_("다른 창에서 이미 로그인했다면 '다시 시작', 아니면 터미널에서 로그인하세요.")}</div>`}
       ${au.url ? `<div class="auth-row"><a class="btn primary" href="${esc(au.url)}" target="_blank" rel="noopener noreferrer">${t_("브라우저에서 열기")}</a><code class="path auth-url" title="${esc(au.url)}">${esc(au.url)}</code></div>` : ""}
       ${au.code ? `<div class="auth-row"><span class="muted small">${t_("장치 코드")}</span><code class="auth-code">${esc(au.code)}</code><button data-copy="${esc(au.code)}">${t_("복사")}</button></div>` : ""}
       <form class="auth-row auth-paste"><input name="code" autocomplete="off" spellcheck="false" placeholder="${esc(t_("받은 코드를 붙여 넣고 Enter (터미널로 보냄)"))}"><button>${t_("보내기")}</button></form>`;
@@ -4247,6 +4280,8 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     if ($("#model-pop") && !$("#model-pop").hidden && !e.composedPath().includes($("#model-pop"))) closeModelPop(); // composedPath: the pop re-renders on click, detaching e.target
     const us = e.target.closest("[data-unsnooze]");
     if (us) return unsnooze(us.dataset.unsnooze);
+    const rs = e.target.closest('[data-act="restart-agent"][data-name]');
+    if (rs) return restartAgent(rs.dataset.name);
     const row = e.target.closest(".lrow[data-agent]");
     if (row && (e.ctrlKey || e.metaKey || e.shiftKey || e.target.classList.contains("pick") || bulk.size)) { e.preventDefault(); return toggleBulk(row.dataset.agent, e.shiftKey); }
     if (row) return openChat(row.dataset.agent);
@@ -4297,6 +4332,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     else if (a === "filter-all") { filter = "all"; localStorage.setItem("adash.filter", filter); render(); }
     else if (a === "close-agent") closeAgentsDlg([name], b.dataset.mode);
     else if (a === "reopen-agent") reopenAgent(name);
+    else if (a === "restart-agent") restartAgent(b.dataset.name || name);
     else if (a === "resume") {
       const ta = $("#composer-text"), v = ta.value.replace(/\s+$/, "");
       ta.value = v ? `${v}\n계속 진행해` : "계속 진행해";
@@ -4513,7 +4549,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
           <div class="mc-swipe"><span class="mc-l">확인함</span><span class="spacer"></span><span class="mc-r">미루기 60분</span></div>
           <div class="mc-body"><div class="mc-head"><b>${esc(a.name)}</b>${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}<span class="muted mc-proj">${esc(a.project)}</span><span class="spacer"></span><span class="mc-st">${stateLine(a)}</span></div>
             <div class="mc-meta">${a.role ? `<span class="muted">${esc(a.role)}</span>` : ""}${dn ? `<span class="dec-mark">결정 ${dn}</span>` : ""}${heldRelays(a.name).length ? '<span class="held-mark">답변 보류</span>' : ""}${s?.draft?.text ? '<span class="draft-mark">초안</span>' : ""}${soonCold(s) ? `<span class="cd soon" title="${esc(cacheBasis(s))}">곧 식음</span>` : ""}</div>
-            <div class="mc-first">${esc(a.kind === "error" ? s?.lastError?.message || "제공자 API 오류로 멈춤" : a.kind === "asking" && s?.ask ? askQuestions(s.ask)[0].question : firstLine(s?.lastMessage))}</div>${a.kind === "error" ? `<div class="mc-act"><button data-retry="${esc(a.name)}">${esc(retryLabel(s))}</button></div>` : ""}</div></div>`;
+            <div class="mc-first">${esc(a.kind === "error" ? (s?.state === "auth" ? t_("로그인이 필요합니다") : s?.lastError?.message || "제공자 API 오류로 멈춤") : a.kind === "asking" && s?.ask ? askQuestions(s.ask)[0].question : firstLine(s?.lastMessage))}</div>${a.kind === "error" ? `<div class="mc-act"><button data-retry="${esc(a.name)}">${esc(retryLabel(s))}</button></div>` : ""}</div></div>`;
       }).join("") : `<p class="muted m-empty">기다리는 에이전트가 없습니다</p>`;
     } else if (mtab === "projects") {
       html = model.groups.map((g) => `<section class="mproj"><div class="mp-head"><b>${esc(g.name)}</b>${g.asking ? `<span class="ask-n">질문 ${g.asking}</span>` : ""}${g.unread ? `<span class="unread-n">미확인 ${g.unread}</span>` : ""}<span class="spacer"></span><span class="muted small">에이전트 ${g.allCount}</span><button class="g-more m" data-proj-menu="${esc(g.name)}" aria-label="프로젝트 메뉴">⋯</button></div>
