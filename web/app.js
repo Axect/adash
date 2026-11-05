@@ -9,7 +9,7 @@
   // Chat overlay state
   const ov = { open: false, name: null, tab: "info", tx: null, pending: [], held: null, openGroups: new Set(), lastInfoHtml: "", lastLogHtml: "", polling: false };
 
-  const STATE_KO = { asking: "질문 대기", working: "작업 중", done: "완료", waiting: "승인 대기", blocked: "막힘", idle: "유휴", error: "오류로 멈춤" };
+  const STATE_KO = { asking: "질문 대기", working: "작업 중", done: "완료", waiting: "승인 대기", blocked: "막힘", idle: "유휴", error: "오류로 멈춤", auth: "로그인 필요" };
   const STATUS_KO = { queued: "대기열", held_possible_draft: "보류(초안 의심)", delivered: "전달됨", delivery_unconfirmed: "전달 미확인", answered: "답변됨", relay_held: "답변 보류", relayed: "회신 완료", escalated: "에스컬레이션", failed: "실패" };
   const HELD_KO = { draft: "입력창 초안", working: "작업 중", asking: "질문 대기", unreadable: "입력창 확인 불가", network: "네트워크 대기" };
   // Message/answer channels recorded per interaction.
@@ -30,7 +30,7 @@
   const stateKo = (s) => STATE_KO[s] || (s ? `${s} (승인 대기)` : "?");
   // `asking` (an open ask/permission prompt) blocks on me even while the session record still shows `working`.
   // `error` = stopped on a provider/API error (lastError); it blocks on me like an open question.
-  const kindOf = (a) => (a.state === "asking" || a.ask ? "asking" : a.state === "error" ? "error" : a.needsHuman && !a.snoozedUntil ? "waiting" : a.state === "working" ? "working" : "idle");
+  const kindOf = (a) => (a.state === "asking" || a.ask ? "asking" : a.state === "error" || a.state === "auth" ? "error" : a.needsHuman && !a.snoozedUntil ? "waiting" : a.state === "working" ? "working" : "idle");
   const errLabel = (e) => (e ? `오류${e.status ? ` ${e.status}` : ""}` : "오류");
   const errTip = (e) => (e ? [`${errLabel(e)}${e.provider || e.model ? ` · ${[e.provider, e.model].filter(Boolean).join(" / ")}` : ""}`, e.message || "", e.at ? new Date(e.at).toLocaleString("ko-KR") : ""].filter(Boolean).join("\n") : "제공자 API 오류로 멈춤");
   // Retry (v19): the label comes from the backend (`agent.retry.label`, e.g. how that harness retries);
@@ -628,7 +628,7 @@
     setInterval(() => refreshCapacity(false), 60000);
     setInterval(refreshHistory, 15000);
     window.addEventListener("resize", () => { if (state) render(); });
-    setInterval(() => { if (ov.open && ov.name) { pollTranscript(); if (ov.view === "terminal") pollTerminal(); } }, 2000);
+    setInterval(() => { if (ov.open && ov.name) { pollTranscript(); } }, 2000);
     setInterval(tickCountdowns, 1000);
     setInterval(renderWorkLine, 1000);
     if (FIXTURE) return;
@@ -1534,7 +1534,7 @@
       const turn = a.unread && model.hasInteractions && a.kind !== "asking" && a.kind !== "error";
       const cls = `lrow${a.name === selName ? " sel" : ""}${a.live ? "" : " dimrow"}${a.unread && model.hasInteractions ? " unread" : ""}${a.kind === "asking" ? " asking" : ""}${a.kind === "error" ? " erred" : ""}${a.kind === "working" ? " work" : ""}`;
       // Left micro urgency tag (direction 1): what the row needs from me, readable without the legend.
-      const utag = a.kind === "asking" ? `<span class="utag ask">ASK</span>` : a.kind === "error" ? `<span class="utag err">ERR${s?.lastError?.status ? ` ${esc(s.lastError.status)}` : ""}</span>` : isMyTurn(a) ? TK(a) : "";
+      const utag = a.kind === "asking" ? `<span class="utag ask">ASK</span>` : a.kind === "error" && s?.state === "auth" ? `<span class="utag err">LOGIN</span>` : a.kind === "error" ? `<span class="utag err">ERR${s?.lastError?.status ? ` ${esc(s.lastError.status)}` : ""}</span>` : isMyTurn(a) ? TK(a) : "";
       L.push(`<div class="${cls}${bulk.has(a.name) ? " picked" : ""}" data-agent="${esc(a.name)}"><input type="checkbox" class="pick" tabindex="-1" ${bulk.has(a.name) ? "checked" : ""} title="여러 개 선택 (Ctrl/Shift+클릭)">${harnessBadge(s, a.live)}${a.live ? netIcon(s) : ""}
         <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : ""}</span>${a.kind === "working" ? "" : utag}${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
       // Status column (v15.1): one line = [unread dot][icon chips][time][countdown][progress]. Secondary marks are
@@ -1545,6 +1545,7 @@
       // Core state (.st-c) is always kept; auxiliary text (.st-a: tool, elapsed time) shrinks with "…" when the
       // column is short after the optional marks have folded.
       if (a.kind === "asking") st = `<span class="st-txt ask" data-p="0" data-tip="${esc(`질문 대기 ${fmtMin(a.waitedMin) || "0분"}`)}"><span class="st-c">? 질문</span><span class="st-a"> · ${fmtMin(a.waitedMin) || "0분"}</span></span>`;
+      else if (a.kind === "error" && s?.state === "auth") st = `<span class="st-txt" data-p="0" data-tip="${esc(s.auth?.reason || "")}"><span class="st-c err-n">${t_("로그인 필요")}</span></span>`;
       else if (a.kind === "error") { const e = s?.lastError; st = `<span class="st-txt" data-p="0" data-tip="${esc(errTip(e))}"><span class="st-a">${e?.at ? ago(e.at) : "멈춤"}</span></span>`; }
       else if (a.kind === "waiting") st = `<span class="st-txt${turn ? " turn" : ""}" data-p="0" data-tip="${esc(`${fmtMin(a.waitedMin)} 전에 답함`)}"><span class="st-c">${fmtMin(a.waitedMin)} 전 답</span></span>`;
       else if (a.kind === "snoozed") {
@@ -3026,7 +3027,7 @@
     $(".tabs [data-tab=threads]").textContent = `검토 요청${nThreads ? ` (${nThreads})` : ""}`;
     $(".tabs [data-tab=tasks]").textContent = `내 할 일${nTasks ? ` (${nTasks})` : ""}`;
     $("#composer").hidden = !ov.name;
-    renderInfo(); renderThreads(); renderTasks(); renderWorkLine(); renderHeld(); renderAskCard(); renderRelayCard(); renderMagiStrip(); renderDecisions(); renderDraftStrip(); updatePrefixWarn(); renderBtwNote();
+    renderInfo(); renderThreads(); renderTasks(); renderWorkLine(); renderHeld(); renderAskCard(); renderAuthCard(); renderRelayCard(); renderMagiStrip(); renderDecisions(); renderDraftStrip(); updatePrefixWarn(); renderBtwNote();
     if (!ov.name) { H("#chat-log").innerHTML = `<p class="muted">보드에서 에이전트를 고르면 대화가 여기에 열립니다.</p>`; }
   }
   // ---------- triage: ack, next unread (A2) ----------
@@ -3132,22 +3133,67 @@
     }
   }
 
-  // ---------- agy: conversation vs. terminal screen (A6) ----------
+  // ---------- terminal view: the agent's screen (colours kept) and keys sent to its pane ----------
   ov.view = "chat";
+  const ANSI16 = ["#000", "#c33", "#3a3", "#c90", "#36c", "#c3c", "#3aa", "#ccc", "#666", "#f55", "#5d5", "#fd5", "#59f", "#f5f", "#5ff", "#fff"];
+  const ansi256 = (n) => n < 16 ? ANSI16[n] : n >= 232 ? `rgb(${8 + (n - 232) * 10},${8 + (n - 232) * 10},${8 + (n - 232) * 10})` : (() => { n -= 16; const c = (x) => (x ? 55 + x * 40 : 0); return `rgb(${c(Math.floor(n / 36))},${c(Math.floor(n / 6) % 6)},${c(n % 6)})`; })();
+  // SGR escapes → spans (fg/bg 16/256/truecolour, bold, dim, italic, underline, inverse); other escapes dropped
+  function ansiHtml(text) {
+    let st = {}, out = "";
+    const style = () => { let fg = st.fg, bg = st.bg; if (st.inv) [fg, bg] = [bg || "var(--bg)", fg || "var(--fg)"]; const p = []; if (fg) p.push(`color:${fg}`); if (bg) p.push(`background:${bg}`); if (st.b) p.push("font-weight:700"); if (st.d) p.push("opacity:.6"); if (st.i) p.push("font-style:italic"); if (st.u) p.push("text-decoration:underline"); return p.join(";"); };
+    for (const part of text.split(/(\x1b\[[0-9;:]*[A-Za-z])/)) {
+      const m = part.match(/^\x1b\[([0-9;:]*)m$/);
+      if (m) {
+        const c = m[1] ? m[1].split(/[;:]/).map(Number) : [0];
+        for (let i = 0; i < c.length; i++) {
+          const x = c[i];
+          if (x === 0) st = {}; else if (x === 1) st.b = 1; else if (x === 2) st.d = 1; else if (x === 3) st.i = 1; else if (x === 4) st.u = 1; else if (x === 7) st.inv = 1;
+          else if (x === 22) st.b = st.d = 0; else if (x === 23) st.i = 0; else if (x === 24) st.u = 0; else if (x === 27) st.inv = 0;
+          else if (x >= 30 && x <= 37) st.fg = ANSI16[x - 30]; else if (x >= 90 && x <= 97) st.fg = ANSI16[x - 82]; else if (x === 39) st.fg = null;
+          else if (x >= 40 && x <= 47) st.bg = ANSI16[x - 40]; else if (x >= 100 && x <= 107) st.bg = ANSI16[x - 92]; else if (x === 49) st.bg = null;
+          else if (x === 38 || x === 48) { const k = x === 38 ? "fg" : "bg"; if (c[i + 1] === 5) { st[k] = ansi256(c[i + 2]); i += 2; } else if (c[i + 1] === 2) { st[k] = `rgb(${c[i + 2]},${c[i + 3]},${c[i + 4]})`; i += 4; } }
+        }
+      } else if (part && !part.startsWith("\x1b")) { const s = style(); out += s ? `<span style="${s}">${esc(part)}</span>` : esc(part); }
+    }
+    return out;
+  }
   async function pollTerminal() {
     const name = ov.name;
     try {
-      const r = await api("GET", `/api/agents/${enc(name)}/transcript?source=terminal&limit=1`, undefined, { quiet: true });
+      const r = await api("GET", `/api/agents/${enc(name)}/screen`, undefined, { quiet: true });
       if (name !== ov.name) return;
-      H("#term-view").innerHTML = esc(r?.messages?.[0]?.text || "(터미널 화면 없음)");
-    } catch (e) { H("#term-view").innerHTML = esc(`터미널 화면을 불러올 수 없음: ${e.message}`); }
+      const html = ansiHtml((r?.text || "").replace(/\n+$/, "")) || esc(t_("(터미널 화면 없음)"));
+      const tv = $("#term-view");
+      if (tv._h !== html) { const bottom = tv.scrollHeight - tv.scrollTop - tv.clientHeight < 40; tv.innerHTML = html; tv._h = html; if (bottom) tv.scrollTop = tv.scrollHeight; }
+    } catch (e) { H("#term-view").innerHTML = esc(`${t_("터미널 화면을 불러올 수 없음:")} ${e.message}`); }
   }
   function setView(v) {
     ov.view = v;
-    $("#chat-log").hidden = v === "terminal"; $("#term-view").hidden = v !== "terminal";
+    $("#chat-log").hidden = v === "terminal"; $("#term-view").hidden = v !== "terminal"; $("#term-keys").hidden = v !== "terminal";
     $$("[data-view]").forEach((b) => b.classList.toggle("on", b.dataset.view === v));
-    if (v === "terminal") pollTerminal();
+    clearInterval(setView.t);
+    if (v === "terminal") { $("#term-view")._h = null; pollTerminal(); setView.t = setInterval(() => { if (ov.open && ov.view === "terminal") pollTerminal(); }, 1000); }
   }
+  async function termInput(body) {
+    const name = ov.name; if (!name) return;
+    try { await api("POST", `/api/agents/${enc(name)}/term-input`, body, { quiet: true }); setTimeout(pollTerminal, 150); }
+    catch (e) { toast(`${t_("터미널에 보내지 못함:")} ${e.message}`); }
+  }
+  $("#term-keys").addEventListener("click", (e) => { const b = e.target.closest("[data-tkey]"); if (!b) return; const k = b.dataset.tkey; termInput(k.length === 1 ? { text: k } : { key: k }); });
+  $("#term-keys").addEventListener("submit", (e) => { e.preventDefault(); const i = $("#term-text"); const text = i.value; i.value = ""; termInput({ text, key: "Enter" }); });
+
+  // ---------- login prompt on the agent's screen (state "auth") ----------
+  function renderAuthCard() {
+    const card = $("#auth-card"), a = ov.open && ov.name ? agentBy(ov.name) : null, au = a?.state === "auth" ? a.auth : null;
+    if (!au) { card.hidden = true; card.innerHTML = ""; card._h = null; return; }
+    const html = `<div class="ask-head"><span class="relay-tag err-n">${t_("로그인 필요")}</span><span class="muted small">${esc(au.reason || "")}</span><span class="spacer"></span><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button></div>
+      ${au.url ? `<div class="auth-row"><a class="btn primary" href="${esc(au.url)}" target="_blank" rel="noopener noreferrer">${t_("브라우저에서 열기")}</a><code class="path auth-url" title="${esc(au.url)}">${esc(au.url)}</code></div>` : ""}
+      ${au.code ? `<div class="auth-row"><span class="muted small">${t_("장치 코드")}</span><code class="auth-code">${esc(au.code)}</code><button data-copy="${esc(au.code)}">${t_("복사")}</button></div>` : ""}
+      <form class="auth-row auth-paste"><input name="code" autocomplete="off" spellcheck="false" placeholder="${esc(t_("받은 코드를 붙여 넣고 Enter (터미널로 보냄)"))}"><button>${t_("보내기")}</button></form>`;
+    if (card._h !== html) { card.innerHTML = html; card._h = html; }
+    card.hidden = false;
+  }
+  $("#auth-card").addEventListener("submit", (e) => { e.preventDefault(); const i = e.target.querySelector("input"); const text = i.value.trim(); if (!text) return; i.value = ""; termInput({ text, key: "Enter" }); });
 
   // ---------- review reply parked for this requester (relay_held) ----------
   function renderRelayCard() {
@@ -3597,9 +3643,10 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     if (uh && uh !== ov.lastUsageM) { const open = um.open; um.innerHTML = uh; um.open = open; ov.lastUsageM = uh; }
     if (uh && a) uhMount(a, um);
     // agy conversations decoded from the db keep the raw terminal screen as a second view.
-    const dbSource = ov.tx?.source === "antigravity-db" || ov.tx?.source === "pending";
-    $("#view-seg").hidden = !dbSource;
-    if (!dbSource && ov.view === "terminal") setView("chat");
+    // every agent with a terminal: its screen as a second view, with keys to send (login screens, pickers…)
+    const hasTerm = !!a?.handle && !FIXTURE;
+    $("#view-seg").hidden = !hasTerm;
+    if (!hasTerm && ov.view === "terminal") setView("chat");
   }
 
   const tsTitle = (ts) => (ts ? new Date(ts).toLocaleString("ko-KR") : "");
@@ -4442,6 +4489,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
   }
   function stateLine(a) {
     if (a.kind === "asking") return `<span class="ask-n">질문</span> · ${fmtMin(a.waitedMin) || "0분"}`;
+    if (a.kind === "error" && a.s?.state === "auth") return `<span class="err-n">${t_("로그인 필요")}</span>`;
     if (a.kind === "error") return `<span class="err-n">${esc(errLabel(a.s?.lastError))}</span>${a.s?.lastError?.at ? ` · ${ago(a.s.lastError.at)}` : ""}`;
     if (a.kind === "waiting") return `${a.unread ? '<span class="unread-n">미확인</span> · ' : ""}${fmtMin(a.waitedMin)} 전 답`;
     if (a.kind === "working") return `작업 중${a.s?.tool ? ` · ${esc(a.s.tool)}` : ""}`;

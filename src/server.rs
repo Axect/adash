@@ -152,6 +152,8 @@ pub struct Shared {
     pub workspaces: Mutex<crate::launch::Cached>,
     /// terminal handle → draft view from the last composer scan
     pub drafts: Mutex<HashMap<String, Value>>,
+    /// handle → login prompt seen on its screen (with the time first seen)
+    pub auth: Mutex<HashMap<String, Value>>,
     pub catalog: Mutex<crate::launch::Cached>,
     /// Phase C: approved phones/tablets (tailscale serve), and the tailnet host/allowed logins
     pub devices: Mutex<crate::mobile::Devices>,
@@ -206,6 +208,8 @@ fn log_action(sh: &Shared, method: &Method, segs: &[&str], body: &str) {
             json!({"chars": j["text"].as_str().map(|t| t.chars().count()), "images": j["images"].as_array().map(|a| a.len()), "files": j["files"].as_array().map(|a| a.len()), "force": j["force"], "channel": j["channel"]})
         }
         "ask" => json!({"chars": j["request"].as_str().map(|t| t.chars().count()), "from": j["from"]}),
+        // terminal input: only its size and named key, never the text (it can be a password or a code)
+        "term-input" => json!({"chars": j["text"].as_str().map(|t| t.chars().count()), "key": j["key"]}),
         "stat" => return, // read-only lookups fired per message render
         "ack" => json!({"method": method.to_string()}),
         _ => j,
@@ -1158,6 +1162,9 @@ fn tick(sh: &Shared, notifier: &mut Notifier) {
             }
         }
     };
+    // drafts and login prompts change states (auth) before anyone looks at them
+    let mut snap = snap;
+    attach_drafts(sh, &mut snap);
     notifier.observe(&snap);
     sh.history.plock().observe(&snap);
     // concurrency snapshot every 5 minutes
@@ -1181,8 +1188,6 @@ fn tick(sh: &Shared, notifier: &mut Notifier) {
             }
         }
     }
-    let mut snap = snap;
-    attach_drafts(sh, &mut snap);
     decisions_from_transcript(sh, &mut snap);
     for a in snap.agents.iter_mut().filter(|a| a.decisions.as_array().is_some_and(|d| !d.is_empty())) {
         let btw_at = a.session_path.as_deref().map(crate::btw::load).and_then(|v| v.iter().map(|e| e.created).max());
@@ -1217,9 +1222,33 @@ fn decisions_from_transcript(sh: &Shared, snap: &mut Snapshot) {
 
 fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let d = sh.drafts.plock();
+    let au = sh.auth.plock();
     for a in snap.agents.iter_mut() {
         a.draft = a.handle.as_ref().and_then(|h| d.get(h)).filter(|v| !v.is_null()).cloned();
+        // a login prompt on the screen: the agent waits for the user whatever its transcript says
+        if let Some(v) = a.handle.as_ref().and_then(|h| au.get(h)) {
+            a.auth = Some(v.clone());
+            a.state = "auth".into();
+            a.state_since = v["since"].as_i64().unwrap_or(a.state_since);
+            a.needs_human = a.snoozed_until.is_none();
+        }
     }
+}
+
+/// Login prompts on live agents' screens (every ~10 s; cleared once the screen moves on).
+fn scan_auth(sh: &Shared) {
+    let agents = sh.snap.plock().agents.clone();
+    let prev = sh.auth.plock().clone();
+    let mut found = HashMap::new();
+    for a in &agents {
+        let Some(h) = &a.handle else { continue };
+        let Ok(lines) = term::screen(h) else { continue };
+        if let Some(mut v) = crate::auth::detect(&a.agent_type, &lines) {
+            v["since"] = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
+            found.insert(h.clone(), v);
+        }
+    }
+    *sh.auth.plock() = found;
 }
 
 /// B4 detection (every ~60 s): pointer lines `[marker] @brief 를 읽고 답해줘` in live agents'
@@ -1507,6 +1536,7 @@ pub fn serve(port: u16) -> Res<()> {
         last_snapshot: std::sync::atomic::AtomicI64::new(0),
         workspaces: Mutex::new(crate::launch::Cached::default()),
         drafts: Mutex::new(HashMap::new()),
+        auth: Mutex::new(HashMap::new()),
         catalog: Mutex::new(crate::launch::Cached::default()),
         devices: Mutex::new(crate::mobile::Devices::load()),
         ts_host: ts.0,
@@ -1703,6 +1733,7 @@ fn background_round(sh: &Arc<Shared>, n: u32) {
     let snap = sh.snap.plock().clone();
     crate::restore::tick(&snap);
     scan_drafts(sh);
+    scan_auth(sh);
     scan_btw(&snap);
     for mut st in crate::magi::RunState::load_all().into_iter().filter(|r| matches!(r.status.as_str(), "queued" | "held")) {
         // a run nobody delivered within a day is stale
@@ -2034,6 +2065,50 @@ fn handle(sh: &Shared, mut req: Request) {
                     let _ = req.respond(r);
                 }
                 None => reply_json(req, 404, &json!({"error": format!("unknown theme {name}")})),
+            }
+        }
+        (Method::Get, ["api", "agents", name, "screen"]) => {
+            // the terminal view: the rendered screen with colours, and any login prompt on it
+            let a = match agent_for(sh, name, None) {
+                Ok(a) => a,
+                Err(e) => return reply_json(req, e.0, &json!({"error": e.1})),
+            };
+            let Some(h) = a.handle.clone() else { return reply_json(req, 409, &json!({"error": "this agent has no terminal"})) };
+            match term::screen_ansi(&h) {
+                Ok(text) => {
+                    let plain = term::screen(&h).unwrap_or_default();
+                    reply_json(req, 200, &json!({"handle": h, "text": text, "auth": crate::auth::detect(&a.agent_type, &plain)}))
+                }
+                Err(e) => reply_json(req, 502, &json!({"error": e})),
+            }
+        }
+        (Method::Post, ["api", "agents", name, "term-input"]) => {
+            // keys typed in the dashboard's terminal view go to the agent's pane as they are
+            let a = match agent_for(sh, name, None) {
+                Ok(a) => a,
+                Err(e) => return reply_json(req, e.0, &json!({"error": e.1})),
+            };
+            let Some(h) = a.handle.clone() else { return reply_json(req, 409, &json!({"error": "this agent has no terminal"})) };
+            let j: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+            let mut r = Ok(json!({}));
+            if let Some(t) = j["text"].as_str().filter(|t| !t.is_empty()) {
+                if t.len() > 4096 {
+                    return reply_json(req, 413, &json!({"error": "text longer than 4096 bytes"}));
+                }
+                r = term::send_text(&h, t);
+            }
+            if let (Ok(_), Some(k)) = (&r, j["key"].as_str()) {
+                if !crate::auth::KEYS.contains(&k) {
+                    return reply_json(req, 400, &json!({"error": format!("unknown key {k}"), "keys": crate::auth::KEYS}));
+                }
+                r = term::send_keys(&h, &[k]);
+            }
+            match r {
+                Ok(v) => {
+                    log_action(sh, &method, &segs, &body);
+                    reply_json(req, 200, &v)
+                }
+                Err(e) => reply_json(req, 502, &json!({"error": e})),
             }
         }
         (Method::Get, ["api", "agents", name, "attachment"]) => {

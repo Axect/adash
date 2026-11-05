@@ -300,6 +300,12 @@ pub fn screen(handle: &str) -> Res<Vec<String>> {
     Ok(lines_of(&tmux(&["capture-pane", "-p", "-J", "-t", &p])?))
 }
 
+/// The rendered screen with its colours (SGR escapes kept), for the dashboard's terminal view.
+pub fn screen_ansi(handle: &str) -> Res<String> {
+    let p = pane_of(handle)?;
+    tmux(&["capture-pane", "-p", "-e", "-t", &p])
+}
+
 /// Last `n` rendered lines including scrollback, with the read source (always "screen").
 pub fn tail_n(handle: &str, n: usize) -> Res<(String, Vec<String>)> {
     let p = pane_of(handle)?;

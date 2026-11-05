@@ -95,6 +95,16 @@ impl Notifier {
             // hidden projects and snoozed agents stay quiet (errors included)
             for a in snap.agents.iter().filter(|a| !a.hidden && a.snoozed_until.is_none()) {
                 let was = prev.get(&a.identity).map(String::as_str);
+                // a login prompt: once per prompt
+                if a.state == "auth" && was.is_some_and(|w| w != "auth") && self.sent.insert((a.identity.clone(), a.state_since)) {
+                    let t = format!("로그인 필요 · {} · {}", a.name, a.project);
+                    let b = format!("{} 대시보드의 터미널 보기에서 로그인하세요.", a.auth.as_ref().and_then(|v| v["reason"].as_str()).unwrap_or(""));
+                    desktop(&t, &b, a.handle.clone(), Some(&a.name));
+                    push("error", &t, &b, Some(a.name.clone()));
+                    self.last.insert(a.identity.clone(), crate::util::now_ms());
+                    fired.push(a.clone());
+                    continue;
+                }
                 // a provider error stopped the agent: once per error
                 if a.state == "error" && was.is_some_and(|w| w != "error") && self.sent.insert((a.identity.clone(), a.state_since)) {
                     let e = a.last_error.clone().unwrap_or_default();

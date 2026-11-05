@@ -3,6 +3,7 @@
 mod agy;
 mod analytics;
 mod ask;
+mod auth;
 mod btw;
 mod collect;
 mod commands;

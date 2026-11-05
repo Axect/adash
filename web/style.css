@@ -276,6 +276,14 @@ code.path { font: var(--fs-xs) var(--mono); color: var(--muted); user-select: al
 .draft-strip button { height: 24px; flex: none; }
 /* agy raw terminal screen (A6) */
 /* Terminal snapshots wrap instead of scrolling sideways; monospace + no ligatures keep box-drawing (│ ╭ ─) aligned. */
+.term-keys { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 10px; border-top: 1px solid var(--border); background: var(--card); }
+.term-keys input { flex: 1 1 200px; min-width: 120px; font-family: var(--mono); }
+.term-keys button { min-width: 2.4em; }
+.auth-card { border-color: var(--signal-error); }
+.auth-row { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-width: 0; }
+.auth-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+.auth-code { font-size: 1.15em; letter-spacing: .08em; }
+.auth-paste input { flex: 1; font-family: var(--mono); }
 .term-view { flex: 1; margin: 0; overflow: auto; padding: 14px 18px; font: .8em/1.4 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; font-variant-ligatures: none; background: var(--bg); }
 .adv { display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
 /* Phase B: magi, multi-select, slash menu, palette, edges */
