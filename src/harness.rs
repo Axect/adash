@@ -374,8 +374,23 @@ impl Harness for Antigravity {
     fn reads_mentions(&self) -> bool {
         false
     }
-    fn resume_command(&self, file: &Path, _args: &[String]) -> Option<String> {
-        Some(format!("agy --conversation {}", shell_quote(&stem(file))))
+    fn resume_command(&self, file: &Path, args: &[String]) -> Option<String> {
+        // keep the model (it carries the thinking level), mode and sandbox of the original launch
+        let mut kept = kept_flags(args);
+        let mut i = 1;
+        while i < args.len() {
+            let a = &args[i];
+            if a == "--sandbox" {
+                kept.push_str(" '--sandbox'");
+            } else if a == "--mode" && i + 1 < args.len() {
+                kept.push_str(&format!(" '--mode' {}", shell_quote(&args[i + 1])));
+                i += 1;
+            } else if a.starts_with("--mode=") {
+                kept.push_str(&format!(" {}", shell_quote(a)));
+            }
+            i += 1;
+        }
+        Some(format!("agy{kept} --conversation {}", shell_quote(&stem(file))))
     }
     // no exit command: Ctrl+C twice
     fn exit_keys(&self) -> Vec<(&'static str, bool)> {
@@ -532,6 +547,12 @@ mod tests {
         assert!(!h.answers_questions() && h.input_prefixes().is_empty());
         assert_eq!(h.exit_keys().len(), 2);
         assert_eq!(h.resume_command(Path::new("/c/abc.db"), &[]).unwrap(), "agy --conversation 'abc'");
+        let args: Vec<String> =
+            ["agy", "--model", "gemini-4-argon-high", "--mode", "plan", "--sandbox", "--conversation", "old"].iter().map(|s| s.to_string()).collect();
+        assert_eq!(
+            h.resume_command(Path::new("/c/abc.db"), &args).unwrap(),
+            "agy '--model' 'gemini-4-argon-high' '--mode' 'plan' '--sandbox' --conversation 'abc'"
+        );
     }
 
     #[test]

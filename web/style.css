@@ -198,7 +198,7 @@ code.path { font: var(--fs-xs) var(--mono); color: var(--muted); user-select: al
 .hb { flex: none; display: inline-flex; align-items: center; width: auto; height: 18px; border-radius: 4px; overflow: hidden; font: 500 10px/16px var(--mono); color: var(--fg); background: var(--hb-bg); border: 1px solid var(--hb-border); }
 .hb .hg { flex: none; width: 7px; height: 7px; margin: 0 4px 0 5px; background: var(--hbt, var(--hb-glyph)); }
 .hb .hn { flex: none; width: 3ch; padding-right: 3px; box-sizing: content-box; }  /* ch: follows the user's code font, never clips */
-.hb .hm { flex: none; width: 5ch; box-sizing: content-box; height: 100%; padding: 0 3px; border-left: 1px solid var(--hb-border); color: var(--muted); overflow: hidden; text-overflow: clip; text-align: center; }
+.hb .hm { flex: none; width: var(--hm-w, 5ch); box-sizing: content-box; height: 100%; padding: 0 3px; border-left: 1px solid var(--hb-border); color: var(--muted); overflow: hidden; text-overflow: clip; text-align: center; }
 .hb.h-omp { --hbt: var(--hb-omp, var(--hb-glyph)); } .hb.h-omp .hg { border-radius: 50%; }
 .hb.h-cc { --hbt: var(--hb-cc, var(--hb-glyph)); } .hb.h-cc .hg { border-radius: 1px; }
 .hb.h-cdx { --hbt: var(--hb-cdx, var(--hb-glyph)); } .hb.h-cdx .hg { clip-path: polygon(50% 0, 100% 100%, 0 100%); }

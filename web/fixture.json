@@ -314,7 +314,7 @@
    "project": "grant-app",
    "worktreePath": "~/work/grant-app",
    "agentType": "antigravity",
-   "model": "gemini-3-pro",
+   "model": "gemini-4-argon-medium",
    "title": "Fellowship research",
    "state": "error",
    "needsHuman": true,
@@ -354,7 +354,7 @@
    "project": "grant-app",
    "worktreePath": "~/work/grant-app",
    "agentType": "omp",
-   "model": "opus-5.5",
+   "model": "openai/gpt-6.1-sol-high",
    "title": "Research statement",
    "state": "working",
    "needsHuman": false,
@@ -564,7 +564,7 @@
      "cost": 0.412,
      "startedAt": 1793147400000
     },
-    "model": "gpt-5.5-codex",
+    "model": "gpt-6-astra",
     "thinking": "high",
     "account": {
      "provider": "OpenAI",

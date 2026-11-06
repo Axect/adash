@@ -396,7 +396,7 @@ fn discover(harness: &str, cwd: &Path, args: &[String]) -> (Vec<Item>, Vec<PathB
                     roots.push(d.join(sub));
                 }
             }
-            builtins(&mut items, OMP_BUILTINS, "/");
+            installed_builtins(&mut items, "omp", OMP_BUILTINS);
         }
         "antigravity" => {
             for d in &up {
@@ -471,7 +471,7 @@ fn discover(harness: &str, cwd: &Path, args: &[String]) -> (Vec<Item>, Vec<PathB
                     scope: s.3,
                 });
             }
-            builtins(&mut items, CLAUDE_BUILTINS, "/");
+            installed_builtins(&mut items, "claude", CLAUDE_BUILTINS);
         }
         "codex" => {
             sk(h.join(".codex/skills"), "user", "codex", true, &mut skills, &mut roots);
@@ -526,6 +526,111 @@ fn discover(harness: &str, cwd: &Path, args: &[String]) -> (Vec<Item>, Vec<PathB
 fn tilde(p: &Path) -> String {
     let h = home();
     p.strip_prefix(&h).map(|r| format!("~/{}", r.display())).unwrap_or_else(|_| p.display().to_string())
+}
+
+/// Built-in commands as the installed harness defines them (Claude Code, omp), else the hand list.
+/// Hand-list entries keep their Korean description; the rest use the harness's own (English) text.
+fn installed_builtins(items: &mut Vec<Item>, kind: &str, fallback: &[(&str, &str)]) {
+    let Some(found) = extracted(kind).filter(|v| v.len() >= 10) else { return builtins(items, fallback, "/") };
+    for (n, d) in found {
+        let ko = fallback.iter().find(|(f, _)| *f == n).map(|(_, d)| d.to_string());
+        items.push(Item {
+            kind: "command",
+            insert: format!("/{n}"),
+            name: n,
+            mid: None,
+            description: ko.unwrap_or(d),
+            source: "builtin".into(),
+            scope: "builtin",
+        });
+    }
+}
+
+/// (name, description) of the installed binary's built-ins, cached per binary path + mtime.
+fn extracted(kind: &str) -> Option<Vec<(String, String)>> {
+    static CACHE: LazyLock<Mutex<HashMap<String, (PathBuf, u128, Vec<(String, String)>)>>> = LazyLock::new(Default::default);
+    let bin = std::fs::canonicalize(crate::launch::find_bin(kind)?).ok()?;
+    let mt = std::fs::metadata(&bin).and_then(|m| m.modified()).ok()?.duration_since(std::time::UNIX_EPOCH).ok()?.as_nanos();
+    if let Some((p, m, v)) = CACHE.plock().get(kind) {
+        if *p == bin && *m == mt {
+            return Some(v.clone());
+        }
+    }
+    let bytes = std::fs::read(&bin).ok()?;
+    let v = match kind {
+        "claude" => claude_builtins(&bytes),
+        "omp" => omp_builtins(&bytes),
+        _ => return None,
+    };
+    CACHE.plock().insert(kind.into(), (bin, mt, v.clone()));
+    Some(v)
+}
+
+/// Claude Code command objects: `type:"local|local-jsx|prompt",name:"x",description:"…"`, then
+/// optional `argumentHint`; `isHidden:!0` / `isEnabled:()=>!1` ones are skipped.
+fn claude_builtins(b: &[u8]) -> Vec<(String, String)> {
+    static RE: LazyLock<regex::bytes::Regex> = LazyLock::new(|| {
+        regex::bytes::Regex::new(r#"type:"(?:local|local-jsx|prompt)",name:"([a-z][a-z0-9-]*)",description:"((?:[^"\\]|\\.){1,200})""#).unwrap()
+    });
+    static HINT: LazyLock<regex::bytes::Regex> = LazyLock::new(|| regex::bytes::Regex::new(r#"^,argumentHint:"([^"]{1,60})""#).unwrap());
+    let mut out: Vec<(String, String)> = vec![];
+    for c in RE.captures_iter(b) {
+        let end = c.get(0).unwrap().end();
+        let tail = &b[end..(end + 600).min(b.len())];
+        let tail = &tail[..tail.windows(5).position(|w| w == b"load:").unwrap_or(tail.len())];
+        let has = |s: &[u8]| tail.windows(s.len()).any(|w| w == s);
+        if has(b"isHidden:!0") || has(b"isEnabled:()=>!1") {
+            continue;
+        }
+        let name = String::from_utf8_lossy(&c[1]).into_owned();
+        let mut d = String::from_utf8_lossy(&c[2]).replace("\\\"", "\"");
+        if let Some(h) = HINT.captures(tail) {
+            d = format!("{d} · {}", String::from_utf8_lossy(&h[1]));
+        }
+        if !out.iter().any(|(n, _)| *n == name) {
+            out.push((name, d));
+        }
+    }
+    out.sort();
+    out
+}
+
+/// omp slash commands: the pretty-printed table entries `{ name: "x", icon: …, description: "…" }`.
+fn omp_builtins(b: &[u8]) -> Vec<(String, String)> {
+    static RE: LazyLock<regex::bytes::Regex> =
+        LazyLock::new(|| regex::bytes::Regex::new(r#"\n  \{\n    name: "([a-z][a-z0-9-]*)",\n((?:    [^\n]*\n){0,6})"#).unwrap());
+    static DESC: LazyLock<regex::bytes::Regex> = LazyLock::new(|| regex::bytes::Regex::new(r#"    description: "([^"\n]*)""#).unwrap());
+    static ALIASES: LazyLock<regex::bytes::Regex> = LazyLock::new(|| regex::bytes::Regex::new(r#"    aliases: \[([^\]\n]*)\]"#).unwrap());
+    let mut out: Vec<(String, String)> = vec![];
+    let mut aliases: Vec<(String, String)> = vec![];
+    for c in RE.captures_iter(b) {
+        let body = &c[2];
+        if !body.windows(6).any(|w| w == b"icon: ") || body.windows(7).any(|w| w == b"hidden:") {
+            continue;
+        }
+        let Some(d) = DESC.captures(body) else { continue };
+        let name = String::from_utf8_lossy(&c[1]).into_owned();
+        let desc = String::from_utf8_lossy(&d[1]).into_owned();
+        if !out.iter().any(|(n, _)| *n == name) {
+            out.push((name.clone(), desc.clone()));
+        }
+        // `aliases: ["a", "b"]`: the same command under another name
+        if let Some(al) = ALIASES.captures(body) {
+            for x in String::from_utf8_lossy(&al[1]).split(',').map(|x| x.trim().trim_matches('"').trim_end_matches(':').to_string()) {
+                if !x.is_empty() && !out.iter().any(|(n, _)| *n == x) {
+                    aliases.push((x, format!("= /{name} · {desc}")));
+                }
+            }
+        }
+    }
+    // a real command of that name wins over an alias
+    for (x, d) in aliases {
+        if !out.iter().any(|(n, _)| *n == x) {
+            out.push((x, d));
+        }
+    }
+    out.sort();
+    out
 }
 
 fn builtins(items: &mut Vec<Item>, list: &[(&str, &str)], prefix: &str) {
@@ -692,5 +797,27 @@ mod prefix_tests {
         assert_eq!(super::as_text("omp", "# 제목"), "# 제목", "# is plain text in omp");
         assert_eq!(super::as_text("claude", "# 메모"), "\u{200b}# 메모");
         assert_eq!(super::as_text("antigravity", "!x"), "!x");
+    }
+
+    #[test]
+    fn builtins_come_from_the_installed_harness() {
+        let claude = br#"x={type:"local",name:"reload-plugins",description:"Activate pending plugin changes in the current session",argumentHint:"[--force]",load:()=>1};y={type:"local-jsx",name:"secret",description:"hidden one",isHidden:!0,load:()=>1};z={type:"prompt",name:"off",description:"d",isEnabled:()=>!1,load:1}"#;
+        assert_eq!(
+            super::claude_builtins(claude),
+            vec![("reload-plugins".to_string(), "Activate pending plugin changes in the current session · [--force]".to_string())]
+        );
+        let omp = b"\n  {\n    name: \"compact\",\n    icon: \"compress\",\n    description: \"Manually compact the session context\",\n  },\n  {\n    name: \"soft\",\n    description: \"subcommand\",\n  },";
+        assert_eq!(super::omp_builtins(omp), vec![("compact".to_string(), "Manually compact the session context".to_string())]);
+        // the real binaries, when installed here
+        if let Some(v) = super::extracted("claude") {
+            assert!(v.iter().any(|(n, _)| n == "reload-plugins"), "{} claude built-ins", v.len());
+        }
+        if let Some(v) = super::extracted("omp") {
+            assert!(v.iter().any(|(n, _)| n == "compact") && v.iter().any(|(n, _)| n == "reload-plugins") && v.len() >= 30, "{} omp built-ins", v.len());
+            let mut names: Vec<&String> = v.iter().map(|(n, _)| n).collect();
+            names.sort();
+            names.dedup();
+            assert_eq!(names.len(), v.len(), "no duplicates");
+        }
     }
 }

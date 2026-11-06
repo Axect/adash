@@ -933,6 +933,8 @@
     renderBackendBanner(); renderNet();
     const t0 = performance.now();
     buildModel();
+    // Model cell width = longest label shown, so every badge in a column lines up.
+    document.documentElement.style.setProperty("--hm-w", `${Math.max(3, ...(state?.agents || []).map((a) => modelFamily(a.usage?.model || a.model).length))}ch`);
     renderTop(); renderLanes(); renderRecent();
     if (isMobile()) renderMobile();
     if (ov.open) renderOverlay();
@@ -1212,10 +1214,19 @@
   // Harness badge (item 5): a fixed-width two-part pill. The monogram + glyph shape carry the meaning
   // (omp ●, cc ■, cdx ▲, agy ◆, other ○), the tint is secondary; the model family is the second part.
   const HARNESS = { omp: "omp", claude: "cc", "claude-code": "cc", codex: "cdx", antigravity: "agy", agy: "agy", gemini: "gem" };
+  // Short model label (≤6 chars): the model's own name, not the vendor ("gpt-6-astra" → "astra", "gemini-4-argon-medium" → "argon").
   function modelFamily(m) {
-    m = String(m || "").toLowerCase();
-    for (const [re, f] of [[/opus/, "opus"], [/sonnet/, "son"], [/haiku/, "hku"], [/gemini|argon/, "gem"], [/gpt|codex|astra|\bo[134]\b/, "gpt"], [/glm/, "glm"], [/grok/, "grok"], [/deepseek/, "ds"], [/qwen/, "qwen"], [/kimi/, "kimi"], [/claude/, "cl"]]) if (re.test(m)) return f;
-    return "";
+    m = String(m || "").toLowerCase().split("/").pop().replace(/:[a-z]+$/, "").replace(/-(low|medium|high|xhigh)$/, "");
+    if (!m) return "";
+    let x;
+    if ((x = m.match(/^claude-(?:[\d.-]+-)?([a-z]+)/))) return x[1].slice(0, 6);
+    if (/gpt-?oss/.test(m)) return "oss";
+    if (/^codex/.test(m)) return "codex";
+    if ((x = m.match(/^gpt-?[\d.]+(?:-([a-z]+))?/))) return x[1] && !/^(mini|nano|pro|turbo|codex|chat)$/.test(x[1]) ? x[1].slice(0, 6) : x[1] === "codex" ? "codex" : `gpt${m.match(/^gpt-?(\d+)/)?.[1] || ""}`.slice(0, 6);
+    if ((x = m.match(/^(o\d)\b/))) return x[1];
+    if (/gemini|argon/.test(m)) return /argon/.test(m) ? "argon" : /flash/.test(m) ? "flash" : "gem";
+    for (const [re, f] of [[/glm/, "glm"], [/grok/, "grok"], [/deepseek/, "ds"], [/qwen/, "qwen"], [/kimi/, "kimi"], [/opus|sonnet|haiku|fable|mythos/, null]]) if (re.test(m)) return f || m.match(re)[0];
+    return (m.match(/[a-z]+/)?.[0] || "").slice(0, 6);
   }
   // Working mark (v44): the wordmark's speed lines drifting left. One shared keyframe; paused off-screen,
   // in hidden tabs and with reduced motion (then the lines stand still). Neutral colour only.
@@ -1296,7 +1307,7 @@
     const t = String(s.agentType || "").toLowerCase(), mono = HARNESS[t] || (t.slice(0, 3) || "?"), cls = HARNESS[t] ? mono : "other";
     // usage.model is the live model (it follows /model switches); s.model is what the session was started with.
     const mdl = s.usage?.model || s.model, fam = modelFamily(mdl);
-    return `<span class="hb h-${cls}${fam ? " has-m" : ""}${live ? "" : " off"}" title="${esc(`${s.agentType || "?"}${mdl ? ` · ${mdl}` : ""}${s.role ? `\n역할: ${s.role}` : ""}${live ? "" : "\n종료됨"}`)}"><i class="hg"></i><span class="hn">${esc(mono)}</span>${fam ? `<span class="hm">${esc(fam.slice(0, 5))}</span>` : ""}</span>`;
+    return `<span class="hb h-${cls}${fam ? " has-m" : ""}${live ? "" : " off"}" title="${esc(`${s.agentType || "?"} · ${mdl || L2("모델 알 수 없음", "model unknown")}${s.role ? `\n역할: ${s.role}` : ""}${live ? "" : "\n종료됨"}`)}"><i class="hg"></i><span class="hn">${esc(mono)}</span>${fam ? `<span class="hm">${esc(fam)}</span>` : ""}</span>`;
   }
   // 연결 보기 (item 2): basic = request spans + connector ticks, all = every curve, off = nothing.
   let linkMode = localStorage.getItem("adash.links") || "basic";

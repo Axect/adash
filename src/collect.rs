@@ -247,7 +247,13 @@ impl Collector {
                 state = "error".into();
                 state_since = e.at;
             }
-            let model = sess.model.clone().or_else(|| proc_main.and_then(|p| session::arg_value(&p.args, "--model")));
+            // agy: the launch flag, else the model its conversation db records (restored agents run
+            // as `agy --conversation <id>` only)
+            let model = sess
+                .model
+                .clone()
+                .or_else(|| proc_main.and_then(|p| session::arg_value(&p.args, "--model")))
+                .or_else(|| (agent_type == "antigravity").then(|| sess.path.as_deref().and_then(crate::agy::model_of_cached)).flatten());
             // the session file is the agent's identity whenever the mapping is trusted (fd,
             // --resume, title; pinned per process): history, names and acks stay with the
             // session after the terminal closes. Guessed (mtime) mappings use the terminal handle.

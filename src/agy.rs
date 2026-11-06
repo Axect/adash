@@ -146,6 +146,22 @@ pub fn open(db: &Path) -> Res<Connection> {
 
 /// Steps with idx > `after` in order.
 /// The model a conversation ran on: the most frequent `gemini-*` name in its generator metadata.
+/// `model_of`, re-read only when the db changed (collect runs every few seconds).
+pub fn model_of_cached(db: &Path) -> Option<String> {
+    use crate::util::LockExt;
+    static C: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<std::path::PathBuf, (i64, Option<String>)>>> =
+        std::sync::LazyLock::new(Default::default);
+    let mt = crate::util::mtime_ms(db).max(crate::util::mtime_ms(&db.with_extension("db-wal")));
+    if let Some((m, v)) = C.plock().get(db) {
+        if *m == mt {
+            return v.clone();
+        }
+    }
+    let v = model_of(db);
+    C.plock().insert(db.to_path_buf(), (mt, v.clone()));
+    v
+}
+
 pub fn model_of(db: &Path) -> Option<String> {
     let c = open(db).ok()?;
     let mut st = c.prepare("SELECT data FROM gen_metadata").ok()?;
