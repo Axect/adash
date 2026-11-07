@@ -3117,15 +3117,28 @@
     ta.focus(); ta.setSelectionRange(end, end);
     renderDecisions();
   }
+  // Fold state per agent + decision bundle (v46): phones start folded, desktop open; a new bundle falls back to the default.
+  const decKey = (name, ds) => { let h = 0; for (const c of ds.map((d) => `${d.text}|${(d.options || []).join("/")}`).join("\n")) h = (h * 31 + c.charCodeAt(0)) | 0; return `${name}#${(h >>> 0).toString(36)}`; };
+  const decFoldMap = () => { try { return JSON.parse(localStorage.getItem("adash.decFold") || "{}"); } catch { return {}; } };
+  function setDecFold(key, v) { const m = decFoldMap(); delete m[key]; m[key] = v; const ks = Object.keys(m); ks.slice(0, Math.max(0, ks.length - 60)).forEach((k) => delete m[k]); localStorage.setItem("adash.decFold", JSON.stringify(m)); }
   function renderDecisions() {
     const card = $("#decision-card");
     const a = ov.open && ov.name && agentBy(ov.name);
     const ds = decisionsOf(a);
     if (!ds.length) { card.hidden = true; H("#decision-card").innerHTML = ""; return; }
     card.hidden = false;
-    H("#decision-card").innerHTML = `<div class="dc-head"><span class="dc-tag">정하실 것 ${ds.length}</span><span class="muted small">항목이나 선택지를 누르면 입력창에 번호와 함께 채워집니다</span><span class="spacer"></span><button data-act="dec-all">모두 답하기</button></div>
+    const key = decKey(ov.name, ds), picked = ds.filter((_, i) => composerItem(i + 1)).length;
+    // Choosing (an answer already in the composer) keeps it open unless the user folded it explicitly.
+    const stored = decFoldMap()[key], folded = stored ?? (isMobile() && !picked);
+    card.dataset.key = key; card.classList.toggle("folded", folded);
+    const first = String(ds[0].text || "").replace(/[*_`#>[\]]/g, "").replace(/\s+/g, " ").trim();
+    const pk = picked ? `<span class="dc-picked">${L2(`선택 ${picked}/${ds.length}`, `${picked}/${ds.length} chosen`)}</span>` : "";
+    const tog = `<button class="dc-fold" data-act="dec-fold" aria-expanded="${!folded}" title="${esc(folded ? L2("펼치기", "Expand") : L2("접기", "Collapse"))}">${folded ? "▸" : "▾"}</button>`;
+    if (folded) { H("#decision-card").innerHTML = `<div class="dc-head" data-act="dec-fold">${tog}<span class="dc-tag">${L2("정하실 것", "Decisions")} ${ds.length}</span><span class="dc-sum">${esc(first)}</span>${ds.length > 1 ? `<span class="dc-more">+${ds.length - 1}</span>` : ""}${pk}</div>`; return; }
+    H("#decision-card").innerHTML = `<div class="dc-head">${tog}<span class="dc-tag">${L2("정하실 것", "Decisions")} ${ds.length}</span>${pk}<span class="muted small dc-hint">${L2("항목이나 선택지를 누르면 입력창에 번호와 함께 채워집니다", "Tap an item or option to fill the composer with its number")}</span><span class="spacer"></span><button data-act="dec-all">${L2("모두 답하기", "Answer all")}</button></div>
       <ol class="dc-list">${ds.map((d, i) => { const n = i + 1, c = composerItem(n); return `<li class="${c ? "done" : ""}"><button class="dc-item" data-act="dec-item" data-n="${n}">${mdit.renderInline(String(d.text || ""))}</button>${(d.options || []).map((o) => `<button class="dc-opt${c === o ? " on" : ""}" data-act="dec-opt" data-n="${n}" data-o="${esc(o)}">${esc(o)}</button>`).join("")}</li>`; }).join("")}</ol>`;
   }
+  function toggleDecFold() { const c = $("#decision-card"); if (!c.dataset.key) return; setDecFold(c.dataset.key, !c.classList.contains("folded")); renderDecisions(); }
   function answerAllDecisions() {
     const ds = decisionsOf(agentBy(ov.name));
     ds.forEach((_, i) => { if (composerItem(i + 1) == null) setComposerItem(i + 1, ""); });
@@ -4109,7 +4122,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     if (r?.warning === "network_down") toast(`${name} · 보냈지만 제공자에 접속할 수 없는 상태입니다`, 4000);
     if (r && r.delivered) {
       // A delivered message answers the open decisions (server rule); clear them until the next state confirms.
-      { const s0 = agentBy(name); if (s0 && decisionsOf(s0).length) { s0.decisions = []; s0.decisionsAnswered = true; } }
+      { const s0 = agentBy(name); if (s0 && decisionsOf(s0).length) { setDecFold(decKey(name, decisionsOf(s0)), true); s0.decisions = []; s0.decisionsAnswered = true; } }
       ov.held = null;
       const seenUsers = (ov.tx?.messages || []).filter((m) => m.role === "user").length;
       // "/btw …": the transcript records it as a btw question (kind "btw"); match on that text instead.
@@ -4328,6 +4341,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     else if (a === "dec-opt") setComposerItem(+b.dataset.n, b.dataset.o);
     else if (a === "dec-item") setComposerItem(+b.dataset.n, composerItem(+b.dataset.n) || "");
     else if (a === "dec-all") answerAllDecisions();
+    else if (a === "dec-fold") toggleDecFold();
     else if (a === "draft-submit") draftAction("submit");
     else if (a === "draft-clear") dialog(`<h3>초안 지우기</h3><p>터미널 입력창에 남아 있는 초안을 지웁니다. 되돌릴 수 없습니다.</p>`, "지우기", () => draftAction("clear"));
     else if (a === "draft-import") {

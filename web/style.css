@@ -259,7 +259,16 @@ code.path { font: var(--fs-xs) var(--mono); color: var(--muted); user-select: al
 .ask-text { width: 100%; }
 .ask-submit { display: flex; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 8px; border-top: 1px solid var(--border); }
 /* "정하실 것" checklist at the top of the chat (A1) */
-.decision-card { margin: 8px 12px 0; padding: 8px 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--accent) 5%, var(--card)); font-size: .88em; max-height: 32vh; overflow: auto; }
+.decision-card { margin: 8px 12px 0; padding: 0 12px 8px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 8px; background: color-mix(in srgb, var(--accent) 5%, var(--card)); font-size: .88em; max-height: 45vh; overflow: auto; flex: none; }
+.decision-card.folded { padding-bottom: 0; }
+.dc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; position: sticky; top: 0; z-index: 1; padding: 6px 0; background: color-mix(in srgb, var(--accent) 5%, var(--card)); min-width: 0; }
+.decision-card.folded .dc-head { margin: 0; cursor: pointer; }
+.dc-fold { flex: none; width: 24px; height: 24px; padding: 0; border-color: transparent; background: none; color: var(--ui-link); }
+.dc-tag { flex: none; white-space: nowrap; }
+.dc-sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--fg); }
+.dc-picked { flex: none; font-size: var(--fs-xs); color: var(--ui-link); white-space: nowrap; }
+.dc-hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dc-more { flex: none; font-size: var(--fs-xs); color: var(--muted); }
 .dc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
 .dc-tag { color: var(--ui-link); font-weight: 600; }
 .dc-list { margin: 0; padding-left: 22px; }
