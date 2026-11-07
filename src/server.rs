@@ -2317,6 +2317,14 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
                 Err((c, v)) => (c, v),
             })
         }
+        (Method::Get, ["api", "fs", "dirs"]) => {
+            let q = query.split('&').filter_map(|kv| kv.split_once('=')).find(|(k, _)| *k == "q").map(|(_, v)| percent_decode(v)).unwrap_or_default();
+            let mut v = crate::paths::dirs(&q, &crate::util::home());
+            if q.trim().is_empty() {
+                v["suggest"] = json!(crate::paths::project_parents(&sh.snap.plock().agents));
+            }
+            Ok((200, v))
+        }
         (Method::Post, ["api", "projects"]) => {
             let (mut body, launched) = crate::launch::new_project(&j)?;
             if let Some(l) = launched {

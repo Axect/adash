@@ -614,3 +614,118 @@ mod complete_tests {
         let _ = std::fs::remove_dir_all(&base);
     }
 }
+
+/// Folder completion for the new-session path field (`GET /api/fs/dirs?q=`): directories only,
+/// under `$HOME` only (symlinks followed but kept inside it), prefix match ignoring case, hidden
+/// folders only when the typed name starts with '.', at most 30 of the first 2000 entries.
+/// Each item: {path (with `~`), name, isGit, exists: true}. The typed path itself comes back as
+/// `{query, exists}` so the field can say "already there".
+pub fn dirs(q: &str, root: &Path) -> serde_json::Value {
+    let Ok(root) = root.canonicalize() else { return serde_json::json!({"items": [], "exists": false}) };
+    let tilde = |p: &Path| {
+        p.strip_prefix(&root)
+            .map(|r| if r.as_os_str().is_empty() { "~".to_string() } else { format!("~/{}", r.display()) })
+            .unwrap_or_else(|_| p.display().to_string())
+    };
+    let inside = |p: &Path| p.canonicalize().is_ok_and(|c| c.starts_with(&root) && !denied(&c));
+    let q = q.trim();
+    // `~` is the root (the user's home in the server; a scratch folder in tests)
+    let expand = |p: &str, _: &Path| -> PathBuf {
+        if p == "~" {
+            root.clone()
+        } else if let Some(r) = p.strip_prefix("~/") {
+            root.join(r)
+        } else {
+            PathBuf::from(p)
+        }
+    };
+    let full = expand(q.trim_end_matches('/'), &root);
+    let exists = !q.is_empty() && full.is_dir() && inside(&full);
+    let (dir_part, prefix) = match q.rfind('/') {
+        Some(i) => (&q[..=i], &q[i + 1..]),
+        None if q == "~" => ("~/", ""),
+        None => ("~/", q),
+    };
+    let dir = if dir_part == "/" { PathBuf::from("/") } else { expand(dir_part.trim_end_matches('/'), &root) };
+    let mut items = vec![];
+    if inside(&dir) {
+        let want = prefix.to_lowercase();
+        if let Ok(rd) = std::fs::read_dir(&dir) {
+            for e in rd.flatten().take(2000) {
+                let name = e.file_name().to_string_lossy().into_owned();
+                if (name.starts_with('.') && !prefix.starts_with('.')) || SKIP_DIRS.contains(&name.as_str()) || !name.to_lowercase().starts_with(&want) {
+                    continue;
+                }
+                let p = e.path();
+                if p.is_dir() && inside(&p) {
+                    items.push((name, p));
+                }
+            }
+        }
+    }
+    items.sort_by_key(|(n, _)| n.to_lowercase());
+    let items: Vec<serde_json::Value> = items
+        .into_iter()
+        .take(30)
+        .map(|(name, p)| serde_json::json!({"path": tilde(&p), "name": name, "isGit": p.join(".git").exists(), "exists": true}))
+        .collect();
+    serde_json::json!({"query": q, "exists": exists, "items": items})
+}
+
+#[cfg(test)]
+mod dirs_tests {
+    #[test]
+    fn folder_completion_stays_under_root() {
+        let base = std::env::temp_dir().join(format!("adash-dirs-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        for d in ["home/Research", "home/research-old", "home/Other", "home/.hidden", "outside"] {
+            std::fs::create_dir_all(base.join(d)).unwrap();
+        }
+        std::fs::write(base.join("home/Readme"), "").unwrap();
+        std::os::unix::fs::symlink(base.join("outside"), base.join("home/rlink")).unwrap();
+        let root = base.join("home");
+        let names = |q: &str| super::dirs(q, &root)["items"].as_array().unwrap().iter().map(|v| v["name"].as_str().unwrap().to_string()).collect::<Vec<_>>();
+        // ~ expands to the root; prefix match ignores case; files and links out of the root left out
+        assert_eq!(names("~/re"), vec!["Research", "research-old"]);
+        assert_eq!(names("~/"), vec!["Other", "Research", "research-old"]);
+        assert_eq!(names("~/."), vec![".hidden"]);
+        assert!(names(&format!("{}/", base.join("outside").display())).is_empty(), "outside the root");
+        assert!(names("/").is_empty());
+        assert_eq!(super::dirs("~/Research", &root)["exists"], true);
+        assert_eq!(super::dirs("~/New", &root)["exists"], false);
+        let _ = std::fs::remove_dir_all(&base);
+    }
+}
+
+/// Starting points for a new project folder: parent folders of known projects (analytics
+/// sessions, live agents), most used first, as `{path, name, isGit, exists, uses}`.
+pub fn project_parents(live: &[crate::collect::Agent]) -> Vec<serde_json::Value> {
+    let mut count: std::collections::HashMap<PathBuf, usize> = std::collections::HashMap::new();
+    let mut add = |cwd: &str, n: usize| {
+        if let Some(p) = Path::new(cwd).parent() {
+            *count.entry(p.to_path_buf()).or_default() += n;
+        }
+    };
+    if let Ok(db) = crate::analytics::open_read() {
+        if let Ok(mut st) = db.conn.prepare("SELECT cwd, COUNT(*) FROM sessions WHERE cwd IS NOT NULL GROUP BY cwd") {
+            for (c, n) in st.query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, i64>(1)?))).into_iter().flatten().flatten() {
+                add(&c, n as usize);
+            }
+        }
+    }
+    for a in live {
+        if !a.worktree_path.is_empty() {
+            add(&a.worktree_path, 1);
+        }
+    }
+    let root = home();
+    let mut v: Vec<(PathBuf, usize)> = count.into_iter().filter(|(p, _)| p.starts_with(&root) && *p != root && p.is_dir()).collect();
+    v.sort_by(|a, b| b.1.cmp(&a.1).then(a.0.cmp(&b.0)));
+    v.into_iter()
+        .take(8)
+        .map(|(p, n)| {
+            let path = format!("~/{}", p.strip_prefix(&root).unwrap().display());
+            serde_json::json!({"path": path, "name": p.file_name().map(|x| x.to_string_lossy().into_owned()).unwrap_or_default(), "isGit": p.join(".git").exists(), "exists": true, "uses": n})
+        })
+        .collect()
+}
