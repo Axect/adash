@@ -129,6 +129,7 @@ Two files in the config directory (Linux `$XDG_CONFIG_HOME/adash` or `~/.config/
   | `terminal.emulator` | `auto` | opened by "open terminal" when no tmux client is attached (`ADASH_TERMINAL` wins). `auto`: `$TERMINAL`, then the first installed of x-terminal-emulator, ghostty, kitty, wezterm, alacritty, foot, konsole, gnome-terminal, xfce4-terminal, xterm (macOS: Ghostty, iTerm, Terminal). When none is found the dashboard offers the `tmux -L adash attach -t <project>` command to copy |
   | `terminal.tmux` | `tmux` | tmux binary |
   | `notifications.backend` | `auto` | `notify-send`, `terminal-notifier`, `osascript` or `none` |
+  | `launch.autoTrust` | `true` | agents started from the dashboard accept their harness's "trust this folder?" screen (you chose the folder); see docs/security.md |
   | `notifications.silenceHarness` | `true` | turn off the agents' own desktop notifications in adash terminals so each event notifies once, from adash: omp via `PI_NO_DESKTOP_NOTIFY=1` in the terminal environment, Claude Code via `--settings '{"preferredNotifChannel":"notifications_disabled"}'`, Codex via `-c tui.notifications=false`. Your config files are not changed and agents started outside adash keep their notifications. Antigravity has no documented switch. |
   | `open.markdownApp` | unset | app for Markdown files opened from chat |
   | `reports.chrome` | unset | Chromium for PDF reports (searched on PATH when unset) |

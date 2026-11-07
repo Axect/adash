@@ -9,9 +9,9 @@
   // Chat overlay state
   const ov = { open: false, name: null, tab: "info", tx: null, pending: [], held: null, openGroups: new Set(), lastInfoHtml: "", lastLogHtml: "", polling: false };
 
-  const STATE_KO = { asking: "질문 대기", working: "작업 중", done: "완료", waiting: "승인 대기", blocked: "막힘", idle: "유휴", error: "오류로 멈춤", auth: "로그인 필요" };
+  const STATE_KO = { asking: "질문 대기", working: "작업 중", done: "완료", waiting: "승인 대기", blocked: "막힘", idle: "유휴", error: "오류로 멈춤", auth: "로그인 필요", trust: "폴더 신뢰 필요" };
   const STATUS_KO = { queued: "대기열", held_possible_draft: "보류(초안 의심)", delivered: "전달됨", delivery_unconfirmed: "전달 미확인", answered: "답변됨", relay_held: "답변 보류", relayed: "회신 완료", escalated: "에스컬레이션", failed: "실패" };
-  const HELD_KO = { draft: "입력창 초안", working: "작업 중", asking: "질문 대기", unreadable: "입력창 확인 불가", network: "네트워크 대기" };
+  const HELD_KO = { trust: "폴더 신뢰 필요", draft: "입력창 초안", working: "작업 중", asking: "질문 대기", unreadable: "입력창 확인 불가", network: "네트워크 대기" };
   // Message/answer channels recorded per interaction.
   const CHANNEL_KO = { terminal: "터미널", "term-send": "터미널", "terminal-answer": "터미널", dashboard: "대시보드" };
   const chanKo = (c) => CHANNEL_KO[c] || c;
@@ -30,7 +30,7 @@
   const stateKo = (s) => STATE_KO[s] || (s ? `${s} (승인 대기)` : "?");
   // `asking` (an open ask/permission prompt) blocks on me even while the session record still shows `working`.
   // `error` = stopped on a provider/API error (lastError); it blocks on me like an open question.
-  const kindOf = (a) => (a.state === "asking" || a.ask ? "asking" : a.state === "error" || a.state === "auth" ? "error" : a.needsHuman && !a.snoozedUntil ? "waiting" : a.state === "working" ? "working" : "idle");
+  const kindOf = (a) => (a.state === "asking" || a.state === "trust" || a.ask ? "asking" : a.state === "error" || a.state === "auth" ? "error" : a.needsHuman && !a.snoozedUntil ? "waiting" : a.state === "working" ? "working" : "idle");
   const errLabel = (e) => (e ? `오류${e.status ? ` ${e.status}` : ""}` : "오류");
   const errTip = (e) => (e ? [`${errLabel(e)}${e.provider || e.model ? ` · ${[e.provider, e.model].filter(Boolean).join(" / ")}` : ""}`, e.message || "", e.at ? new Date(e.at).toLocaleString("ko-KR") : ""].filter(Boolean).join("\n") : "제공자 API 오류로 멈춤");
   // Retry (v19): the label comes from the backend (`agent.retry.label`, e.g. how that harness retries);
@@ -1850,7 +1850,7 @@
   }
   async function submitLaunch() {
     const v = (id) => $(id).value.trim();
-    const common = { agent: v("#ld-agent"), focus: $("#ld-focus").checked };
+    const common = { agent: v("#ld-agent"), focus: $("#ld-focus").checked, autoTrust: $("#ld-trust").checked };
     if (v("#ld-model")) common.model = v("#ld-model");
     if (!$("#ld-effort-row").hidden && v("#ld-effort")) common.effort = v("#ld-effort");
     const prompt = $("#ld-prompt").value.replace(/\s+$/, "");
@@ -3359,7 +3359,18 @@
 
   // ---------- login prompt on the agent's screen (state "auth") ----------
   function renderAuthCard() {
-    const card = $("#auth-card"), a = ov.open && ov.name ? agentBy(ov.name) : null, au = a?.state === "auth" ? a.auth : null;
+    const card = $("#auth-card"), a = ov.open && ov.name ? agentBy(ov.name) : null;
+    if (a?.state === "trust" && a.auth) {
+      const t = a.auth, ok = Number.isInteger(t.yes);
+      const html = `<div class="ask-head"><span class="relay-tag">${t_("폴더 신뢰 필요")}</span><span class="muted small">${esc(t.question || "")}</span><span class="spacer"></span><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button></div>
+        <div class="auth-row"><code class="path auth-url" title="${esc(t.cwd || "")}">${esc(t.cwd || "")}</code></div>
+        ${t.queued ? `<div class="auth-row small">${esc(L2(`보류된 메시지 ${t.queued}개 · 신뢰하면 자동으로 보냅니다`, `${t.queued} message(s) waiting · sent once trusted`))}</div>` : ""}
+        <div class="auth-row muted small">${t_("신뢰하면 이 폴더의 설정과 훅이 실행될 수 있습니다.")}</div>
+        <div class="auth-row"><span class="spacer"></span>${Number.isInteger(t.no) ? `<button data-trust="0">${t_("거절")}</button>` : ""}<button class="primary" data-trust="1"${ok ? "" : " disabled"}>${t_("이 폴더 신뢰")}</button></div>`;
+      if (card._h !== html) { card.innerHTML = html; card._h = html; }
+      card.hidden = false; return;
+    }
+    const au = a?.state === "auth" ? a.auth : null;
     if (!au) { card.hidden = true; card.innerHTML = ""; card._h = null; return; }
     // another process of the same harness works since this prompt appeared: the sign-in exists,
     // this process just has not re-read it
@@ -3372,6 +3383,15 @@
     if (card._h !== html) { card.innerHTML = html; card._h = html; }
     card.hidden = false;
   }
+  $("#auth-card").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-trust]"); if (!b || !ov.name) return;
+    const name = ov.name, accept = b.dataset.trust === "1";
+    b.disabled = true;
+    try {
+      const r = await api("POST", `/api/agents/${enc(name)}/trust`, { accept }, { quiet: true });
+      toast(accept ? `${name}: ${t_("폴더를 신뢰했습니다")}${r?.queuedDelivered ? ` · ${L2(`보류 메시지 ${r.queuedDelivered}개 보냄`, `${r.queuedDelivered} queued message(s) sent`)}` : ""}` : `${name}: ${t_("거절했습니다")}`, 5000);
+    } catch (err) { toast(`${t_("처리하지 못함:")} ${err.message}`, 6000); b.disabled = false; }
+  });
   $("#auth-card").addEventListener("submit", (e) => { e.preventDefault(); const i = e.target.querySelector("input"); const text = i.value.trim(); if (!text) return; i.value = ""; termInput({ text, key: "Enter" }); });
 
   // ---------- review reply parked for this requester (relay_held) ----------
@@ -4285,6 +4305,11 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       if (isMobile()) { mtab = "mine"; localStorage.setItem("adash.mtab", mtab); }
       closeChat();
       if (isMobile()) window.scrollTo(0, 0);
+    } else if (r && r.held === "trust" && r.queued) {
+      // kept by the server and sent once the folder is trusted
+      ta.value = ""; ov.atts = [];
+      $("#send-result").textContent = L2("대기 중(폴더 신뢰 필요) · 신뢰하면 자동으로 보냅니다", "Queued (folder trust needed) · sent once trusted");
+      renderAuthCard();
     } else if (r && r.held) {
       ov.held = r.held;
       $("#send-result").textContent = "";

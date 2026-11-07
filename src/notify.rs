@@ -95,6 +95,15 @@ impl Notifier {
             // hidden projects and snoozed agents stay quiet (errors included)
             for a in snap.agents.iter().filter(|a| !a.hidden && a.snoozed_until.is_none()) {
                 let was = prev.get(&a.identity).map(String::as_str);
+                if a.state == "trust" && was.is_some_and(|w| w != "trust") && self.sent.insert((a.identity.clone(), a.state_since)) {
+                    let t = format!("폴더 신뢰 필요 · {} · {}", a.name, a.project);
+                    let b = format!("{} 폴더를 신뢰할지 묻고 있습니다. 대시보드에서 고르세요.", a.worktree_path);
+                    desktop(&t, &b, a.handle.clone(), Some(&a.name));
+                    push("asking", &t, &b, Some(a.name.clone()));
+                    self.last.insert(a.identity.clone(), crate::util::now_ms());
+                    fired.push(a.clone());
+                    continue;
+                }
                 // a login prompt: once per prompt
                 if a.state == "auth" && was.is_some_and(|w| w != "auth") && self.sent.insert((a.identity.clone(), a.state_since)) {
                     let t = format!("로그인 필요 · {} · {}", a.name, a.project);

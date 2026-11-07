@@ -48,6 +48,35 @@ pub fn detect(kind: &str, screen: &[String]) -> Option<Value> {
 /// Keys the terminal view may send by name (anything else goes as literal text).
 pub const KEYS: &[&str] = &["Enter", "Escape", "Up", "Down", "Left", "Right", "Tab", "BTab", "C-c", "BSpace", "Space", "PageUp", "PageDown"];
 
+/// (harness, question) of the first-run "trust this folder?" screens, as found on real screens
+/// and in the binaries (Antigravity, Claude Code). The accept option must read exactly
+/// [`TRUST_YES`].
+const TRUST: &[(&str, &str)] = &[("antigravity", "Do you trust the contents of this project?"), ("claude", "Is this a project you created or one you trust?")];
+pub const TRUST_YES: &str = "Yes, I trust this folder";
+
+// an option row: optional cursor, optional "1." number, then the label (only the two known
+// labels are taken as options, so other numbered text on the screen is not)
+static OPTION: LazyLock<regex::Regex> =
+    LazyLock::new(|| regex::Regex::new(r"^\s*(❯|›|>)?\s*(?:\d+\.\s+)?((?:Yes, I trust this folder|No, exit|No)\b.*?)\s*$").unwrap());
+
+/// A trust screen: {question, options: [{n, label, selected}], yes, no} (yes/no = option index).
+pub fn trust(kind: &str, screen: &[String]) -> Option<Value> {
+    let (_, q) = TRUST.iter().find(|(k, q)| *k == kind && screen.iter().any(|l| l.contains(q)))?;
+    let opts: Vec<(bool, String)> = screen.iter().filter_map(|l| OPTION.captures(l)).map(|c| (c.get(1).is_some(), c[2].to_string())).collect();
+    let yes = opts.iter().position(|(_, l)| l.starts_with(TRUST_YES));
+    let no = opts.iter().position(|(_, l)| l.starts_with("No"));
+    Some(json!({
+        "question": q, "yes": yes, "no": no,
+        "options": opts.iter().enumerate().map(|(i, (s, l))| json!({"n": i, "label": l, "selected": s})).collect::<Vec<_>>(),
+    }))
+}
+
+/// Arrow presses (`Up`/`Down` and how many) from the selected option to `target`.
+pub fn moves(v: &Value, target: usize) -> Option<(&'static str, usize)> {
+    let sel = v["options"].as_array()?.iter().position(|o| o["selected"] == true)?;
+    Some(if target >= sel { ("Down", target - sel) } else { ("Up", sel - target) })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -79,5 +108,36 @@ mod tests {
         assert!(detect("claude", &old).is_none());
         // another harness quoting the phrase (an omp agent discussing Claude Code): nothing
         assert!(detect("omp", &s(&["Please run /login"])).is_none());
+    }
+
+    #[test]
+    fn trust_screens_and_the_way_to_the_option() {
+        let agy = s(&[" Do you trust the contents of this project?", " /tmp/x", " > 1. No, exit", "   2. Yes, I trust this folder"]);
+        let v = trust("antigravity", &agy).unwrap();
+        assert_eq!((v["yes"].as_u64(), v["no"].as_u64()), (Some(1), Some(0)));
+        assert_eq!(moves(&v, 1), Some(("Down", 1)));
+        let claude = s(&["Quick safety check: Is this a project you created or one you trust?", " ❯ 1. Yes, I trust this folder", "   2. No, exit"]);
+        let v = trust("claude", &claude).unwrap();
+        assert_eq!((v["yes"].as_u64(), moves(&v, 0)), (Some(0), Some(("Down", 0))));
+        assert!(trust("omp", &claude).is_none(), "only the harness's own screen");
+        // the real screens (2026-11-08): no numbers
+        let agy = s(&[
+            "Do you trust the contents of this project?",
+            "Antigravity CLI requires permission to read, edit, and execute files here.",
+            "> Yes, I trust this folder",
+            "  No, exit",
+            "  ↑/↓ Navigate · enter Confirm",
+        ]);
+        let v = trust("antigravity", &agy).unwrap();
+        assert_eq!((v["yes"].as_u64(), v["no"].as_u64(), moves(&v, 0)), (Some(0), Some(1), Some(("Down", 0))));
+        let cc = s(&[
+            " Quick safety check: Is this a project you created or one you trust? (Like your own code",
+            " Security guide",
+            " ❯ No, exit",
+            "   Yes, I trust this folder",
+            " Enter to confirm · Esc to cancel",
+        ]);
+        let v = trust("claude", &cc).unwrap();
+        assert_eq!((v["yes"].as_u64(), moves(&v, 1)), (Some(1), Some(("Down", 1))));
     }
 }

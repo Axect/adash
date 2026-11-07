@@ -231,8 +231,15 @@ fn user_path(raw: &str) -> Result<PathBuf, ApiErr> {
 /// harness writes its session file): handle → (prompt, launched at).
 pub static LAUNCH_PROMPTS: std::sync::LazyLock<std::sync::Mutex<std::collections::HashMap<String, (String, i64)>>> = std::sync::LazyLock::new(Default::default);
 
+/// Terminals the dashboard started that may accept their harness's trust screen
+/// (`autoTrust`, default on; `[launch] autoTrust` turns it off everywhere).
+pub static AUTO_TRUST: std::sync::LazyLock<std::sync::Mutex<std::collections::HashSet<String>>> = std::sync::LazyLock::new(Default::default);
+
 fn start(dir: &Path, project: &str, title: &str, cmd: &str, j: &Value, worktree: Option<Value>) -> Result<Launched, ApiErr> {
     let handle = term::create(dir, project, title, Some(cmd), None).map_err(|e| (502, e))?;
+    if j["autoTrust"] != false {
+        AUTO_TRUST.lock().unwrap_or_else(|e| e.into_inner()).insert(handle.clone());
+    }
     if let Some(p) = j["prompt"].as_str().map(str::trim).filter(|p| !p.is_empty()) {
         let mut m = LAUNCH_PROMPTS.lock().unwrap_or_else(|e| e.into_inner());
         m.retain(|_, v| crate::util::now_ms() - v.1 < 86_400_000);

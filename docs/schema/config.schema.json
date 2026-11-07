@@ -20,6 +20,15 @@
       },
       "type": "object"
     },
+    "launch": {
+      "additionalProperties": false,
+      "properties": {
+        "autoTrust": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "magi": {
       "additionalProperties": false,
       "properties": {

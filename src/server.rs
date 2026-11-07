@@ -549,6 +549,15 @@ pub fn op_send_files(snap: &Snapshot, key: &str, text: &str, images: &[String], 
     if a.state == "asking" {
         return held("asking");
     }
+    if a.state == "trust" {
+        // the harness waits for "trust this folder?": keep the message and deliver it after
+        if let Some(h) = &a.handle {
+            TRUST_QUEUE.plock().entry(h.clone()).or_default().push(text.to_string());
+        }
+        return Ok(
+            json!({"ok": false, "delivered": false, "held": "trust", "queued": true, "detail": "waiting for the folder to be trusted; sent once it is", "mode": mode, "file": null, "name": a.name}),
+        );
+    }
     if a.state == "working" && !force {
         return held("working");
     }
@@ -1238,22 +1247,89 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
         // a login prompt on the screen: the agent waits for the user whatever its transcript says
         if let Some(v) = a.handle.as_ref().and_then(|h| au.get(h)) {
             a.auth = Some(v.clone());
-            a.state = "auth".into();
+            a.state = if v["kind"] == "trust" { "trust" } else { "auth" }.into();
             a.state_since = v["since"].as_i64().unwrap_or(a.state_since);
             a.needs_human = a.snoozed_until.is_none();
         }
     }
 }
 
+/// Messages sent while the agent waited at its "trust this folder?" screen: delivered once the
+/// folder is trusted (handle → texts).
+pub static TRUST_QUEUE: std::sync::LazyLock<Mutex<HashMap<String, Vec<String>>>> = std::sync::LazyLock::new(Default::default);
+
+/// Pick "trust" (or "no") on the trust screen: move to that option, Enter, wait until the screen
+/// moved on; then deliver the queued messages. Only when the accept option reads exactly as known.
+fn answer_trust(sh: &Shared, h: &str, accept: bool) -> Res<Value> {
+    let lk = term::send_lock(h);
+    let g = lk.plock();
+    let a = sh.snap.plock().agents.iter().find(|a| a.handle.as_deref() == Some(h)).cloned().ok_or("unknown terminal")?;
+    let lines = term::screen(h)?;
+    let v = crate::auth::trust(&a.agent_type, &lines).ok_or("no trust screen on this terminal")?;
+    let target = v[if accept { "yes" } else { "no" }].as_u64().ok_or("the option was not found on the screen")? as usize;
+    let (key, n) = crate::auth::moves(&v, target).ok_or("no option is selected on the screen")?;
+    for _ in 0..n {
+        term::send_keys(h, &[key])?;
+        std::thread::sleep(Duration::from_millis(150));
+    }
+    term::send_keys(h, &["Enter"])?;
+    let t0 = now_ms();
+    let mut moved = false;
+    while now_ms() - t0 < 10_000 {
+        std::thread::sleep(Duration::from_millis(400));
+        if term::screen(h).map(|l| crate::auth::trust(&a.agent_type, &l).is_none()).unwrap_or(false) {
+            moved = true;
+            break;
+        }
+    }
+    crate::launch::AUTO_TRUST.plock().remove(h);
+    sh.auth.plock().remove(h);
+    drop(g);
+    if !moved {
+        return Err("the screen did not move on after Enter".into());
+    }
+    let queued = if accept { TRUST_QUEUE.plock().remove(h).unwrap_or_default() } else { vec![] };
+    let mut sent = 0;
+    if !queued.is_empty() {
+        // let the harness come up to its input box
+        std::thread::sleep(Duration::from_secs(4));
+        refresh(sh);
+        for t in &queued {
+            let snap = sh.snap.plock().clone();
+            if op_send(&snap, &a.name, t, &[], true).is_ok_and(|r| r["delivered"] == true) {
+                sent += 1;
+            }
+        }
+    }
+    refresh(sh);
+    Ok(json!({"ok": true, "accepted": accept, "queuedDelivered": sent, "queued": queued.len()}))
+}
+
 /// Login prompts on live agents' screens (every ~10 s; cleared once the screen moves on).
-fn scan_auth(sh: &Shared) {
+fn scan_auth(sh: &Arc<Shared>) {
     let agents = sh.snap.plock().agents.clone();
     let prev = sh.auth.plock().clone();
     let mut found = HashMap::new();
     for a in &agents {
         let Some(h) = &a.handle else { continue };
         let Ok(lines) = term::screen(h) else { continue };
-        if let Some(mut v) = crate::auth::detect(&a.agent_type, &lines) {
+        if let Some(mut v) = crate::auth::trust(&a.agent_type, &lines) {
+            // a terminal the dashboard started in a folder the user chose: accept at once
+            if v["yes"].is_u64() && crate::config::get().launch.auto_trust && crate::launch::AUTO_TRUST.plock().contains(h) {
+                let (h2, name) = (h.clone(), a.name.clone());
+                let sh2 = sh.clone();
+                std::thread::spawn(move || {
+                    if let Err(e) = answer_trust(&sh2, &h2, true) {
+                        eprintln!("adash: auto-trust {name}: {e}");
+                    }
+                });
+            }
+            v["kind"] = json!("trust");
+            v["cwd"] = json!(a.worktree_path);
+            v["queued"] = json!(TRUST_QUEUE.plock().get(h).map_or(0, |q| q.len()));
+            v["since"] = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
+            found.insert(h.clone(), v);
+        } else if let Some(mut v) = crate::auth::detect(&a.agent_type, &lines) {
             v["since"] = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             found.insert(h.clone(), v);
         }
@@ -1439,7 +1515,10 @@ fn op_draft(sh: &Shared, a: &crate::collect::Agent, action: &str) -> Result<Valu
 fn refresh(sh: &Shared) {
     let meta = Meta::load();
     let r = sh.coll.plock().collect(&meta);
-    if let Ok(s) = r {
+    if let Ok(mut s) = r {
+        // drafts and screen prompts (auth, trust) are part of every snapshot, also one taken
+        // between ticks
+        attach_drafts(sh, &mut s);
         *sh.snap.plock() = s;
     }
 }
@@ -2090,6 +2169,21 @@ fn handle(sh: &Shared, mut req: Request) {
                     reply_json(req, 200, &json!({"handle": h, "text": text, "auth": crate::auth::detect(&a.agent_type, &plain)}))
                 }
                 Err(e) => reply_json(req, 502, &json!({"error": e})),
+            }
+        }
+        (Method::Post, ["api", "agents", name, "trust"]) => {
+            let a = match agent_for(sh, name, None) {
+                Ok(a) => a,
+                Err(e) => return reply_json(req, e.0, &json!({"error": e.1})),
+            };
+            let Some(h) = a.handle.clone() else { return reply_json(req, 409, &json!({"error": "this agent has no terminal"})) };
+            let j: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+            match answer_trust(sh, &h, j["accept"] != false) {
+                Ok(v) => {
+                    log_action(sh, &method, &segs, &body);
+                    reply_json(req, 200, &v)
+                }
+                Err(e) => reply_json(req, 409, &json!({"error": e})),
             }
         }
         (Method::Post, ["api", "agents", name, "term-input"]) => {

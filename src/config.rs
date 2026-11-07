@@ -24,7 +24,22 @@ pub struct Config {
     pub magi: Magi,
     pub network: Network,
     pub mobile: Mobile,
+    pub launch: Launch,
     pub theme: ThemeDefaults,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Launch {
+    /// Agents the dashboard starts accept their harness's "trust this folder?" screen (you chose
+    /// the folder); per launch it can be turned off.
+    pub auto_trust: bool,
+}
+
+impl Default for Launch {
+    fn default() -> Self {
+        Launch { auto_trust: true }
+    }
 }
 
 /// Themes a device uses until it picks its own (per device, in the browser).
@@ -118,6 +133,7 @@ impl Default for Config {
             magi: Magi::default(),
             network: Network::default(),
             mobile: Mobile::default(),
+            launch: Launch::default(),
             theme: ThemeDefaults::default(),
         }
     }
@@ -279,6 +295,10 @@ pub fn config_text(c: &Config) -> String {
          # accept phones through `tailscale serve` (each device needs approval)\n\
          tailscale = {ts}\n\
          \n\
+         [launch]\n\
+         # agents started from the dashboard accept the harness's \"trust this folder?\" screen\n\
+         autoTrust = {autotrust}\n\
+         \n\
          [theme]\n\
          # themes a device uses until it picks its own (`adash theme list`)\n\
          {tdark}\
@@ -293,6 +313,7 @@ pub fn config_text(c: &Config) -> String {
         skill = opt("skill", &c.magi.skill, "~/skills/magi-research/SKILL.md"),
         net = c.network.enabled,
         ts = c.mobile.tailscale,
+        autotrust = c.launch.auto_trust,
         tdark = opt("dark", &c.theme.dark, "dark"),
         tlight = opt("light", &c.theme.light, "catppuccin-latte"),
     )
@@ -373,6 +394,7 @@ pub fn schema() -> serde_json::Value {
             "magi": {"type": "object", "additionalProperties": false, "properties": {"skill": s("SKILL.md of a multi-agent review skill; unset = magi off")}},
             "network": {"type": "object", "additionalProperties": false, "properties": {"enabled": {"type": "boolean"}, "probes": {"type": "object", "additionalProperties": {"type": "string", "format": "uri"}}}},
             "mobile": {"type": "object", "additionalProperties": false, "properties": {"tailscale": {"type": "boolean"}}},
+            "launch": {"type": "object", "additionalProperties": false, "properties": {"autoTrust": {"type": "boolean"}}},
             "theme": {"type": "object", "additionalProperties": false, "properties": {"dark": s("theme for dark mode (default dark, adash dark)"), "light": s("theme for light mode (default catppuccin-latte)")}}
         }
     })
