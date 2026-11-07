@@ -607,7 +607,10 @@ body[data-links="all"] #timeline .conn { display: none; }
 .m.assistant > table { justify-self: center; max-width: 100%; }
 .m.user { align-self: flex-end; background: color-mix(in srgb, var(--accent) 10%, var(--card)); }
 .m.user.pending { opacity: .6; }
-.m.user.pending::after { content: "전송 중"; display: block; font-size: .72em; color: var(--muted); margin-top: 2px; }
+.m.user.pending:not(.stale)::after { content: "전송 중"; display: block; font-size: .72em; color: var(--muted); margin-top: 2px; }
+.m.user.pending.stale { opacity: 1; border: 1px dashed var(--info-warn); }
+.pend-st { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: .78em; color: var(--info-warn); }
+.pend-st button { height: 22px; padding: 0 8px; font-size: inherit; }
 .m.assistant { align-self: flex-start; background: var(--bg); }
 .m.user { max-width: min(78%, calc(110ch + 1.6em)); }
 .m.system { align-self: center; max-width: 95%; color: var(--muted); font-size: .82em; white-space: pre-wrap; }

@@ -572,6 +572,8 @@ pub fn op_send_files(snap: &Snapshot, key: &str, text: &str, images: &[String], 
     }
     let h = a.handle.clone().ok_or("agent has no terminal")?;
     let mut file = None;
+    let sent_at = now_ms();
+    let mut typed = text.to_string();
     let r = match mode {
         "line" => term::send_line(&h, text)?,
         "paste" => {
@@ -593,12 +595,16 @@ pub fn op_send_files(snap: &Snapshot, key: &str, text: &str, images: &[String], 
             let safe: String = a.name.chars().map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).collect();
             let p = dir.join(format!("{safe}-{}.md", chrono::Local::now().format("%Y%m%d-%H%M%S")));
             crate::util::atomic_write(&p, text.as_bytes())?;
-            let r = term::send_line(&h, &format!("[adash] 사용자 메시지(여러 줄): {} 를 읽고 그 지시를 따르세요.", p.display()))?;
+            typed = format!("[adash] 사용자 메시지(여러 줄): {} 를 읽고 그 지시를 따르세요.", p.display());
+            let r = term::send_line(&h, &typed)?;
             file = Some(p.to_string_lossy().into_owned());
             r
         }
     };
-    Ok(json!({"ok": true, "delivered": true, "held": null, "mode": mode, "file": file, "name": a.name, "receipt": r}))
+    // the client matches its pending bubble against the transcript: the time typing started and the
+    // text the agent's session will record (the pointer line for a file-mode message). The session's
+    // message id does not exist yet when this returns.
+    Ok(json!({"ok": true, "delivered": true, "held": null, "mode": mode, "file": file, "name": a.name, "receipt": r, "sentAt": sent_at, "typedText": typed}))
 }
 
 /// The agent's input box reads empty within ~3 s (a submitted message left it).

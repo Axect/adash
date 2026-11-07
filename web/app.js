@@ -3887,15 +3887,36 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     // Drop pending sends that now appear in the transcript.
     const users = msgs.filter((m) => m.role === "user").map((m) => splitAttachments(m.text, m.attachments));
     const norm = (s) => String(s || "").replace(/\s+/g, " ").trim();
+    // Pending ↔ transcript match (v46): the server may alter the text (U+200B before a leading "#"/"!", newline
+    // normalization, attachment lines) and pasted rendered math is full of line breaks and zero-width spaces, so
+    // compare with all whitespace and zero-width characters removed, NFC, and allow containment either way.
+    const nz = (s) => String(s || "").normalize("NFC").replace(/[\s\u200b-\u200d\u2060\ufeff]+/g, "");
+    const tsMs = (t) => (typeof t === "number" ? (t < 1e12 ? t * 1000 : t) : Date.parse(t || "") || 0);
+    const userTs = msgs.filter((m) => m.role === "user").map((m) => tsMs(m.ts));
+    const st0 = agentBy(ov.name);
     ov.pending = ov.pending.filter((p) => {
       // A "/btw …" send shows up as a btw question record (kind "btw", role user) with the same body, after the
       // btw questions that already existed when it was sent.
-      const seen = p.btwText != null
-        ? msgs.filter((m) => (m.kind === "btw" || m.btw) && m.role === "user").slice(p.seenBtw || 0).some((m) => norm(m.text) === norm(p.btwText))
-        : users.slice(p.seenUsers).some((u) => u.body.trim() === p.text.trim() && p.images.every((x) => u.paths.includes(x)) && (p.files || []).every((x) => u.files.includes(x)));
-      if (seen) p.urls.forEach((u) => URL.revokeObjectURL(u));
-      return !seen;
+      let seen;
+      if (p.btwText != null) seen = msgs.filter((m) => (m.kind === "btw" || m.btw) && m.role === "user").slice(p.seenBtw || 0).some((m) => norm(m.text) === norm(p.btwText));
+      else {
+        // user messages that arrived after the send: past the count seen at send time, or stamped at/after it
+        const fresh = users.filter((u, k) => k >= p.seenUsers || userTs[k] >= p.at - 2000);
+        const want = nz(p.text);
+        seen = fresh.some((u) => {
+          const got = nz(u.body);
+          if (want) return !!got && (got === want || got.includes(want) || want.includes(got));
+          return p.images.every((x) => u.paths.includes(x)) && (p.files || []).every((x) => u.files.includes(x));
+        });
+        // Text still differs: any new user message, or the agent starting to work after the send, means it arrived.
+        if (!seen && (fresh.length || (st0?.state === "working" && (st0.stateSince || 0) >= p.at - 2000))) seen = true;
+      }
+      if (seen) { p.urls.forEach((u) => URL.revokeObjectURL(u)); return false; }
+      // Never "sending" forever: after 30 s it turns into "not confirmed · send again".
+      if (!p.stale && Date.now() - p.at > 30000) p.stale = true;
+      return true;
     });
+    if (ov.pending.some((p) => !p.stale)) { clearTimeout(ov.pendTimer); ov.pendTimer = setTimeout(() => ov.open && renderChat(), 31000); }
     const blocks = []; // [key, html]: each html is exactly one element
     if (tx?.unavailable) blocks.push(["unavail", `<div class="m system">대화 기록을 불러올 수 없어 마지막 메시지만 보여 줍니다.</div>`]);
     for (let i = 0; i < msgs.length; i++) {
@@ -3916,7 +3937,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       else if (m.role === "media") blocks.push([m.id, mediaRow(m)]);
       else blocks.push([m.id, `<div class="m system${tx?.source === "terminal" ? " term" : ""}" title="${esc(tsTitle(m.ts))}">${esc(m.text)}</div>`]);
     }
-    ov.pending.forEach((p, i) => blocks.push([`p:${i}`, `<div class="m user pending md">${p.text.trim() ? md(p.text, ov.name) : ""}${thumbs(p.urls.map((u, k) => [u, p.images[k]]))}${fileChips(p.files || [], p.sizes, false)}</div>`]));
+    ov.pending.forEach((p, i) => blocks.push([`p:${i}:${p.stale ? 1 : 0}`, `<div class="m user pending md${p.stale ? " stale" : ""}">${p.text.trim() ? md(p.text, ov.name) : ""}${thumbs(p.urls.map((u, k) => [u, p.images[k]]))}${fileChips(p.files || [], p.sizes, false)}${p.stale ? `<div class="pend-st">${L2("전송 확인 안 됨", "Delivery not confirmed")} <button type="button" data-act="pending-resend" data-i="${i}">${L2("다시 보내기", "Send again")}</button> <button type="button" data-act="pending-drop" data-i="${i}">${L2("지우기", "Dismiss")}</button></div>` : ""}</div>`]));
     // Empty conversation (no messages yet, or a new session whose session file does not exist yet, source
     // "pending"): a friendly opener instead of a bare "메시지 없음". The pending launch prompt, if any, follows it;
     // when the session file maps, the next poll replaces everything.
@@ -4477,6 +4498,13 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     }
     else if (a === "interrupt") interruptDlg(name);
     else if (a === "send-force") sendComposer(true);
+    else if (a === "pending-drop" || a === "pending-resend") {
+      const p = ov.pending[+b.dataset.i]; if (!p) return;
+      ov.pending.splice(+b.dataset.i, 1); p.urls.forEach((u) => URL.revokeObjectURL(u));
+      // Send again: the text goes back through the normal send (attachments are not re-attached; say so).
+      if (a === "pending-resend") { $("#composer-text").value = p.text; if (p.images.length || p.files?.length) toast(L2("첨부는 다시 붙여 주세요", "Re-attach the files"), 3000); else sendComposer(); }
+      renderChat();
+    }
     else if (a === "held-cancel") { ov.held = null; renderHeld(); $("#composer-text").focus(); }
     else if (a === "ask-pick") askPick(b.dataset.q, +b.dataset.i);
     else if (a === "ask-submit") submitAsk();
