@@ -2829,7 +2829,53 @@
   // ---------- Markdown (vendored markdown-it + texmath + KaTeX) ----------
   // html:false escapes raw HTML; math is tokenized by texmath before emphasis rules run.
   const mdit = window.markdownit({ html: false, linkify: true, breaks: true, typographer: false });
-  mdit.use(window.texmath, { engine: window.katex, delimiters: ["dollars", "brackets"], katexOptions: { throwOnError: false, trust: false, strict: "ignore" } });
+  // Typst math inside $…$ (agents writing Typst decks emit `p_(beta)(bold(s)) = e^(-beta H)\/Z`): converted to
+  // LaTeX first, only when there is no LaTeX command at all and a Typst-only construct shows up. A formula KaTeX
+  // still rejects is shown as its source in code type instead of a red error.
+  const TY_GREEK = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron pi rho sigma tau upsilon phi chi psi omega Gamma Delta Theta Lambda Xi Pi Sigma Upsilon Phi Psi Omega".split(" ");
+  const TY_WORD = { dot: "\\cdot", times: "\\times", quad: "\\quad", "arrow.r": "\\rightarrow", "arrow.l": "\\leftarrow", "arrow.r.double": "\\Rightarrow", sum: "\\sum", prod: "\\prod", integral: "\\int", oo: "\\infty", infinity: "\\infty", approx: "\\approx", partial: "\\partial", nabla: "\\nabla", "lt.eq": "\\le", "gt.eq": "\\ge", "eq.not": "\\ne", ln: "\\ln", log: "\\log", exp: "\\exp" };
+  const TY_FN = { bold: "\\boldsymbol", italic: "\\mathit", upright: "\\mathrm", vec: "\\vec", hat: "\\hat", tilde: "\\tilde", sqrt: "\\sqrt", overline: "\\overline", cal: "\\mathcal", frac: "\\frac" };
+  const TY_DETECT = new RegExp(`[_^]\\(|\\\\/|"[^"]*"|\\b(?:${Object.keys(TY_FN).join("|")})\\(|\\b(?:${TY_GREEK.join("|")}|dot|times|quad|arrow\\.[a-z.]+)\\b`);
+  const isTypstMath = (s) => !/\\[A-Za-z]/.test(s) && TY_DETECT.test(s);
+  // index of the ")" matching the "(" at i, or -1
+  const tyClose = (s, i) => { for (let d = 0, k = i; k < s.length; k++) { if (s[k] === "(") d++; else if (s[k] === ")" && --d === 0) return k; } return -1; };
+  const tyArgs = (s) => { const out = []; let d = 0, st = 0; for (let k = 0; k < s.length; k++) { if (s[k] === "(") d++; else if (s[k] === ")") d--; else if (s[k] === "," && !d) { out.push(s.slice(st, k)); st = k + 1; } } out.push(s.slice(st)); return out.map((x) => x.trim()); };
+  function typstToTex(s) {
+    let out = "";
+    for (let i = 0; i < s.length; ) {
+      const c = s[i];
+      if ((c === "_" || c === "^") && s[i + 1] === "(") {
+        const j = tyClose(s, i + 1); if (j < 0) throw new Error("unbalanced");
+        out += `${c}{${typstToTex(s.slice(i + 2, j))}}`; i = j + 1; continue;
+      }
+      if (c === "\\" && s[i + 1] === "/") { out += "/"; i += 2; continue; }
+      if (c === '"') { const j = s.indexOf('"', i + 1); if (j < 0) throw new Error("unclosed text"); out += `\\text{${s.slice(i + 1, j)}}`; i = j + 1; continue; }
+      const w = /^[A-Za-z]+(?:\.[a-z]+)*/.exec(s.slice(i));
+      if (w && !/[A-Za-z0-9]/.test(s[i - 1] || "")) {
+        let word = w[0];
+        if (TY_FN[word] && s[i + word.length] === "(") {
+          const j = tyClose(s, i + word.length); if (j < 0) throw new Error("unbalanced");
+          const args = tyArgs(s.slice(i + word.length + 1, j)).map(typstToTex);
+          if (word === "frac" && args.length !== 2) throw new Error("frac needs 2 args");
+          out += `${TY_FN[word]}${args.map((a) => `{${a}}`).join("")}`; i = j + 1; continue;
+        }
+        // longest dotted name we know ("arrow.r.double" before "arrow.r"); otherwise only the leading word
+        while (word.includes(".") && !TY_WORD[word]) word = word.slice(0, word.lastIndexOf("."));
+        if (TY_WORD[word]) { out += `${TY_WORD[word]} `; i += word.length; continue; }
+        if (TY_GREEK.includes(word)) { out += `\\${word} `; i += word.length; continue; }
+        out += word; i += word.length; continue;
+      }
+      out += c; i++;
+    }
+    return out;
+  }
+  const mathEngine = {
+    renderToString(tex, opts) {
+      try { return window.katex.renderToString(isTypstMath(tex) ? typstToTex(tex) : tex, { ...opts, throwOnError: true }); }
+      catch { return `<code class="math-raw">${esc(opts?.displayMode ? `$$${tex}$$` : `$${tex}$`)}</code>`; }
+    },
+  };
+  mdit.use(window.texmath, { engine: mathEngine, delimiters: ["dollars", "brackets"], katexOptions: { throwOnError: true, trust: false, strict: "ignore" } });
   mdit.validateLink = (url) => !/^\s*(javascript|vbscript|data):/i.test(url);
   const isWeb = (u) => /^(https?:|mailto:)/i.test(u);
   const isLocal = (u) => !isWeb(u) && !u.startsWith("#") && (/^file:/i.test(u) || !/^[a-z][a-z0-9+.-]*:/i.test(u));
