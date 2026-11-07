@@ -2871,8 +2871,11 @@
   }
   const mathEngine = {
     renderToString(tex, opts) {
-      try { return window.katex.renderToString(isTypstMath(tex) ? typstToTex(tex) : tex, { ...opts, throwOnError: true }); }
-      catch { return `<code class="math-raw">${esc(opts?.displayMode ? `$$${tex}$$` : `$${tex}$`)}</code>`; }
+      // .mx keeps the source as written ($…$, Typst form included) for copying. "$" is written as &#36;: texmath
+      // puts this HTML into its template with String.replace, where "$$" would collapse to "$".
+      const src = opts?.displayMode ? `$$${tex}$$` : `$${tex}$`, srcAttr = esc(src).replace(/\$/g, "&#36;");
+      try { return `<span class="mx" data-md="${srcAttr}">${window.katex.renderToString(isTypstMath(tex) ? typstToTex(tex) : tex, { ...opts, throwOnError: true })}</span>`; }
+      catch { return `<code class="math-raw mx" data-md="${srcAttr}">${srcAttr}</code>`; }
     },
   };
   mdit.use(window.texmath, { engine: mathEngine, delimiters: ["dollars", "brackets"], katexOptions: { throwOnError: true, trust: false, strict: "ignore" } });
@@ -3951,7 +3954,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
         }
       } else if (m.kind === "btw" || m.btw) { const open = !!agentBy(ov.name)?.btw?.open; blocks.push([`${m.id}:${m.status || ""}:${open}`, btwBubble(m, msgs, open)]); }
       else if (m.role === "user") blocks.push([m.id, userBubble(m)]);
-      else if (m.role === "assistant") blocks.push([m.id, `<div class="m assistant md" title="${esc(tsTitle(m.ts))}">${md(m.text, ov.name, m.id ?? m.ts)}</div>`]);
+      else if (m.role === "assistant") blocks.push([m.id, `<div class="m assistant md" title="${esc(tsTitle(m.ts))}">${msgCopyBtn(m.text)}${md(m.text, ov.name, m.id ?? m.ts)}</div>`]);
       else if (m.role === "error") blocks.push([m.id, errorBubble(m)]);
       else if (m.role === "shell") blocks.push([m.id, shellBubble(m)]);
       else if (m.role === "media") blocks.push([m.id, mediaRow(m)]);
@@ -4251,8 +4254,59 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     const { body, paths, files, sizes } = splitAttachments(m.text, m.attachments);
     const ans = askAnswersOf(m);
     if (ans?.length) return `<div class="m user ask-ans" title="${esc(`${tsTitle(m.ts)}\n\n${m.text || ""}`)}"><div class="aa-head muted small">${t_("질문에 답함")}${esc(answeredVia(m))}</div>${answerSummaryHtml(ans)}</div>`;
-    return `<div class="m user md${m.status === "pending" ? " pending" : ""}" title="${esc(tsTitle(m.ts))}">${m.skill ? `<div class="ub-skill">${skillTag(m.skill, ov.name)}</div>` : ""}${body.trim() ? md(body, ov.name, m.id ?? m.ts) : ""}${thumbs(paths.map((p) => [FIXTURE && !p.startsWith("/") ? p : fileUrl(ov.name, p, m.id ?? m.ts), p]))}${fileChips(files, sizes, true)}</div>`;
+    return `<div class="m user md${m.status === "pending" ? " pending" : ""}" title="${esc(tsTitle(m.ts))}">${msgCopyBtn(body)}${m.skill ? `<div class="ub-skill">${skillTag(m.skill, ov.name)}</div>` : ""}${body.trim() ? md(body, ov.name, m.id ?? m.ts) : ""}${thumbs(paths.map((p) => [FIXTURE && !p.startsWith("/") ? p : fileUrl(ov.name, p, m.id ?? m.ts), p]))}${fileChips(files, sizes, true)}</div>`;
   }
+  // Copy a whole message as its source Markdown (math stays $…$, not KaTeX's MathML + HTML text).
+  function msgCopyBtn(text) { return String(text || "").trim() ? `<button type="button" class="msg-copy" data-copy="${esc(text)}" title="${esc(L2("원문 마크다운 복사", "Copy as Markdown"))}">${L2("복사", "Copy")}</button>` : ""; }
+  // Selection copy inside rendered Markdown: text/plain gets Markdown (math as its $…$ source, code with backticks,
+  // list / heading / table marks kept) instead of KaTeX's MathML + HTML text split one glyph per line.
+  function selToMd(node) {
+    if (node.nodeType === 3) return node.nodeValue;
+    if (node.nodeType !== 1 && node.nodeType !== 11) return "";
+    // List and table containers: element children only (the whitespace text between <li>/<tr> is layout).
+    const el = node, tag = el.nodeName.toLowerCase(), kids = () => [...(/^(ul|ol|table|thead|tbody|tr)$/.test(tag) ? el.children : el.childNodes)].map(selToMd).join("");
+    if (el.classList?.contains("mx")) return el.dataset.md || "";
+    if (el.classList?.contains("katex-mathml") || el.classList?.contains("msg-copy") || el.classList?.contains("copy")) return "";
+    // texmath wraps display math in <section><eqn>; code fences sit in <div class="code">: both are blocks.
+    if (tag === "section" || tag === "div") return `\n${kids().trim()}\n\n`;
+    switch (tag) {
+      case "br": return "\n";
+      case "code": return el.closest?.("pre") || el.parentNode?.nodeName === "PRE" ? el.textContent : `\`${el.textContent}\``;
+      case "pre": return `\n\`\`\`\n${el.textContent.replace(/\n$/, "")}\n\`\`\`\n\n`;
+      case "p": return `${kids()}\n\n`;
+      case "h1": case "h2": case "h3": case "h4": case "h5": case "h6": return `${"#".repeat(+tag[1])} ${kids()}\n\n`;
+      case "strong": case "b": return `**${kids()}**`;
+      case "em": case "i": return `*${kids()}*`;
+      case "a": return el.getAttribute("href") ? `[${kids()}](${el.getAttribute("href")})` : kids();
+      case "ul": case "ol": return `${kids()}\n`;
+      case "li": {
+        const p = el.parentNode, ol = p?.nodeName === "OL";
+        const n = ol ? (+p.getAttribute("start") || 1) + [...p.children].indexOf(el) : 0;
+        return `${ol ? `${n}. ` : "- "}${kids().replace(/\n+$/, "").replace(/\n/g, "\n   ")}\n`;
+      }
+      case "blockquote": return `${kids().trim().split("\n").map((l) => `> ${l}`).join("\n")}\n\n`;
+      case "tr": {
+        const row = `| ${[...el.children].map((c) => selToMd(c).replace(/\n+/g, " ").trim()).join(" | ")} |\n`;
+        return el.parentNode?.nodeName === "THEAD" ? row + `|${[...el.children].map(() => "---").join("|")}|\n` : row;
+      }
+      case "table": return `${kids()}\n`;
+      default: return kids();
+    }
+  }
+  document.addEventListener("copy", (e) => {
+    const sel = window.getSelection();
+    if (!sel || sel.isCollapsed || !sel.rangeCount) return;
+    const r = sel.getRangeAt(0), anc = r.commonAncestorContainer.nodeType === 1 ? r.commonAncestorContainer : r.commonAncestorContainer.parentElement;
+    if (!anc?.closest(".md, #decision-card, #viewer")) return;
+    // Selection entirely inside one formula: its source.
+    const inMath = anc.closest(".mx");
+    const frag = r.cloneContents();
+    const text = inMath ? inMath.dataset.md : selToMd(frag).replace(/(\|\n)\n+(?=\|)/g, "$1").replace(/\n{3,}/g, "\n\n").trim();
+    const box = document.createElement("div"); box.appendChild(frag);
+    e.clipboardData.setData("text/plain", text);
+    e.clipboardData.setData("text/html", inMath ? inMath.outerHTML : box.innerHTML);
+    e.preventDefault();
+  });
 
   async function sendComposer(force, netConfirmed = false) {
     const ta = $("#composer-text");

@@ -611,6 +611,10 @@ body[data-links="all"] #timeline .conn { display: none; }
 .m.user.pending.stale { opacity: 1; border: 1px dashed var(--info-warn); }
 .pend-st { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: .78em; color: var(--info-warn); }
 .pend-st button { height: 22px; padding: 0 8px; font-size: inherit; }
+.m.md { position: relative; }
+.msg-copy { position: absolute; top: 2px; right: 2px; height: 20px; padding: 0 6px; font-size: .7em; opacity: 0; transition: opacity .12s; }
+.m.md:hover > .msg-copy, .msg-copy:focus-visible { opacity: .85; }
+body.mobile .m.md > .msg-copy { opacity: .55; height: 26px; }
 .m.assistant { align-self: flex-start; background: var(--bg); }
 .m.user { max-width: min(78%, calc(110ch + 1.6em)); }
 .m.system { align-self: center; max-width: 95%; color: var(--muted); font-size: .82em; white-space: pre-wrap; }
