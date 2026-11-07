@@ -1911,6 +1911,69 @@
   $("#ld-model").addEventListener("blur", () => setTimeout(ldModelClose, 120));
   $("#ld-prompt").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submitLaunch(); } });
 
+  // ---------- new project path: directory autocomplete (v46; GET /api/fs/dirs?q= → {query, exists, items:[{name, path, exists, isGit}]}) ----------
+  const ldp = { seq: 0, t: 0, items: [] };
+  const FIX_DIRS = ["~/work", "~/work/paper-draft", "~/work/grant-app", "~/work/adash-dev", "~/code", "~/code/notes", "~/projects", "~/projects/climate-model"];
+  async function fsDirs(q) {
+    if (!FIXTURE) return api("GET", `/api/fs/dirs?q=${enc(q)}`);
+    const cut = q.lastIndexOf("/"), par = q.slice(0, cut + 1), pre = q.slice(cut + 1).toLowerCase();
+    const items = (q ? FIX_DIRS.filter((p) => p.startsWith(par) && !p.slice(par.length).includes("/") && p.slice(par.length).toLowerCase().startsWith(pre)) : FIX_DIRS.filter((p) => p.split("/").length === 2))
+      .map((p) => ({ name: p.split("/").pop(), path: p, exists: true, isGit: /paper|grant|adash|climate/.test(p) }));
+    return { query: q, exists: FIX_DIRS.includes(q.replace(/\/+$/, "")), items };
+  }
+  const ldPathClose = () => { $("#ld-path-list").hidden = true; $("#ld-path").setAttribute("aria-expanded", "false"); };
+  function ldPathStatus(r) {
+    const v = $("#ld-path").value.trim(), st = $("#ld-path-st");
+    st.textContent = !v || !r ? "" : r.exists ? L2("기존 폴더 · 그 폴더에서 엽니다", "existing folder · opens there") : L2("새 폴더", "new folder");
+    st.classList.toggle("exists", !!(v && r?.exists));
+  }
+  async function ldPathList() {
+    const q = $("#ld-path").value, seq = ++ldp.seq;
+    let r;
+    try { r = await fsDirs(q); } catch { if (seq === ldp.seq) { ldPathClose(); ldPathStatus(null); } return; }
+    if (seq !== ldp.seq || document.activeElement !== $("#ld-path")) return;
+    ldPathStatus(r);
+    ldp.items = r?.items || [];
+    const box = $("#ld-path-list");
+    // An exact existing folder with nothing under it: no list, just the status line.
+    if (!ldp.items.length) { ldPathClose(); return; }
+    box.innerHTML = (q ? "" : `<div class="ld-combo-g">${L2("자주 쓰는 폴더", "Common folders")}</div>`) + ldp.items.map((d, i) => `<div class="ld-combo-o" role="option" data-ld-dir="${i}"><span>${esc(d.name)}/</span>${d.isGit ? `<span class="muted">git</span>` : ""}<span class="ld-dir-p muted">${esc(d.path)}</span></div>`).join("");
+    box.hidden = false; $("#ld-path").setAttribute("aria-expanded", "true");
+    const inp = $("#ld-path").getBoundingClientRect(), dlg = $("#launch-dlg").getBoundingClientRect();
+    const below = dlg.bottom - inp.bottom - 10, above = inp.top - dlg.top - 10, up = below < 180 && above > below;
+    box.classList.toggle("up", up);
+    box.style.maxHeight = `${Math.max(120, Math.min(320, up ? above : below))}px`;
+  }
+  const ldPathSoon = () => { clearTimeout(ldp.t); ldp.t = setTimeout(ldPathList, 120); };
+  // Enter a folder: path + "/" and list its children; the last (new) name stays free text.
+  function ldPathEnter(i) {
+    const d = ldp.items[i]; if (!d) return;
+    const inp = $("#ld-path"); inp.value = `${d.path}/`; inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length);
+    ldPathList();
+  }
+  $("#ld-path").addEventListener("focus", ldPathSoon);
+  $("#ld-path").addEventListener("input", ldPathSoon);
+  $("#ld-path").addEventListener("keydown", (e) => {
+    if (e.isComposing) return;
+    const box = $("#ld-path-list"), opts = [...box.querySelectorAll(".ld-combo-o")];
+    if (e.key === "Escape" && !box.hidden) { e.preventDefault(); e.stopPropagation(); ldPathClose(); return; }
+    if (!["ArrowDown", "ArrowUp", "Enter", "Tab"].includes(e.key) || e.shiftKey) return;
+    if (box.hidden) { if (e.key.startsWith("Arrow")) { e.preventDefault(); ldPathList(); } return; }
+    const i = opts.findIndex((o) => o.classList.contains("hl"));
+    if (e.key === "Enter" || e.key === "Tab") {
+      // Tab with nothing highlighted takes the first match (shell-style); Enter only acts on a highlighted row.
+      const k = i >= 0 ? i : e.key === "Tab" ? 0 : -1;
+      if (k >= 0) { e.preventDefault(); ldPathEnter(+opts[k].dataset.ldDir); } else ldPathClose();
+      return;
+    }
+    e.preventDefault();
+    const n = (i + (e.key === "ArrowDown" ? 1 : -1) + opts.length) % opts.length;
+    opts.forEach((o, k) => o.classList.toggle("hl", k === n));
+    opts[n]?.scrollIntoView({ block: "nearest" });
+  });
+  $("#ld-path-list").addEventListener("mousedown", (e) => { const o = e.target.closest("[data-ld-dir]"); if (!o) return; e.preventDefault(); ldPathEnter(+o.dataset.ldDir); });
+  $("#ld-path").addEventListener("blur", () => setTimeout(ldPathClose, 120));
+
   // ---------- magi review / propose (B1) ----------
   const MAGI_PRESET = { critic: (p) => ({ agent: "omp", model: "gpt-6-astra", name: `${p} Astra`, role: "적대적 검토자" }), proposer: (p) => ({ agent: "antigravity", model: "gemini-4-argon-medium", name: `${p} Argon`, role: "제안자" }) };
   // ---------- magi runs: phase + per-target progress (state.magiRuns, plus fresh POST responses) ----------

@@ -1110,4 +1110,9 @@ body.anim-off .tk.land *, body.anim-off .tk.land, body.anim-off .wk-lift .wk { a
 .ld-combo-o:hover, .ld-combo-o.hl { background: var(--ui-selection); }
 .ld-combo-o.on { font-weight: 600; }
 .ld-combo-empty { padding: 6px 10px; font-size: var(--fs-s); }
+/* new project path: directory autocomplete */
+.ld-combo-o .ld-dir-p { margin-left: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: right; font-size: var(--fs-xs); }
+.ld-path-st { min-height: 1.2em; padding-top: 2px; } .ld-path-st.exists { color: var(--ui-link); }
+body.mobile .ld-combo-o { min-height: 40px; align-items: center; font-size: 15px; }
+body.mobile .ld-combo-o .ld-dir-p { display: none; }
 
