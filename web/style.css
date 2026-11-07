@@ -1115,4 +1115,11 @@ body.anim-off .tk.land *, body.anim-off .tk.land, body.anim-off .wk-lift .wk { a
 .ld-path-st { min-height: 1.2em; padding-top: 2px; } .ld-path-st.exists { color: var(--ui-link); }
 body.mobile .ld-combo-o { min-height: 40px; align-items: center; font-size: 15px; }
 body.mobile .ld-combo-o .ld-dir-p { display: none; }
+/* snooze menus: custom amount row (number + hours/days + apply) */
+.snz-custom { display: flex; align-items: center; gap: 6px; padding: 6px 8px 4px; border-top: 1px solid var(--border); margin-top: 2px; }
+.snz-custom .snz-n { width: 5em; min-width: 0; height: 26px; }
+.snz-custom select { height: 26px; padding: 0 4px; }
+.snz-custom .snz-go { height: 26px; padding: 0 10px; }
+.pop > .snz-custom { width: auto; }
+body.mobile .snz-custom .snz-n, body.mobile .snz-custom select, body.mobile .snz-custom .snz-go { height: 40px; font-size: 16px; }
 

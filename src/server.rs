@@ -239,8 +239,12 @@ pub fn op_rename(coll: &mut Collector, snap: &Snapshot, key: &str, new: &str) ->
     Ok(json!({"ok": true, "old": a.name, "name": new, "mirroredToTerminal": mirrored}))
 }
 
+/// Longest snooze: 30 days, in minutes.
+pub const MAX_SNOOZE_MIN: f64 = 43_200.0;
+
 pub fn op_snooze(coll: &mut Collector, snap: &Snapshot, key: &str, minutes: f64) -> Res<Value> {
     let a = find(&snap.agents, key).ok_or_else(|| format!("unknown agent {key}"))?;
+    let minutes = minutes.min(MAX_SNOOZE_MIN);
     let until = if minutes <= 0.0 {
         coll.registry.snoozes.remove(&a.identity);
         None
@@ -2797,6 +2801,10 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
                 }
                 "request-name" => op_request_names(&mut sh.coll.plock(), &s, &[name.to_string()]),
                 "snooze" => {
+                    let m = j["minutes"].as_f64().unwrap_or(0.0);
+                    if !m.is_finite() || !(0.0..=MAX_SNOOZE_MIN).contains(&m) {
+                        return Err((400, format!("minutes must be 0..={MAX_SNOOZE_MIN} (0 = unsnooze)")));
+                    }
                     let r = op_snooze(&mut sh.coll.plock(), &s, name, j["minutes"].as_f64().unwrap_or(0.0));
                     refresh(sh);
                     r

@@ -195,7 +195,7 @@
   document.addEventListener("click", (e) => {
     const pb = e.target.closest("[data-pop]");
     const target = pb && document.getElementById(pb.dataset.pop);
-    const keep = !pb && e.target.closest(".view-pop, #model-pop");
+    const keep = !pb && e.target.closest(".view-pop, #model-pop, .snz-custom");
     const opening = target && target.hidden;
     if (!keep) $$(".pop").forEach((p) => { p.hidden = true; });
     $$("[data-pop]").forEach((b) => b.classList.remove("on"));
@@ -1210,6 +1210,17 @@
   const durTxt = (ms) => fmtMin(ms / 60000) || "0분";
   const ago = (t) => `${fmtMin(Math.max(0, (now() - t) / 60000)) || "0분"} 전`;
   const SEG_KO = { asking: "질문", working: "작업 중", waiting: "대기", snoozed: "미룸", idle: "유휴", offline: "오프라인", error: "오류" };
+  // Snooze choices (v46): presets + a custom amount (hours/days, 1 min … 30 days); the server takes minutes.
+  const SNZ_MIN = [60, 360, 720, 1440], SNZ_MAX = 43200;
+  const snzLabel = (m) => (m % 1440 === 0 && m > 1440 ? L2(`${m / 1440}일`, `${m / 1440} d`) : m % 60 === 0 ? L2(`${m / 60}시간`, `${m / 60} h`) : L2(`${m}분`, `${m} min`));
+  const snzCustomHtml = (act) => `<div class="snz-custom"><span class="muted small">${L2("직접", "Custom")}</span><input type="number" class="snz-n" min="0" step="any" inputmode="decimal" placeholder="3" aria-label="${esc(L2("미룰 양", "Amount"))}"><select class="snz-u" aria-label="${esc(L2("단위", "Unit"))}"><option value="60">${L2("시간", "hours")}</option><option value="1440">${L2("일", "days")}</option></select>${act ? `<button type="button" class="snz-go" data-act="${act}" disabled>${L2("적용", "Apply")}</button>` : ""}</div>`;
+  const snzMenuHtml = (act) => SNZ_MIN.map((m) => `<button data-act="${act}" data-min="${m}"><b>${snzLabel(m)}</b></button>`).join("") + snzCustomHtml(act);
+  const snzCustomMin = (box) => { const n = parseFloat(box.querySelector(".snz-n").value), m = Math.round(n * +box.querySelector(".snz-u").value); return Number.isFinite(m) && m >= 1 && m <= SNZ_MAX ? m : 0; };
+  // "~14:00" today, "~11/7 14:00" on another day.
+  function fmtUntil(t) {
+    const d = new Date(t), hm = d.toLocaleTimeString(window.ADASH_LANG === "en" ? "en-GB" : "ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+    return d.toDateString() === new Date().toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`;
+  }
 
   // Harness badge (item 5): a fixed-width two-part pill. The monogram + glyph shape carry the meaning
   // (omp ●, cc ■, cdx ▲, agy ◆, other ○), the tint is secondary; the model family is the second part.
@@ -1561,7 +1572,7 @@
       else if (a.kind === "waiting") st = `<span class="st-txt${turn ? " turn" : ""}" data-p="0" data-tip="${esc(`${fmtMin(a.waitedMin)} 전에 답함`)}"><span class="st-c">${fmtMin(a.waitedMin)} 전 답</span></span>`;
       else if (a.kind === "snoozed") {
         // Gray: what it would be (질문 / 오류 / 미확인) + until when, and an unsnooze button. No colour, no weight.
-        const until = new Date(a.snoozedUntil).toLocaleTimeString(window.ADASH_LANG === "en" ? "en-GB" : "ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+        const until = fmtUntil(a.snoozedUntil);
         const what = { asking: L2("질문", "Question"), error: s?.lastError ? errLabel(s.lastError) : L2("오류", "Error"), unread: L2("미확인", "Unread") }[a.held] || "";
         st = `<span class="st-txt snz" data-p="0" data-tip="${esc(L2(`${until}까지 미룸 · 강조 끔`, `Snoozed until ${until} · highlights off`))}"><span class="st-c">${what ? `${esc(what)} · ` : ""}${esc(L2(`미룸 ~${until}`, `Snoozed ~${until}`))}</span></span><button type="button" class="unsnz-btn" data-p="0" data-unsnooze="${esc(a.name)}">${esc(L2("해제", "Unsnooze"))}</button>`;
       }
@@ -2431,7 +2442,7 @@
     bar.hidden = false;
     bar.innerHTML = `<b>${bulk.size}개 선택</b><span class="muted small">${[...bulk].map(esc).join(", ")}</span><span class="spacer"></span>
       <button data-act="bulk-msg">메시지 보내기</button><button data-act="bulk-ack">확인함</button>
-      <button data-act="bulk-snooze" data-min="15">미루기 15분</button><button data-act="bulk-snooze" data-min="60">미루기 60분</button><button data-act="bulk-close" class="danger">종료…</button><button data-act="bulk-clear">선택 해제</button>`;
+      <button data-act="bulk-snooze" data-min="60">${L2("미루기 1시간", "Snooze 1 h")}</button><div class="menu-wrap"><button data-pop="pop-bulk-snz" title="${esc(L2("다른 시간으로 미루기", "Snooze for another time"))}">▾</button><div id="pop-bulk-snz" class="pop" hidden>${snzMenuHtml("bulk-snooze")}</div></div><button data-act="bulk-close" class="danger">종료…</button><button data-act="bulk-clear">선택 해제</button>`;
   }
   async function broadcast(body) {
     const r = await api("POST", "/api/broadcast", { targets: [...bulk], force: false, ...body }).catch(() => null);
@@ -2467,6 +2478,8 @@
       bulk.size && { label: L2(`메시지 보내기 · ${bulk.size}개`, `Send message · ${bulk.size} agents`), run: () => bulkAction("msg") },
       { label: L2("보고서 열기", "Open reports"), run: () => (typeof openReports === "function" ? openReports() : toast(L2("보고서는 아직 없습니다", "No reports yet"))) },
       { label: L2("알림·기기 설정", "Notifications and devices"), run: () => openPushSettings() },
+      ...(cur ? SNZ_MIN.map((m) => ({ label: `${L2("미루기", "Snooze")} ${snzLabel(m)} · ${cur}`, run: () => act("POST", `/api/agents/${enc(cur)}/snooze`, { minutes: m }, L2(`${snzLabel(m)} 미룸`, `snoozed ${snzLabel(m)}`)) })) : []),
+      cur && { label: `${L2("미루기 직접 입력…", "Snooze custom…")} · ${cur}`, run: () => snoozeCustomDlg(cur) },
       { label: L2("확인함 모두", "Mark all read"), hint: L2("미확인 전부", "every unread"), run: async () => { const ns = model.agents.filter((a) => a.unread).map((a) => a.name); for (const n of ns) await api("POST", `/api/agents/${enc(n)}/ack`).catch(() => null); toast(L2(`${ns.length}개 확인함`, `${ns.length} marked read`)); if (!FIXTURE) refresh(); } },
     ].filter(Boolean);
   }
@@ -3748,7 +3761,7 @@ if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모
 html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
           <dt>하네스</dt><dd>${esc(a.agentType || "?")}</dd>
           <dt>모델</dt><dd><button type="button" class="model-btn" data-model-pick="${n}" title="${esc(L2("모델·effort 바꾸기", "Change model / effort"))}">${esc([a.usage?.model || a.model || L2("알 수 없음", "unknown"), a.usage?.thinking ? `thinking ${a.usage.thinking}` : ""].filter(Boolean).join(" · "))} <span class="muted">▾</span></button></dd>
-          <dt>상태</dt><dd>${esc(stateKo(a.state))} · ${fmtMin(sinceMin(a))}${a.snoozedUntil ? ` · 미룸 ~${new Date(a.snoozedUntil).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}` : ""}</dd>
+          <dt>상태</dt><dd>${esc(stateKo(a.state))} · ${fmtMin(sinceMin(a))}${a.snoozedUntil ? ` · ${L2("미룸", "snoozed")} ~${fmtUntil(a.snoozedUntil)}` : ""}</dd>
           ${cacheState(a) ? `<dt>캐시</dt><dd${cacheBasis(a) ? ` title="${esc(cacheBasis(a))}"` : ""}><span class="badge ${esc(cacheState(a))}">${CACHE_KO[cacheState(a)] || esc(cacheState(a))}</span>${cacheExp(a) && cacheState(a) !== "cold" ? ` <span class="cd" data-exp="${cacheExp(a)}" data-basis="${esc(cacheBasis(a))}"></span>` : ""}</dd>` : ""}
           ${a.tool ? `<dt>도구</dt><dd>${esc(a.tool)}</dd>` : ""}
           ${pr ? `<dt>진행</dt><dd>${pr.done}/${pr.total}${pr.current ? " · " + esc(pr.current) : ""} <span class="muted small">(${esc(pr.source)})</span></dd>` : ""}
@@ -4339,6 +4352,27 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     toast(L2(`${name} 미루기 해제`, `${name} unsnoozed`), 2000);
     if (!FIXTURE) refresh(); else render();
   }
+  function snoozeCustomDlg(name) {
+    dialog(`<h3>${esc(L2(`미루기 · ${name}`, `Snooze · ${name}`))}</h3>${snzCustomHtml("")}<p class="muted small">${L2("1분 이상 30일 이하", "1 minute to 30 days")}</p>`, L2("미루기", "Snooze"), () => {
+      const m = snzCustomMin($("#dlg-form .snz-custom")); if (!m) return;
+      act("POST", `/api/agents/${enc(name)}/snooze`, { minutes: m }, L2(`${snzLabel(m)} 미룸`, `snoozed ${snzLabel(m)}`));
+    });
+    const ok = $('#dlg-form button[value="ok"]'); if (ok) ok.disabled = true;
+    setTimeout(() => $("#dlg-form .snz-n")?.focus(), 0);
+  }
+  // Custom snooze row: the apply button carries the minutes; invalid input disables it; Enter applies.
+  function snzSync(box) {
+    const m = snzCustomMin(box), go = box.querySelector(".snz-go") || box.closest("form")?.querySelector('button[value="ok"]');
+    if (go) { go.disabled = !m; go.dataset.min = m || ""; }
+    return go && m ? go : null;
+  }
+  document.addEventListener("input", (e) => { const box = e.target.closest?.(".snz-custom"); if (box) snzSync(box); });
+  document.addEventListener("change", (e) => { const box = e.target.closest?.(".snz-custom"); if (box) snzSync(box); });
+  document.addEventListener("keydown", (e) => {
+    const box = e.key === "Enter" && !e.isComposing && e.target.closest?.(".snz-custom"); if (!box) return;
+    e.preventDefault(); e.stopPropagation(); snzSync(box)?.click();
+  }, true);
+  $("#ov-unsnooze").insertAdjacentHTML("beforebegin", snzMenuHtml("snooze"));
   // ---------- events ----------
   document.addEventListener("click", (e) => {
     if (!$("#viewer").hidden && (e.target.closest(".viewer-close") || e.target === $("#viewer") || e.target.closest("#viewer img"))) return closeViewer();
@@ -4392,9 +4426,8 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     else if (a === "rename") renameDlg(name);
     else if (a === "request-name") act("POST", `/api/agents/${enc(name)}/request-name`, {}, "이름 요청 보냄");
     else if (a === "snooze") {
-      const eod = new Date(); eod.setHours(23, 59, 0, 0);
-      const minutes = b.dataset.min === "eod" ? Math.max(1, Math.ceil((eod - Date.now()) / 60000)) : +b.dataset.min;
-      act("POST", `/api/agents/${enc(name)}/snooze`, { minutes }, minutes ? `${b.textContent.trim()} 미룸` : "미루기 해제");
+      const minutes = +b.dataset.min || 0;
+      act("POST", `/api/agents/${enc(name)}/snooze`, { minutes }, minutes ? L2(`${snzLabel(minutes)} 미룸`, `snoozed ${snzLabel(minutes)}`) : L2("미루기 해제", "unsnoozed"));
     }
     else if (a === "interrupt") interruptDlg(name);
     else if (a === "send-force") sendComposer(true);
@@ -4634,7 +4667,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       html = mine.length ? mine.map((a) => {
         const s = a.s, dn = decisionsOf(s).length;
         return `<div class="mcard${a.unread ? " unread" : ""}${a.kind === "asking" ? " asking" : ""}${a.kind === "error" ? " erred" : ""}" data-magent="${esc(a.name)}">
-          <div class="mc-swipe"><span class="mc-l">확인함</span><span class="spacer"></span><span class="mc-r">미루기 60분</span></div>
+          <div class="mc-swipe"><span class="mc-l">확인함</span><span class="spacer"></span><span class="mc-r">${L2("미루기 1시간", "Snooze 1 h")}</span></div>
           <div class="mc-body"><div class="mc-head"><b>${esc(a.name)}</b>${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}<span class="muted mc-proj">${esc(a.project)}</span><span class="spacer"></span><span class="mc-st">${stateLine(a)}</span></div>
             <div class="mc-meta">${a.role ? `<span class="muted">${esc(a.role)}</span>` : ""}${dn ? `<span class="dec-mark">결정 ${dn}</span>` : ""}${heldRelays(a.name).length ? '<span class="held-mark">답변 보류</span>' : ""}${s?.draft?.text ? '<span class="draft-mark">초안</span>' : ""}${soonCold(s) ? `<span class="cd soon" title="${esc(cacheBasis(s))}">곧 식음</span>` : ""}</div>
             <div class="mc-first">${esc(a.kind === "error" ? (s?.state === "auth" ? t_("로그인이 필요합니다") : s?.lastError?.message || "제공자 API 오류로 멈춤") : a.kind === "asking" && s?.ask ? askQuestions(s.ask)[0].question : firstLine(s?.lastMessage))}</div>${a.kind === "error" ? `<div class="mc-act"><button data-retry="${esc(a.name)}">${esc(retryLabel(s))}</button></div>` : ""}</div></div>`;
@@ -4680,7 +4713,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       c.style.height = `${c.offsetHeight}px`; c.style.overflow = "hidden";
       requestAnimationFrame(() => { c.style.height = "0px"; c.style.opacity = "0"; });
       if (s) { if (act === "ack") s.unread = false; else s.snoozedUntil = Date.now() + 3600e3; }
-      toast(act === "ack" ? `${name} 확인함` : `${name} 60분 미룸`, 1500);
+      toast(act === "ack" ? `${name} 확인함` : L2(`${name} 1시간 미룸`, `${name} snoozed 1 h`), 1500);
       setTimeout(render, 300);
       api("POST", `/api/agents/${enc(name)}/${act}`, act === "snooze" ? { minutes: 60 } : undefined, { quiet: true })
         .then(() => { if (!FIXTURE) refresh(); })
