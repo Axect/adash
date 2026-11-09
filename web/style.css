@@ -1130,3 +1130,10 @@ body.mobile .ld-combo-o .ld-dir-p { display: none; }
 .pop > .snz-custom { width: auto; }
 body.mobile .snz-custom .snz-n, body.mobile .snz-custom select, body.mobile .snz-custom .snz-go { height: 40px; font-size: 16px; }
 
+/* asking: composer hidden, ask card docked at the bottom in its place */
+.composer.ask-hidden, .att-bar.ask-hidden { display: none !important; }
+.ask-card.ask-dock { position: sticky; bottom: 0; z-index: 2; max-height: 60vh; overflow: auto; }
+.ask-card.ask-dock .ask-text { min-height: 36px; font-size: 1em; }
+.ask-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.ask-foot .linkish { height: auto; padding: 0; border: none; background: none; color: var(--muted); text-decoration: underline; font-size: inherit; }
+body.mobile .ask-card.ask-dock .ask-text { min-height: 44px; font-size: 16px; }

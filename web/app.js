@@ -3429,7 +3429,29 @@
   const askQuestions = (q) => (Array.isArray(q.questions) && q.questions.length ? q.questions : [{ id: "q0", question: q.question, options: q.options, multi: q.multi, recommended: q.recommended }])
     .map((x, i) => ({ ...x, id: x.id ?? `q${i}`, options: x.options || [] }));
   const isAnswered = (v) => v && (v.optionIndex != null || (v.optionIndices && v.optionIndices.length) || (v.text && v.text.trim()));
+  // While the harness shows a question (omp ask, Claude AskUserQuestion) the terminal input belongs to that picker:
+  // a normal message would not arrive or would pick something. So the composer is hidden and the ask card (with its
+  // 직접 답하기 field) takes its place; the unsent draft stays in the hidden textarea and comes back afterwards.
   function renderAskCard() {
+    renderAskCard0();
+    const card = $("#ask-card"), asking = !card.hidden && !!ov.name;
+    $("#composer").classList.toggle("ask-hidden", asking);
+    $("#att-bar").classList.toggle("ask-hidden", asking);
+    card.classList.toggle("ask-dock", asking);
+    card.querySelector(".ask-foot")?.remove();
+    if (!asking || answerJobs.get(ov.name)) return;
+    const draft = $("#composer-text").value.trim();
+    card.insertAdjacentHTML("beforeend", `<div class="ask-foot muted small">${draft ? `<span>${L2("작성 중이던 메시지는 질문이 끝나면 돌아옵니다", "Your unsent message comes back when the question ends")}</span>` : ""}<span class="spacer"></span><button type="button" class="linkish" data-act="ask-skip">${L2("질문 건너뛰고 메시지 보내기", "Skip the question and send a message")}</button></div>`);
+  }
+  function askSkipDlg(name) {
+    dialog(`<h3>${esc(L2("질문 건너뛰기", "Skip the question"))}</h3><p>${esc(L2(`${name}의 질문 화면을 취소(중단 키)하고 메시지 입력창으로 돌아갑니다. 질문에는 답하지 않은 것으로 처리됩니다.`, `Cancels ${name}'s question (interrupt key) and returns to the message box. The question stays unanswered.`))}</p>`, L2("건너뛰기", "Skip"), async () => {
+      try { await api("POST", `/api/agents/${enc(name)}/interrupt`); } catch (e) { toast(L2(`취소 실패: ${e.message}`, `Cancel failed: ${e.message}`)); return; }
+      const s = agentBy(name); if (s) { s.ask = null; if (s.state === "asking") s.state = "waiting"; }
+      renderAskCard(); $("#composer-text").focus();
+      if (!FIXTURE) refresh();
+    });
+  }
+  function renderAskCard0() {
     const card = $("#ask-card");
     const a = ov.open && ov.name && agentBy(ov.name);
     const job = ov.open && ov.name && answerJobs.get(ov.name);
@@ -4586,6 +4608,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       act("POST", `/api/agents/${enc(name)}/snooze`, { minutes }, minutes ? L2(`${snzLabel(minutes)} 미룸`, `snoozed ${snzLabel(minutes)}`) : L2("미루기 해제", "unsnoozed"));
     }
     else if (a === "interrupt") interruptDlg(name);
+    else if (a === "ask-skip") askSkipDlg(ov.name);
     else if (a === "send-force") sendComposer(true);
     else if (a === "pending-drop" || a === "pending-resend") {
       const p = ov.pending[+b.dataset.i]; if (!p) return;
