@@ -306,6 +306,18 @@ pub fn screen_ansi(handle: &str) -> Res<String> {
     tmux(&["capture-pane", "-p", "-e", "-t", &p])
 }
 
+/// A pane user option (`@adash_trust`, `@adash_name`, `@adash_parent`) of a terminal; None if unset.
+pub fn pane_opt(handle: &str, name: &str) -> Option<String> {
+    let p = pane_of(handle).ok()?;
+    tmux(&["show-options", "-pqv", "-t", &p, name]).ok().map(|s| s.trim().to_string()).filter(|s| !s.is_empty())
+}
+
+/// Set a pane user option of a terminal.
+pub fn set_pane_opt(handle: &str, name: &str, value: &str) -> Res<()> {
+    let p = pane_of(handle)?;
+    tmux(&["set-option", "-p", "-t", &p, name, value]).map(|_| ())
+}
+
 /// Last `n` rendered lines including scrollback, with the read source (always "screen").
 pub fn tail_n(handle: &str, n: usize) -> Res<(String, Vec<String>)> {
     let p = pane_of(handle)?;

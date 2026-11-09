@@ -7,7 +7,7 @@ use crate::util::{now_ms, Res};
 use regex::Regex;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::LazyLock;
 
@@ -210,8 +210,15 @@ impl Collector {
                 }
             }
             let prompt = if mapped { sess.turn.prompt.clone().unwrap_or_default() } else { String::new() };
+            // a shell title showing the launch command ("~/dir: agy --model …") is not a title
+            let command_title = title.split_once(": ").is_some_and(|(_, c)| {
+                c.split_whitespace().next().is_some_and(|w| ["agy", "claude", "codex", "omp", "bash", "exec"].contains(&w.rsplit('/').next().unwrap_or(w)))
+            });
+            if command_title {
+                title = String::new();
+            }
             if code.is_none() && (title.is_empty() || title == "ready" || title.contains(": ") || title.contains(" - ")) {
-                title = if prompt.is_empty() { title } else { crate::util::first_line(&prompt, 80) };
+                title = if prompt.is_empty() { title } else { prompt_title(&prompt) };
             }
             let mut state = "idle".to_string();
             let mut state_since = if p.activity_ms > 0 { p.activity_ms } else { now };
@@ -380,6 +387,7 @@ impl Collector {
                 a
             })
             .collect();
+        self.name_from_launch(&mut agents);
         agents.sort_by(|a, b| a.project.cmp(&b.project).then(a.name.cmp(&b.name)));
         Ok(Snapshot { at: now, agents, worktrees })
     }
@@ -404,6 +412,56 @@ pub fn find<'a>(agents: &'a [Agent], key: &str) -> Option<&'a Agent> {
 }
 
 /// Caller's terminal handle: own env `ADASH_HANDLE`, else walk process ancestry.
+/// Title from the first prompt: a thread marker `[marker] …` names it, else its first line.
+fn prompt_title(prompt: &str) -> String {
+    let p = prompt.trim_start();
+    if let Some(m) = p.strip_prefix('[').and_then(|r| r.split_once(']')).map(|x| x.0.trim()).filter(|m| !m.is_empty() && !m.starts_with("adash")) {
+        return m.to_string();
+    }
+    crate::util::first_line(p, 80)
+}
+
+impl Collector {
+    /// Terminals started with `adash term new`: `--name` (pane option `@adash_name`), else the
+    /// launching agent's name + the model family or harness (`PLANNER-argon`). Once per
+    /// terminal, and only while the agent has no name of its own.
+    fn name_from_launch(&mut self, agents: &mut [Agent]) {
+        static DONE: std::sync::LazyLock<std::sync::Mutex<HashSet<String>>> = std::sync::LazyLock::new(Default::default);
+        let by_handle: HashMap<String, String> = agents.iter().filter_map(|a| Some((a.handle.clone()?, a.name.clone()))).collect();
+        let mut taken: HashSet<String> = agents.iter().map(|a| a.name.clone()).collect();
+        for a in agents.iter_mut().filter(|a| a.name_source != "override" && a.name_source != "self") {
+            let Some(h) = a.handle.clone() else { continue };
+            if DONE.lock().unwrap_or_else(|e| e.into_inner()).contains(&h) {
+                continue;
+            }
+            let name = term::pane_opt(&h, "@adash_name").or_else(|| {
+                let parent = by_handle.get(&term::pane_opt(&h, "@adash_parent")?)?;
+                let m = a.model.as_deref().unwrap_or("");
+                let fam = ["argon", "astra", "sol", "luna", "opus", "sonnet", "codex"].iter().find(|f| m.contains(*f)).map(|f| f.to_string());
+                Some(format!("{parent}-{}", fam.unwrap_or_else(|| a.agent_type.clone())))
+            });
+            // the launcher may show up a poll later: try again until there is a name or no hint
+            if name.is_some() || term::pane_opt(&h, "@adash_parent").is_none() {
+                DONE.lock().unwrap_or_else(|e| e.into_inner()).insert(h);
+            }
+            let Some(mut n) = name.map(|n| n.split_whitespace().collect::<Vec<_>>().join("-")) else { continue };
+            let base = n.clone();
+            let mut k = 2;
+            while taken.contains(&n) {
+                n = format!("{base}-{k}");
+                k += 1;
+            }
+            taken.insert(n.clone());
+            self.registry.overrides.insert(a.identity.clone(), n.clone());
+            if self.persist {
+                let _ = self.registry.save();
+            }
+            a.name = n;
+            a.name_source = "override".into();
+        }
+    }
+}
+
 pub fn my_handle() -> Option<String> {
     if let Some(h) = term::env_handle() {
         return Some(h);

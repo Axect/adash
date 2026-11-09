@@ -442,8 +442,24 @@ fn cmd_term(a: &Args) -> Res<()> {
                 .or_else(|| Meta::load().project_for_path(&cwd_s))
                 .or_else(|| cwd.file_name().map(|n| n.to_string_lossy().into_owned()))
                 .unwrap_or_else(|| "adash".into());
+            let parent = crate::collect::my_handle();
             let h = term::create(&cwd, &project, &a.get("title").unwrap_or_default(), a.get("command").as_deref(), None)?;
-            out(json!({"handle": h}));
+            // folder trust: accepted for the started agent when a person runs this, or when the
+            // launching agent starts it inside its own folder or a registered project; `--no-trust`
+            // never (see docs/security.md)
+            let parent_cwd = parent.as_deref().and_then(|p| term::panes().ok()?.into_iter().find(|x| x.handle == p).map(|x| std::path::PathBuf::from(x.cwd)));
+            let inside = parent_cwd.as_deref().and_then(|c| std::fs::canonicalize(c).ok()).is_some_and(|c| cwd.starts_with(&c));
+            let trust =
+                !a.has("no-trust") && crate::config::get().launch.auto_trust && (parent.is_none() || inside || Meta::load().project_for_path(&cwd_s).is_some());
+            if trust {
+                term::set_pane_opt(&h, "@adash_trust", "1")?;
+            }
+            if let Some(n) = a.get("name").filter(|n| !n.trim().is_empty()) {
+                term::set_pane_opt(&h, "@adash_name", n.trim())?;
+            } else if let Some(p) = &parent {
+                term::set_pane_opt(&h, "@adash_parent", p)?;
+            }
+            out(json!({"handle": h, "autoTrust": trust}));
         }
         "list" => out(Value::Array(term::panes()?.iter().map(term::Pane::to_json).collect())),
         "send" => {

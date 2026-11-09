@@ -516,6 +516,7 @@ impl SessionCache {
             for s in &steps {
                 if s.kind == crate::agy::USER && !s.text.as_deref().unwrap_or("").trim_start().starts_with("[adash ") {
                     fc.turn.last_human = Some(fc.turn.last_human.map_or(s.ts, |h| h.max(s.ts)));
+                    fc.turn.prompt = s.text.clone().filter(|t| !t.trim().is_empty()).or(fc.turn.prompt.take());
                 }
                 if s.kind == crate::agy::MODEL && s.status == crate::agy::FINISHED {
                     fc.turn.last_answer = Some(fc.turn.last_answer.map_or(s.ts, |h| h.max(s.ts)));

@@ -1333,7 +1333,10 @@ fn scan_auth(sh: &Arc<Shared>) {
         }
         if let Some(mut v) = crate::auth::trust(&a.agent_type, &lines) {
             // a terminal the dashboard started in a folder the user chose: accept at once
-            if v["yes"].is_u64() && crate::config::get().launch.auto_trust && crate::launch::AUTO_TRUST.plock().contains(h) {
+            if v["yes"].is_u64()
+                && crate::config::get().launch.auto_trust
+                && (crate::launch::AUTO_TRUST.plock().contains(h) || term::pane_opt(h, "@adash_trust").is_some())
+            {
                 let (h2, name) = (h.clone(), a.name.clone());
                 let sh2 = sh.clone();
                 std::thread::spawn(move || {

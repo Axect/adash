@@ -239,6 +239,8 @@ fn start(dir: &Path, project: &str, title: &str, cmd: &str, j: &Value, worktree:
     let handle = term::create(dir, project, title, Some(cmd), None).map_err(|e| (502, e))?;
     if j["autoTrust"] != false {
         AUTO_TRUST.lock().unwrap_or_else(|e| e.into_inner()).insert(handle.clone());
+        // also on the pane, so it survives an adash restart
+        let _ = term::set_pane_opt(&handle, "@adash_trust", "1");
     }
     if let Some(p) = j["prompt"].as_str().map(str::trim).filter(|p| !p.is_empty()) {
         let mut m = LAUNCH_PROMPTS.lock().unwrap_or_else(|e| e.into_inner());
