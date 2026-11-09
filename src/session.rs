@@ -775,9 +775,29 @@ pub(crate) fn claude_file(p: &Proc) -> Option<(PathBuf, bool)> {
     if let Some(f) = fd_match(p.pid, |l| l.contains("/.claude/projects/") && l.ends_with(".jsonl")) {
         return Some((f, true));
     }
+    // Claude Code 2.1 writes `~/.claude/sessions/<pid>.json` {sessionId, cwd, startedAt}: the
+    // process's own session, exact (it does not keep the jsonl open)
+    if let Some(f) = claude_pid_session(&home().join(".claude/sessions"), p) {
+        return Some((f, true));
+    }
     let slug: String = p.cwd.to_string_lossy().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
     let dir = home().join(".claude/projects").join(slug);
     jsonl_in(&dir).into_iter().map(|f| (mtime_ms(&f), f)).filter(|(m, _)| *m >= p.start_ms).max_by_key(|x| x.0).map(|x| (x.1, false))
+}
+
+/// The session jsonl a Claude Code process names in its pid file, when the file belongs to this
+/// process (started within 10 s of it; a reused pid's stale file does not) and exists.
+fn claude_pid_session(dir: &Path, p: &Proc) -> Option<PathBuf> {
+    let v: Value = serde_json::from_str(&std::fs::read_to_string(dir.join(format!("{}.json", p.pid))).ok()?).ok()?;
+    let started = v["startedAt"].as_i64()?;
+    if (started - p.start_ms).abs() > 10_000 {
+        return None;
+    }
+    let id = v["sessionId"].as_str().filter(|i| !i.is_empty() && !i.contains('/'))?;
+    let cwd = v["cwd"].as_str().map(PathBuf::from).unwrap_or_else(|| p.cwd.clone());
+    let slug: String = cwd.to_string_lossy().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
+    let f = home().join(".claude/projects").join(slug).join(format!("{id}.jsonl"));
+    f.exists().then_some(f)
 }
 
 pub(crate) fn codex_file(p: &Proc) -> Option<(PathBuf, bool)> {
@@ -808,6 +828,31 @@ pub(crate) fn codex_file(p: &Proc) -> Option<(PathBuf, bool)> {
 
 #[cfg(test)]
 mod tests {
+    /// Claude Code does not keep its jsonl open; its pid file names the session (2026-11-09: a
+    /// Claude agent asking a question showed as idle because its mapping was only a guess).
+    #[test]
+    fn claude_pid_file_maps_the_process_exactly_unless_stale() {
+        let dir = std::env::temp_dir().join(format!("adash-ccpid-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let cwd = dir.join("proj");
+        std::fs::create_dir_all(&cwd).unwrap();
+        let slug: String = cwd.to_string_lossy().chars().map(|c| if c.is_ascii_alphanumeric() { c } else { '-' }).collect();
+        let pdir = crate::util::home().join(".claude/projects").join(&slug);
+        std::fs::create_dir_all(&pdir).unwrap();
+        let id = format!("test-{}", std::process::id());
+        std::fs::write(pdir.join(format!("{id}.jsonl")), "{}\n").unwrap();
+        let p = super::Proc { pid: 4242, kind: "claude".into(), args: vec![], cwd: cwd.clone(), start_ms: 1_000_000, handle: "t".into() };
+        let write = |started: i64| {
+            std::fs::write(dir.join("4242.json"), serde_json::json!({"pid": 4242, "sessionId": id, "cwd": cwd, "startedAt": started}).to_string()).unwrap()
+        };
+        write(1_002_000);
+        assert_eq!(super::claude_pid_session(&dir, &p), Some(pdir.join(format!("{id}.jsonl"))));
+        write(5_000_000);
+        assert_eq!(super::claude_pid_session(&dir, &p), None, "another process with the same pid");
+        let _ = std::fs::remove_dir_all(&pdir);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// agy writes a model step while it runs and updates the same row to FINISHED later; the
     /// agent must turn from working to done when that update lands (2026-11-04: Argon agents
     /// stuck "working" after finishing).
