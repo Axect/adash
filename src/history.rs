@@ -176,8 +176,9 @@ impl Recon {
                 self.offset = crate::agy::resume_after(self.offset as i64, &steps).max(0) as u64;
                 for s in steps {
                     // a step re-read because it was still running: only its activity is new
-                    let again = (s.idx as u64) <= self.seen;
-                    self.seen = self.seen.max(s.idx as u64);
+                    // `seen` = one past the highest idx fed (step 0 is a real step)
+                    let again = (s.idx as u64) < self.seen;
+                    self.seen = self.seen.max(s.idx as u64 + 1);
                     if s.ts <= 0 || (again && s.kind == crate::agy::USER) {
                         continue;
                     }

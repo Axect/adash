@@ -133,9 +133,13 @@ pub struct Step {
     pub text: Option<String>,
     /// (call id, tool name, args)
     pub tool: Option<(String, String, Value)>,
+    /// model steps: the model's thinking (shown folded)
+    pub thinking: Option<String>,
 }
 
 pub const USER: i64 = 14;
+/// a message agy itself adds to the conversation ("The stream was interrupted. Please continue…")
+pub const SYSTEM: i64 = 17;
 pub const MODEL: i64 = 15;
 pub const TOOL: i64 = 132;
 pub const FINISHED: i64 = 3;
@@ -197,7 +201,9 @@ pub fn model_of(db: &Path) -> Option<String> {
 
 pub fn read_steps(db: &Path, after: i64) -> Res<Vec<Step>> {
     let c = open(db)?;
-    let mut st = c.prepare("SELECT idx, step_type, status, metadata, step_payload FROM steps WHERE idx > ?1 ORDER BY idx").map_err(|e| e.to_string())?;
+    let mut st = c
+        .prepare("SELECT idx, step_type, status, metadata, step_payload FROM steps WHERE idx > ?1 OR (?1 = 0 AND idx = 0) ORDER BY idx")
+        .map_err(|e| e.to_string())?;
     let rows = st
         .query_map([after], |r| {
             Ok((r.get::<_, i64>(0)?, r.get::<_, i64>(1)?, r.get::<_, i64>(2)?, r.get::<_, Option<Vec<u8>>>(3)?, r.get::<_, Option<Vec<u8>>>(4)?))
@@ -224,9 +230,11 @@ pub fn decode_step(idx: i64, kind: i64, status: i64, meta: &[u8], payload: &[u8]
             let args = str_at(payload, &[5, 4, 3]).and_then(|a| serde_json::from_str(&a).ok()).unwrap_or(Value::Null);
             (None, Some((id, name, args)))
         }
+        SYSTEM => (str_at(payload, &[24, 3, 2]), None),
         _ => (None, None),
     };
-    Step { idx, kind, status, ts, text, tool }
+    let thinking = if kind == MODEL { str_at(payload, &[20, 3]).filter(|t| !t.trim().is_empty()) } else { None };
+    Step { idx, kind, status, ts, text, tool, thinking }
 }
 
 /// (agent mid-turn, since): working unless the last step is a finished model turn.

@@ -47,6 +47,8 @@ pub struct Agent {
     pub draft: Option<Value>,
     /// login prompt on the agent's screen (state "auth"): {reason, phrase, url?, code?, since}
     pub auth: Option<Value>,
+    /// input the harness holds until its turn ends: {phrase, sendNowKey, since}
+    pub queued: Option<Value>,
     /// "정하실 것" items in the latest answer: [{id, text, options}]
     pub decisions: Value,
     /// hash of the message the decisions came from (changes when a new answer arrives)
@@ -283,6 +285,7 @@ impl Collector {
                     unread: false,
                     draft: None,
                     auth: None,
+                    queued: None,
                     decisions: Value::Null,
                     decisions_from: None,
                     decisions_answered: false,

@@ -77,6 +77,19 @@ pub fn moves(v: &Value, target: usize) -> Option<(&'static str, usize)> {
     Some(if target >= sel { ("Down", target - sel) } else { ("Up", sel - target) })
 }
 
+/// Input the harness took but holds until its turn ends, as its own screen says (phrases from
+/// the binaries): (harness, phrase, tmux key that sends it now). omp shows its queue only in a
+/// passing notice, so it is not listed.
+const QUEUED: &[(&str, &str, &str)] = &[("antigravity", "to send immediately)", "M-m"), ("claude", "Press up to edit queued messages", "Enter")];
+
+/// A held input on the screen's last rows: {phrase, sendNowKey}.
+pub fn queued(kind: &str, screen: &[String]) -> Option<Value> {
+    let rows: Vec<&str> = screen.iter().map(|l| l.as_str()).filter(|l| !l.trim().is_empty()).collect();
+    let text = rows[rows.len().saturating_sub(ROWS)..].join("\n");
+    let (_, p, k) = QUEUED.iter().find(|(h, p, _)| *h == kind && text.contains(p))?;
+    Some(json!({"phrase": p, "sendNowKey": k}))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -139,5 +152,12 @@ mod tests {
         ]);
         let v = trust("claude", &cc).unwrap();
         assert_eq!((v["yes"].as_u64(), moves(&v, 1)), (Some(1), Some(("Down", 1))));
+    }
+
+    #[test]
+    fn held_input_per_harness() {
+        assert_eq!(queued("antigravity", &s(&["> working", "뭐하는중이야 (alt+m to send immediately)"])).unwrap()["sendNowKey"], "M-m");
+        assert!(queued("claude", &s(&["(alt+m to send immediately)"])).is_none());
+        assert_eq!(queued("claude", &s(&["  > follow up", "Press up to edit queued messages"])).unwrap()["sendNowKey"], "Enter");
     }
 }

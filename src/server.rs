@@ -154,6 +154,8 @@ pub struct Shared {
     pub drafts: Mutex<HashMap<String, Value>>,
     /// handle → login prompt seen on its screen (with the time first seen)
     pub auth: Mutex<HashMap<String, Value>>,
+    /// handle → input held by the harness until its turn ends
+    pub queued: Mutex<HashMap<String, Value>>,
     pub catalog: Mutex<crate::launch::Cached>,
     /// Phase C: approved phones/tablets (tailscale serve), and the tailnet host/allowed logins
     pub devices: Mutex<crate::mobile::Devices>,
@@ -1242,7 +1244,9 @@ fn decisions_from_transcript(sh: &Shared, snap: &mut Snapshot) {
 fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let d = sh.drafts.plock();
     let au = sh.auth.plock();
+    let qd = sh.queued.plock();
     for a in snap.agents.iter_mut() {
+        a.queued = a.handle.as_ref().and_then(|h| qd.get(h)).cloned();
         a.draft = a.handle.as_ref().and_then(|h| d.get(h)).filter(|v| !v.is_null()).cloned();
         // a login prompt on the screen: the agent waits for the user whatever its transcript says
         if let Some(v) = a.handle.as_ref().and_then(|h| au.get(h)) {
@@ -1318,9 +1322,15 @@ fn scan_auth(sh: &Arc<Shared>) {
     let agents = sh.snap.plock().agents.clone();
     let prev = sh.auth.plock().clone();
     let mut found = HashMap::new();
+    let prev_q = sh.queued.plock().clone();
+    let mut queued = HashMap::new();
     for a in &agents {
         let Some(h) = &a.handle else { continue };
         let Ok(lines) = term::screen(h) else { continue };
+        if let Some(mut v) = crate::auth::queued(&a.agent_type, &lines) {
+            v["since"] = prev_q.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
+            queued.insert(h.clone(), v);
+        }
         if let Some(mut v) = crate::auth::trust(&a.agent_type, &lines) {
             // a terminal the dashboard started in a folder the user chose: accept at once
             if v["yes"].is_u64() && crate::config::get().launch.auto_trust && crate::launch::AUTO_TRUST.plock().contains(h) {
@@ -1343,6 +1353,7 @@ fn scan_auth(sh: &Arc<Shared>) {
         }
     }
     *sh.auth.plock() = found;
+    *sh.queued.plock() = queued;
 }
 
 /// B4 detection (every ~60 s): pointer lines `[marker] @brief 를 읽고 답해줘` in live agents'
@@ -1634,6 +1645,7 @@ pub fn serve(port: u16) -> Res<()> {
         workspaces: Mutex::new(crate::launch::Cached::default()),
         drafts: Mutex::new(HashMap::new()),
         auth: Mutex::new(HashMap::new()),
+        queued: Mutex::new(HashMap::new()),
         catalog: Mutex::new(crate::launch::Cached::default()),
         devices: Mutex::new(crate::mobile::Devices::load()),
         ts_host: ts.0,
@@ -2175,6 +2187,26 @@ fn handle(sh: &Shared, mut req: Request) {
                 Ok(text) => {
                     let plain = term::screen(&h).unwrap_or_default();
                     reply_json(req, 200, &json!({"handle": h, "text": text, "auth": crate::auth::detect(&a.agent_type, &plain)}))
+                }
+                Err(e) => reply_json(req, 502, &json!({"error": e})),
+            }
+        }
+        (Method::Post, ["api", "agents", name, "send-now"]) => {
+            // the harness holds a message until its turn ends: its own "send now" key
+            let a = match agent_for(sh, name, None) {
+                Ok(a) => a,
+                Err(e) => return reply_json(req, e.0, &json!({"error": e.1})),
+            };
+            let Some(h) = a.handle.clone() else { return reply_json(req, 409, &json!({"error": "this agent has no terminal"})) };
+            let Some(q) = term::screen(&h).ok().and_then(|l| crate::auth::queued(&a.agent_type, &l)) else {
+                return reply_json(req, 409, &json!({"error": "no held message on the screen"}));
+            };
+            let key = q["sendNowKey"].as_str().unwrap_or("Enter").to_string();
+            match term::send_keys(&h, &[key.as_str()]) {
+                Ok(v) => {
+                    sh.queued.plock().remove(&h);
+                    log_action(sh, &method, &segs, &body);
+                    reply_json(req, 200, &v)
                 }
                 Err(e) => reply_json(req, 502, &json!({"error": e})),
             }

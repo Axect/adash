@@ -3202,7 +3202,7 @@
     $(".tabs [data-tab=threads]").textContent = `검토 요청${nThreads ? ` (${nThreads})` : ""}`;
     $(".tabs [data-tab=tasks]").textContent = `내 할 일${nTasks ? ` (${nTasks})` : ""}`;
     $("#composer").hidden = !ov.name;
-    renderInfo(); renderThreads(); renderTasks(); renderWorkLine(); renderHeld(); renderAskCard(); renderAuthCard(); renderRelayCard(); renderMagiStrip(); renderDecisions(); renderDraftStrip(); updatePrefixWarn(); renderBtwNote();
+    renderInfo(); renderThreads(); renderTasks(); renderWorkLine(); renderHeld(); renderAskCard(); renderAuthCard(); renderRelayCard(); renderMagiStrip(); renderDecisions(); renderDraftStrip(); renderQueuedStrip(); updatePrefixWarn(); renderBtwNote();
     if (!ov.name) { H("#chat-log").innerHTML = `<p class="muted">보드에서 에이전트를 고르면 대화가 여기에 열립니다.</p>`; }
   }
   // ---------- triage: ack, next unread (A2) ----------
@@ -3285,6 +3285,20 @@
 
   // ---------- unsent text in the agent's terminal composer (A3) ----------
   ov.draftNoClear = new Set();
+  // The harness took the message but holds it until its turn ends (agy, Claude Code queues).
+  function renderQueuedStrip() {
+    const el = $("#queued-strip"), a = ov.open && ov.name ? agentBy(ov.name) : null;
+    if (!a?.queued) { el.hidden = true; el.innerHTML = ""; el._h = null; return; }
+    const html = `<span class="muted small">${esc(L2("보낸 메시지가 대기열에 있습니다 · 에이전트 작업이 끝나면 전달됩니다", "Your message is queued · delivered when the agent's turn ends"))}</span><span class="spacer"></span><button data-send-now="${esc(a.name)}">${t_("지금 보내기")}</button>`;
+    if (el._h !== html) { el.innerHTML = html; el._h = html; }
+    el.hidden = false;
+  }
+  $("#queued-strip").addEventListener("click", async (e) => {
+    const b = e.target.closest("[data-send-now]"); if (!b) return;
+    b.disabled = true;
+    try { await api("POST", `/api/agents/${enc(b.dataset.sendNow)}/send-now`, {}, { quiet: true }); toast(t_("지금 보냈습니다")); }
+    catch (err) { toast(`${t_("보내지 못함:")} ${err.message}`); b.disabled = false; }
+  });
   function renderDraftStrip() {
     const el = $("#draft-strip");
     const a = ov.open && ov.name && agentBy(ov.name);
@@ -3433,7 +3447,7 @@
   // a normal message would not arrive or would pick something. So the composer is hidden and the ask card (with its
   // 직접 답하기 field) takes its place; the unsent draft stays in the hidden textarea and comes back afterwards.
   function renderAskCard() {
-    renderAskCard0();
+    renderAskCard0(); fitOvHead();
     const card = $("#ask-card"), asking = !card.hidden && !!ov.name;
     $("#composer").classList.toggle("ask-hidden", asking);
     $("#att-bar").classList.toggle("ask-hidden", asking);
@@ -3990,6 +4004,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       else if (m.role === "error") blocks.push([m.id, errorBubble(m)]);
       else if (m.role === "shell") blocks.push([m.id, shellBubble(m)]);
       else if (m.role === "media") blocks.push([m.id, mediaRow(m)]);
+      else if (m.role === "thinking") blocks.push([m.id, `<details class="m thinking" title="${esc(tsTitle(m.ts))}"><summary>${t_("생각")}</summary><div class="md">${md(m.text, ov.name, m.id)}</div></details>`]);
       else blocks.push([m.id, `<div class="m system${tx?.source === "terminal" ? " term" : ""}" title="${esc(tsTitle(m.ts))}">${esc(m.text)}</div>`]);
     }
     ov.pending.forEach((p, i) => blocks.push([`p:${i}:${p.stale ? 1 : 0}`, `<div class="m user pending md${p.stale ? " stale" : ""}">${p.text.trim() ? md(p.text, ov.name) : ""}${thumbs(p.urls.map((u, k) => [u, p.images[k]]))}${fileChips(p.files || [], p.sizes, false)}${p.stale ? `<div class="pend-st">${L2("전송 확인 안 됨", "Delivery not confirmed")} <button type="button" data-act="pending-resend" data-i="${i}">${L2("다시 보내기", "Send again")}</button> <button type="button" data-act="pending-drop" data-i="${i}">${L2("지우기", "Dismiss")}</button></div>` : ""}</div>`]));
@@ -4517,6 +4532,33 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     });
   }
   const interruptDlg = (name) => dialog(`<h3>${esc(name)} 중단</h3><p>진행 중인 작업을 중단(인터럽트)합니다. 계속할까요?</p>`, "중단", () => act("POST", `/api/agents/${enc(name)}/interrupt`, undefined, "중단 요청 보냄"));
+  // Chat header (v46): buttons never wrap; when the row is too narrow the lowest-priority items fold into the ⋯ menu
+  // (their menu entries are copied there). Info panel: below 900 px it folds behind an 정보 toggle (overlay).
+  const OV_FOLD = [".ov-keys", '[data-pop="pop-name"]', '[data-k="propose"]', '[data-pop="pop-review"]', '[data-pop="pop-snooze"]'];
+  function fitOvHead() {
+    const ovEl = $(".ov"), head = $(".ov-head"), more = $("#pop-agent");
+    if (!ovEl || !head) return;
+    const mobile = isMobile();
+    ovEl.classList.toggle("narrow", !mobile && ovEl.clientWidth < 900);
+    if (!ovEl.classList.contains("narrow")) ovEl.classList.remove("side-open");
+    const items = OV_FOLD.map((s) => { const el = head.querySelector(s); return el?.closest(".menu-wrap") || el; }).filter(Boolean);
+    items.forEach((el) => el.classList.remove("fold"));
+    more.querySelectorAll(".fold-mirror").forEach((x) => x.remove());
+    if (mobile) return;
+    const folded = [];
+    for (const el of items) { if (head.scrollWidth <= head.clientWidth + 1) break; el.classList.add("fold"); folded.push(el); }
+    for (const el of folded) {
+      if (el.classList.contains("ov-keys")) continue;
+      const pop = el.querySelector(".pop"), btn = el.matches("button") ? el : el.querySelector("[data-pop]");
+      const label = (btn?.textContent || "").replace("▾", "").trim();
+      const box = document.createElement("div"); box.className = "fold-mirror"; box.style.display = "contents";
+      if (pop) box.innerHTML = `<div class="fold-mirror-h">${esc(label)}</div>${[...pop.children].filter((c) => !c.hidden).map((c) => c.outerHTML.replace(/\sid="[^"]*"/g, "")).join("")}`;
+      else { const c = btn.cloneNode(false); c.removeAttribute("title"); c.classList.remove("fold"); c.innerHTML = `<b>${esc(label)}</b>`; box.innerHTML = `<div class="fold-mirror-h"></div>`; box.append(c); }
+      more.append(box);
+    }
+  }
+  new ResizeObserver(() => fitOvHead()).observe($(".ov"));
+  new ResizeObserver(() => fitOvHead()).observe($(".ov-head"));
 
   // Pause the working marks when not visible: hidden tab (body.anim-off) or scrolled out of view (.wk.off).
   document.addEventListener("visibilitychange", () => document.body.classList.toggle("anim-off", document.hidden));
@@ -4609,6 +4651,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     }
     else if (a === "interrupt") interruptDlg(name);
     else if (a === "ask-skip") askSkipDlg(ov.name);
+    else if (a === "side-tog") { $(".ov").classList.toggle("side-open"); fitOvHead(); }
     else if (a === "send-force") sendComposer(true);
     else if (a === "pending-drop" || a === "pending-resend") {
       const p = ov.pending[+b.dataset.i]; if (!p) return;

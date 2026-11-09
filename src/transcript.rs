@@ -730,7 +730,19 @@ impl TranscriptCache {
             let ts = Some(s.ts).filter(|t| *t > 0);
             let m = match s.kind {
                 crate::agy::USER => Some(msg(id.clone(), "user", s.text.unwrap_or_default(), ts, None)),
-                crate::agy::MODEL => s.text.filter(|t| !t.trim().is_empty()).map(|t| msg(id.clone(), "assistant", t, ts, None)),
+                crate::agy::MODEL => {
+                    // thinking first (folded in the chat), then the answer text
+                    if let Some(t) = s.thinking.clone() {
+                        let tid = format!("{id}.think");
+                        let m = msg(tid.clone(), "thinking", t, ts, None);
+                        match tf.msgs.iter().rposition(|x| x.id == tid) {
+                            Some(i) => tf.msgs[i] = m,
+                            None => tf.msgs.push(m),
+                        }
+                    }
+                    s.text.filter(|t| !t.trim().is_empty()).map(|t| msg(id.clone(), "assistant", t, ts, None))
+                }
+                crate::agy::SYSTEM => s.text.filter(|t| !t.trim().is_empty()).map(|t| msg(id.clone(), "system", t, ts, None)),
                 crate::agy::TOOL => s.tool.map(|(_, name, args)| {
                     let sm = summary(&name, &args);
                     msg(id.clone(), "tool", sm.clone(), ts, Some(tool_ref(&name, sm, &args)))
@@ -887,6 +899,37 @@ mod tests {
         assert!(!serde_json::to_string(&msgs).unwrap().contains(b64), "no base64 in the transcript");
         assert_eq!(image_at("omp", &f, first.len() as u64 + 1, 0).unwrap(), ("image/png".to_string(), png.to_vec()));
         assert!(image_at("omp", &f, 0, 0).is_err(), "an offset without an image record");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// agy's first step has idx 0 (the user's prompt); model steps carry their thinking at
+    /// 20.3; step type 17 is a message agy adds itself (2026-11-09: a conversation showed tools only).
+    #[test]
+    fn agy_first_step_thinking_and_system_messages() {
+        let dir = std::env::temp_dir().join(format!("adash-agyconv-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("c.db");
+        let ld = |field: u32, data: &[u8]| -> Vec<u8> {
+            let tag = (field << 3) | 2;
+            let mut o = if tag < 128 { vec![tag as u8] } else { vec![(tag as u8) | 0x80, (tag >> 7) as u8] };
+            o.push(data.len() as u8);
+            o.extend_from_slice(data);
+            o
+        };
+        let user = ld(19, &ld(2, b"[v4] read the brief"));
+        let model = ld(20, &ld(3, b"thinking it through"));
+        let sys = ld(24, &ld(3, &ld(2, b"The stream was interrupted.")));
+        let c = rusqlite::Connection::open(&db).unwrap();
+        c.execute_batch("CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);").unwrap();
+        for (i, k, p) in [(0, 14, &user), (1, 15, &model), (2, 17, &sys)] {
+            c.execute("INSERT INTO steps VALUES (?1, ?2, 3, NULL, ?3)", rusqlite::params![i, k, p]).unwrap();
+        }
+        let mut tc = TranscriptCache::default();
+        let m = tc.agy_messages(&db).unwrap();
+        let roles: Vec<(&str, &str)> = m.iter().map(|x| (x.role.as_str(), x.text.as_str())).collect();
+        assert_eq!(roles, vec![("user", "[v4] read the brief"), ("thinking", "thinking it through"), ("system", "The stream was interrupted.")]);
+        assert_eq!(tc.agy_messages(&db).unwrap().len(), 3, "no duplicates on the next read");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

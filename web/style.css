@@ -285,6 +285,8 @@ code.path { font: var(--fs-xs) var(--mono); color: var(--muted); user-select: al
 .draft-strip button { height: 24px; flex: none; }
 /* agy raw terminal screen (A6) */
 /* Terminal snapshots wrap instead of scrolling sideways; monospace + no ligatures keep box-drawing (│ ╭ ─) aligned. */
+.m.thinking { align-self: flex-start; max-width: 100%; color: var(--muted); font-size: .92em; }
+.m.thinking > summary { cursor: pointer; }
 .term-keys { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 10px; border-top: 1px solid var(--border); background: var(--card); }
 .term-keys input { flex: 1 1 200px; min-width: 120px; font-family: var(--mono); }
 .term-keys button { min-width: 2.4em; }
@@ -589,12 +591,22 @@ body[data-links="all"] #timeline .conn { display: none; }
 /* ---------- chat overlay ---------- */
 #overlay { position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; background: rgba(17, 24, 39, .28); }
 .ov { width: 96vw; height: 94vh; display: flex; flex-direction: column; overflow: hidden; background: var(--card); border: 1px solid var(--border); border-radius: 8px; font-size: var(--chat-fs); }
-.ov-head { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border-bottom: 1px solid var(--border); }
+.ov-head { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 12px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; }
+.ov-head button, .ov-head .seg, .ov-head .menu-wrap { flex: none; white-space: nowrap; }
+.ov-head .ov-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
+.ov-head .fold { display: none !important; }
+.pop .fold-mirror-h { padding: 6px 10px 2px; font-size: var(--fs-xs); color: var(--muted); font-weight: 600; border-top: 1px solid var(--border); }
 .ov-title { font-size: 1em; font-weight: 600; } .ov-title .amb { font-style: italic; }
 .ov .small { font-size: .78em; }
 .ov code.path { font-size: .75em; }
 .ov th, .ov td { font-size: .82em; }
-.ov-body { flex: 1; display: grid; grid-template-columns: minmax(0, 3fr) minmax(300px, 1fr); min-height: 0; }
+.ov-body { flex: 1; display: grid; grid-template-columns: minmax(480px, 1fr) clamp(260px, 28%, 360px); min-height: 0; position: relative; }
+/* narrow chat window (< 900px): info panel folded by default, opens as an overlay on the right */
+.ov.narrow .ov-body { grid-template-columns: minmax(0, 1fr); }
+.ov.narrow .side { display: none; }
+.ov.narrow.side-open .side { display: flex; position: absolute; top: 0; right: 0; bottom: 0; width: min(360px, 90%); z-index: 5; background: var(--card); border-left: 1px solid var(--border); box-shadow: -6px 0 18px rgb(0 0 0 / .12); }
+.ov.narrow .side-tog[hidden] { display: inline-flex !important; }
+.ov.side-open .side-tog { border-color: var(--accent); color: var(--ui-link); }
 .chat { position: relative; display: flex; flex-direction: column; min-height: 0; min-width: 0; border-right: 1px solid var(--border); }
 .chat.drop { box-shadow: inset 0 0 0 2px var(--accent); }
 .chat-log { flex: 1; overflow: auto; padding: 16px clamp(12px, 1.5vw, 32px); display: flex; flex-direction: column; gap: 8px; }
