@@ -1254,6 +1254,14 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     }
 }
 
+/// The harness of an agent at a sign-in screen is signed in elsewhere since `since`: another agent
+/// of it works normally since then, or (Antigravity) a CLI log records a sign-in after it.
+fn signed_in_elsewhere(s: &Snapshot, a: &crate::collect::Agent, since: i64) -> bool {
+    let other =
+        s.agents.iter().any(|o| o.agent_type == a.agent_type && o.identity != a.identity && o.handle.is_some() && o.state != "auth" && o.state_since > since);
+    other || (a.agent_type == "antigravity" && crate::agy::signed_in_after(since))
+}
+
 /// Messages sent while the agent waited at its "trust this folder?" screen: delivered once the
 /// folder is trusted (handle → texts).
 pub static TRUST_QUEUE: std::sync::LazyLock<Mutex<HashMap<String, Vec<String>>>> = std::sync::LazyLock::new(Default::default);
@@ -2514,6 +2522,7 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
             let meta = Meta::load();
             let ts = threads::load_all();
             let mut v = state::build(&snap(), &meta, &ts);
+            v["restoreHeld"] = json!(crate::restore::held());
             let cutoff = now_ms() - 7 * 86_400_000;
             {
                 let now = now_ms();
@@ -2681,6 +2690,52 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
         (Method::Post, ["api", "agents", name, "retry"]) => {
             let a = find(&sh.snap.plock().agents, name).cloned().ok_or((404, format!("unknown agent {name}")))?;
             op_retry(sh, &a).map(|v| (200, v))
+        }
+        (Method::Post, ["api", "fix-all"]) => {
+            // errors: retry; sign-in screens: restart on the same session when the harness is
+            // signed in elsewhere, else say so
+            let s = snap();
+            let targets: Vec<crate::collect::Agent> = s
+                .agents
+                .iter()
+                .filter(|a| matches!(a.state.as_str(), "error" | "auth") && a.snoozed_until.is_none())
+                // optional `targets`: only these agents
+                .filter(|a| j["targets"].as_array().is_none_or(|t| t.iter().any(|x| x.as_str() == Some(a.name.as_str()))))
+                .cloned()
+                .collect();
+            let results: Vec<Value> = std::thread::scope(|sc| {
+                let hs: Vec<_> = targets
+                    .iter()
+                    .map(|a| {
+                        let (s, j) = (&s, &j);
+                        sc.spawn(move || {
+                            if a.state == "error" {
+                                return match op_retry(sh, a) {
+                                    Ok(mut v) => {
+                                        v["action"] = json!("retry");
+                                        v
+                                    }
+                                    Err((code, e)) => json!({"name": a.name, "action": "retry", "ok": false, "code": code, "reason": e}),
+                                };
+                            }
+                            // the agent's process started before the sign-in it lacks: compare with its start
+                            // (the prompt's first sighting moves when adash restarts)
+                            let started = a.handle.as_ref().and_then(|h| crate::session::scan_procs().remove(h)).and_then(|v| v.into_iter().find(|p| p.kind == a.agent_type)).map(|p| p.start_ms);
+                            let since = started.unwrap_or_else(|| a.auth.as_ref().and_then(|v| v["since"].as_i64()).unwrap_or(a.state_since));
+                            if !signed_in_elsewhere(s, a, since) {
+                                return json!({"name": a.name, "action": "none", "ok": false, "reason": "not_signed_in"});
+                            }
+                            match crate::lifecycle::restart(s, a, j) {
+                                Ok(_) => json!({"name": a.name, "action": "restart", "ok": true}),
+                                Err((code, v)) => json!({"name": a.name, "action": "restart", "ok": false, "code": code, "reason": v["reason"].as_str().or(v["error"].as_str()).unwrap_or("failed")}),
+                            }
+                        })
+                    })
+                    .collect();
+                hs.into_iter().filter_map(|h| h.join().ok()).collect()
+            });
+            refresh(sh);
+            Ok((200, json!({"results": results})))
         }
         (Method::Post, ["api", "retry-errors"]) => {
             let errs: Vec<crate::collect::Agent> = sh.snap.plock().agents.iter().filter(|a| a.state == "error" && a.snoozed_until.is_none()).cloned().collect();

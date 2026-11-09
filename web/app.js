@@ -45,15 +45,24 @@
     catch (e) { toast(`오류: ${e.message}`, 5000); }
     finally { if (btn?.isConnected) { btn.disabled = false; btn.textContent = btn.dataset.label; } if (!FIXTURE) refresh(); else render(); }
   }
+  // 문제 모두 해결: provider errors are retried; agents at a sign-in screen are restarted on the
+  // same session (the server does it only when the harness is signed in elsewhere).
   function retryAllErrors() {
-    const n = model.counts?.error || 0;
-    dialog(`<h3>오류 ${n}개 모두 재시도</h3><p>네트워크(VPN·프록시·회선)를 바꿨나요? 그대로라면 같은 오류가 다시 날 수 있습니다.</p>`, "모두 재시도", async () => {
+    const ts = (state?.agents || []).filter((a) => ["error", "auth"].includes(a.state) && !a.snoozedUntil);
+    const errs = ts.filter((a) => a.state === "error"), auths = ts.filter((a) => a.state === "auth");
+    const warn = closeWarnings(auths.map((a) => a.name));
+    const li = (a) => `<li><b>${esc(a.name)}</b> · ${a.state === "auth" ? L2("로그인 필요 → 다시 시작 (다른 창에서 로그인돼 있을 때)", "sign-in needed → restart (when signed in elsewhere)") : L2("오류 → 재시도", "error → retry")}</li>`;
+    dialog(`<h3>${L2(`문제 ${ts.length}개 모두 해결`, `Fix all ${ts.length} problems`)}</h3><ul class="small">${ts.map(li).join("")}</ul>${errs.length ? `<p class="muted small">${L2("오류: 네트워크(VPN·프록시·회선)를 바꾸지 않았다면 같은 오류가 다시 날 수 있습니다.", "Errors: unless the network changed, the same error may come back.")}</p>` : ""}${warn.length ? `<div class="close-warn"><b>${L2("주의", "Note")}</b><ul>${warn.join("")}</ul></div>` : ""}`, L2("모두 해결", "Fix all"), async () => {
       try {
-        const r = await api("POST", "/api/retry-errors", {});
+        const r = await api("POST", "/api/fix-all", warn.length ? { confirmWorking: true, discardDraft: true } : {});
         const res = r?.results || [];
-        const ok = res.filter((x) => x.resumed || x.state === "working");
-        const bad = res.filter((x) => !(x.resumed || x.state === "working"));
-        toast(`재개됨 ${ok.length} · 아직 오류 ${bad.length}${bad.length ? `\n${bad.map((x) => retryMsg(x.name, x)).join("\n")}` : ""}`, 6000);
+        const ok = (k) => res.filter((x) => x.action === k && (k === "retry" ? x.resumed || x.state === "working" : x.ok)).length;
+        const left = res.filter((x) => !(x.action === "retry" ? x.resumed || x.state === "working" : x.ok));
+        const why = (x) => x.reason === "not_signed_in" ? L2(`${x.name}: 아직 아무 창에서도 로그인하지 않았습니다`, `${x.name}: not signed in anywhere yet`) : x.action === "retry" ? retryMsg(x.name, x) : `${x.name}: ${CLOSE_WHY[x.reason] || x.reason}`;
+        toast(`${L2("재개", "resumed")} ${ok("retry")} · ${L2("다시 시작", "restarted")} ${ok("restart")} · ${L2("남은 문제", "left")} ${left.length}${left.length ? `\n${left.map(why).join("\n")}` : ""}`, 9000);
+        // nobody signed in yet: sign in once, in the first such agent's terminal
+        const first = left.find((x) => x.reason === "not_signed_in");
+        if (first) { toast(L2(`먼저 한 창(${first.name})에서 로그인하세요. 그다음 다시 '문제 모두 해결'`, `Sign in once (${first.name}), then fix all again`), 9000); openChat(first.name); setTimeout(() => setView("terminal"), 400); }
       } catch { /* toasted */ }
       if (!FIXTURE) refresh(); else render();
     });
@@ -949,7 +958,8 @@
     const soonList = live.filter((a) => (a.turn === "unread" || a.turn === "asking") && soonCold(a.s)), soon = soonList.length;
     const soonTip = soonList.map((a) => `${a.name}: ${fmtMin((cacheExp(a.s) - nowTick()) / 60000) || "1분 미만"} 남음${cacheBasis(a.s) ? ` · ${cacheBasis(a.s)}` : ""}`).join("\n");
     const tip = `내 차례 = 질문 ${c.asking} + 오류 ${c.error || 0} + 미확인 답변 ${c.unread} + 기타 대기 ${c.other}\n오류 = 제공자 API 오류로 멈춘 에이전트\n기타 대기 = 권한·승인 대기, 답변 보류${held ? ` (${held})` : ""}, 입력창 초안으로 막힌 전달 · 미룬 것 제외\n누적 대기 ${(model.totalWait / 60).toFixed(1)}h (${hours}h) · 캐시 식음 ${cold}`;
-    const retryAll = (c.error || 0) >= 2 ? `<button class="retry-all" data-retry-all title="오류로 멈춘 에이전트 ${c.error}개를 모두 다시 시도"><span class="rl">오류 모두 재시도</span><span class="rs">재시도</span></button>` : "";
+    const nFix = (state?.agents || []).filter((a) => ["error", "auth"].includes(a.state) && !a.snoozedUntil).length;
+    const retryAll = nFix >= 2 ? `<button class="retry-all" data-retry-all title="${esc(L2(`오류·로그인 문제 ${nFix}개를 한 번에 해결 (오류는 재시도, 로그인 필요는 다시 시작)`, `Fix ${nFix} errors and sign-in stops at once`))}"><span class="rl">${L2("문제 모두 해결", "Fix all")}</span><span class="rs">${L2("해결", "Fix")}</span></button>` : "";
     // Items carry a fold priority (data-f, higher folds first): when the top bar is short of room (English labels,
     // narrow windows) fitSummary() hides 작업 중 → 기타 → 곧 식음 → 미확인; the tooltip keeps every count.
     const si = (f, html, first) => `<span class="si"${f ? ` data-f="${f}"` : ""}>${first ? "" : sep}${html}</span>`;

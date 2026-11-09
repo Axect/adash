@@ -69,9 +69,80 @@ struct State {
     /// restored agent terminals whose agent is not mapped yet: (entry, restored at ms); keeps their
     /// resume details in the file until the collector sees the agent again
     pending: HashMap<String, (SavedPane, i64)>,
+    /// agents held back after a restart: per harness, the one started first (its handle, start
+    /// time) and the rest waiting until it shows it is signed in
+    probe: HashMap<String, (String, i64)>,
+    held: Vec<SavedPane>,
 }
 
-static STATE: LazyLock<Mutex<State>> = LazyLock::new(|| Mutex::new(State { restored_for: None, last: None, pending: HashMap::new() }));
+/// How long the first agent of a harness gets to show a sign-in screen before the rest follow.
+const PROBE_MS: i64 = 20_000;
+
+/// The restored agents waiting for their harness's first agent to be signed in:
+/// [{handle, name, agentType, waitingFor}].
+pub fn held() -> Vec<serde_json::Value> {
+    let st = STATE.plock();
+    st.held
+        .iter()
+        .map(|p| {
+            let kind = p.agent_type.clone().unwrap_or_default();
+            serde_json::json!({"handle": p.handle, "name": p.name, "agentType": kind, "waitingFor": st.probe.get(&kind).map(|x| x.0.clone())})
+        })
+        .collect()
+}
+
+fn start(p: &SavedPane, st: &mut State) {
+    let cmd = resume(p);
+    let cwd = if Path::new(&p.cwd).is_dir() { PathBuf::from(&p.cwd) } else { home() };
+    let what = cmd.as_deref().unwrap_or("shell");
+    match term::create(&cwd, &p.session, &p.window_name, cmd.as_deref(), Some(&p.handle)) {
+        Ok(_) => {
+            eprintln!("adash: restored terminal {} ({}/{}) in {}: {what}", p.handle, p.session, p.window_name, cwd.display());
+            if cmd.is_some() {
+                st.pending.insert(p.handle.clone(), (p.clone(), now_ms()));
+            }
+        }
+        Err(e) => eprintln!("adash: restoring terminal {} ({}/{}) failed: {e}", p.handle, p.session, p.window_name),
+    }
+}
+
+/// Held agents of harnesses whose first agent is past its sign-in check: start them. A first
+/// agent at a sign-in screen keeps the rest waiting (the user signs in there once); one whose
+/// terminal is gone hands the check to the next.
+fn release(st: &mut State) {
+    let now = now_ms();
+    let kinds: Vec<String> = st.probe.keys().cloned().collect();
+    for kind in kinds {
+        let (h, at) = st.probe[&kind].clone();
+        let screen = term::screen(&h);
+        let gone = screen.is_err();
+        let at_login = screen.as_ref().is_ok_and(|l| crate::auth::detect(&kind, l).is_some());
+        if !gone && (at_login || now - at < PROBE_MS) {
+            continue;
+        }
+        st.probe.remove(&kind);
+        let (go, keep): (Vec<SavedPane>, Vec<SavedPane>) =
+            std::mem::take(&mut st.held).into_iter().partition(|p| p.agent_type.as_deref() == Some(kind.as_str()));
+        st.held = keep;
+        let mut go = go.into_iter();
+        if gone {
+            // the probe disappeared: the next one checks instead
+            if let Some(next) = go.next() {
+                start(&next, st);
+                st.probe.insert(kind.clone(), (next.handle.clone(), now));
+                st.held.extend(go);
+            }
+            continue;
+        }
+        eprintln!("adash: {kind} signed in; restoring the held agents");
+        for p in go {
+            start(&p, st);
+        }
+    }
+}
+
+static STATE: LazyLock<Mutex<State>> =
+    LazyLock::new(|| Mutex::new(State { restored_for: None, last: None, pending: HashMap::new(), probe: HashMap::new(), held: vec![] }));
 
 /// How long a restored agent keeps its saved resume details without showing up as an agent.
 const PENDING_MS: i64 = 120_000;
@@ -83,23 +154,23 @@ pub fn tick(snap: &Snapshot) {
     let saved: Option<Saved> = std::fs::read_to_string(path()).ok().and_then(|s| serde_json::from_str(&s).ok());
     let handles: Vec<String> = panes.iter().map(|p| p.handle.clone()).collect();
     let mut st = STATE.plock();
+    release(&mut st);
     match decide(saved.as_ref(), server_pid, &handles, st.restored_for) {
         Action::Nothing => return,
         Action::Restore => {
             let pid = server_pid.unwrap_or(0);
             st.restored_for = Some(pid);
+            // after a reboot a harness's sign-in may have expired: start one agent per harness
+            // first; the others follow once it shows no sign-in screen (else they would all stop
+            // at the same screen)
             for p in &saved.as_ref().map(|s| s.panes.clone()).unwrap_or_default() {
-                let cmd = resume(p);
-                let cwd = if Path::new(&p.cwd).is_dir() { PathBuf::from(&p.cwd) } else { home() };
-                let what = cmd.as_deref().unwrap_or("shell");
-                match term::create(&cwd, &p.session, &p.window_name, cmd.as_deref(), Some(&p.handle)) {
-                    Ok(_) => {
-                        eprintln!("adash: restored terminal {} ({}/{}) in {}: {what}", p.handle, p.session, p.window_name, cwd.display());
-                        if cmd.is_some() {
-                            st.pending.insert(p.handle.clone(), (p.clone(), now_ms()));
-                        }
+                match p.agent_type.clone().filter(|_| resume(p).is_some()) {
+                    Some(kind) if st.probe.contains_key(&kind) => st.held.push(p.clone()),
+                    Some(kind) => {
+                        start(p, &mut st);
+                        st.probe.insert(kind, (p.handle.clone(), now_ms()));
                     }
-                    Err(e) => eprintln!("adash: restoring terminal {} ({}/{}) failed: {e}", p.handle, p.session, p.window_name),
+                    None => start(p, &mut st),
                 }
             }
         }
@@ -143,6 +214,8 @@ pub fn tick(snap: &Snapshot) {
         })
         .collect();
     st.pending.retain(|_, (_, at)| now - *at < PENDING_MS);
+    let mut entries = entries;
+    entries.extend(st.held.iter().cloned());
     if st.last.as_ref().is_some_and(|(lp, le)| *lp == pid && *le == entries) {
         return;
     }

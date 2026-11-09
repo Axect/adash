@@ -146,6 +146,24 @@ pub fn open(db: &Path) -> Res<Connection> {
 
 /// Steps with idx > `after` in order.
 /// The model a conversation ran on: the most frequent `gemini-*` name in its generator metadata.
+/// A CLI log written after `since` records a sign-in ("Experiments refreshed after login") at or
+/// after it: the user signed in, in some agy process.
+pub fn signed_in_after(since: i64) -> bool {
+    signed_in_in(&root().join("log"), since)
+}
+
+fn signed_in_in(dir: &Path, since: i64) -> bool {
+    let Ok(rd) = std::fs::read_dir(dir) else { return false };
+    let year = chrono::Local::now().format("%Y").to_string();
+    rd.flatten().filter(|e| crate::util::mtime_ms(&e.path()) >= since).any(|e| {
+        std::fs::read_to_string(e.path()).unwrap_or_default().lines().filter(|l| l.contains("refreshed after login")).any(|l| {
+            // `I1102 19:30:29.388793 …`: month, day and local time
+            let t = l.get(1..21).and_then(|s| chrono::NaiveDateTime::parse_from_str(&format!("{year}{}", &s[..13]), "%Y%m%d %H:%M:%S").ok());
+            t.and_then(|t| t.and_local_timezone(chrono::Local).single()).is_some_and(|t| t.timestamp_millis() >= since)
+        })
+    })
+}
+
 /// `model_of`, re-read only when the db changed (collect runs every few seconds).
 pub fn model_of_cached(db: &Path) -> Option<String> {
     use crate::util::LockExt;
@@ -276,5 +294,19 @@ mod tests {
         assert!(phase(&[decode_step(3, TOOL, 1, &meta, &call)]).unwrap().0);
         assert!(!phase(&[decode_step(2, MODEL, 3, &meta, &model)]).unwrap().0);
         assert!(parse(b"\xff\xff").is_none(), "garbage is not a message");
+    }
+
+    #[test]
+    fn a_sign_in_after_the_prompt_is_found_in_the_cli_logs() {
+        let dir = std::env::temp_dir().join(format!("adash-agylog-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let t = chrono::Local::now() - chrono::Duration::minutes(5);
+        let line = format!("I{} 1234 experiment_manager.go:70] Experiments refreshed after login\n", t.format("%m%d %H:%M:%S%.6f"));
+        std::fs::write(dir.join("cli-x.log"), line).unwrap();
+        let at = t.timestamp_millis();
+        assert!(signed_in_in(&dir, at - 60_000), "signed in after the prompt");
+        assert!(!signed_in_in(&dir, at + 60_000), "the sign-in was before the prompt");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
