@@ -3514,6 +3514,13 @@
   // a normal message would not arrive or would pick something. So the composer is hidden and the ask card (with its
   // 직접 답하기 field) takes its place; the unsent draft stays in the hidden textarea and comes back afterwards.
   function renderAskCard() {
+    // a finished or failed answer job belongs to its question: gone once that question is
+    // answered elsewhere (terminal) or another question replaced it
+    for (const [n, j] of answerJobs) {
+      if (j.state === "running") continue;
+      const q = agentBy(n)?.ask;
+      if (!q || (j.askedAt != null && q.askedAt !== j.askedAt)) answerJobs.delete(n);
+    }
     renderAskCard0(); fitOvHead();
     const card = $("#ask-card"), asking = !card.hidden && !!ov.name;
     $("#composer").classList.toggle("ask-hidden", asking);
@@ -3651,7 +3658,7 @@
     const name = ov.name;
     if (answerJobs.get(name)?.state === "running") return;
     const n = body.answers?.length || 1;
-    setJob(name, { state: "running", step: "queued", k: 0, n, body, reason: null, verified: null });
+    setJob(name, { state: "running", step: "queued", k: 0, n, body, reason: null, verified: null, askedAt: agentBy(name)?.ask?.askedAt ?? null });
     let r;
     try { r = await api("POST", `/api/agents/${enc(name)}/answer`, body, { quiet: true }); }
     catch (e) {

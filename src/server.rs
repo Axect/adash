@@ -162,6 +162,8 @@ pub struct Shared {
     pub interrupted: Mutex<HashMap<String, i64>>,
     /// handle → (screen hash, session mtime, CPU ticks of its process tree, unchanged since)
     pub stall: Mutex<HashMap<String, (u64, i64, u64, i64)>>,
+    /// handle → title of an omp Ask box on the screen (omp 18.18 records the call late)
+    pub screen_ask: Mutex<HashMap<String, String>>,
     pub catalog: Mutex<crate::launch::Cached>,
     /// Phase C: approved phones/tablets (tailscale serve), and the tailnet host/allowed logins
     pub devices: Mutex<crate::mobile::Devices>,
@@ -699,6 +701,10 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
         let want: String = want.chars().take(14).collect();
         for _ in 0..60 {
             let r = rows();
+            if r.iter().all(|x| x.0.is_empty()) {
+                // omp draws an empty frame while the box is hidden (Alt+H); adash never sends Alt+H
+                return Err((409, "the question box is hidden or empty on the screen (omp Alt+H shows it); answer in the terminal".into()));
+            }
             let Some(cur) = r.iter().position(|x| x.1) else { return Err((409, "the question box is not on the screen; answer in the terminal".into())) };
             if r[cur].0.contains(&want) {
                 return Ok(());
@@ -1370,8 +1376,25 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let od = sh.outdated.plock();
     let it = sh.interrupted.plock();
     let stall = sh.stall.plock();
+    let sa = sh.screen_ask.plock();
     let stall_ms = crate::config::get().notifications.stall_minutes as i64 * 60_000;
     for a in snap.agents.iter_mut() {
+        if let Some(t) = a.handle.as_ref().and_then(|h| sa.get(h)).filter(|_| a.state == "working" && a.ask.is_none()) {
+            // omp's Ask box is up before its call is in the session: asking, answering waits for
+            // the record (no call id yet)
+            a.state = "asking".into();
+            a.needs_human = a.snoozed_until.is_none();
+            a.ask = Some(crate::ask::Ask {
+                question: t.clone(),
+                options: vec![],
+                multi: false,
+                questions: vec![],
+                asked_at: now_ms(),
+                ask_kind: "form",
+                call_id: String::new(),
+                intro: vec![],
+            });
+        }
         a.stalled_since =
             a.handle.as_ref().and_then(|h| stall.get(h)).map(|x| x.3).filter(|s| a.state == "working" && stall_ms > 0 && now_ms() - s >= stall_ms);
         // stopped by the user: waiting, but not my turn (no new user step since)
@@ -1679,6 +1702,23 @@ fn scan_auth(sh: &Arc<Shared>) {
     }
     *sh.auth.plock() = found;
     *sh.queued.plock() = queued;
+    // omp Ask box on screen before its tool call is in the session file
+    let mut sa = HashMap::new();
+    for a in agents.iter().filter(|a| a.agent_type == "omp" && a.state == "working" && a.ask.is_none()) {
+        let Some(h) = &a.handle else { continue };
+        let Ok(lines) = term::screen(h) else { continue };
+        if let Some(i) = lines.iter().rposition(|l| l.starts_with('╭') && l.contains("─ Ask")) {
+            let title = lines[..i]
+                .iter()
+                .rev()
+                .map(|l| l.trim())
+                .find(|l| !l.is_empty())
+                .map(|l| l.trim_start_matches(|c: char| !c.is_alphanumeric()).to_string())
+                .unwrap_or_default();
+            sa.insert(h.clone(), title);
+        }
+    }
+    *sh.screen_ask.plock() = sa;
     scan_stalls(sh, &agents);
 }
 
@@ -1975,6 +2015,7 @@ pub fn serve(port: u16) -> Res<()> {
         outdated: Mutex::new(HashMap::new()),
         interrupted: Mutex::new(HashMap::new()),
         stall: Mutex::new(HashMap::new()),
+        screen_ask: Mutex::new(HashMap::new()),
         catalog: Mutex::new(crate::launch::Cached::default()),
         devices: Mutex::new(crate::mobile::Devices::load()),
         ts_host: ts.0,
