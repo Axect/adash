@@ -1854,9 +1854,11 @@
     const q = $("#ld-search").value.trim().toLowerCase();
     const projects = ld.ws?.projects || [];
     H("#ld-list").innerHTML = projects.map((r) => {
-      const wts = r.worktrees.filter((w) => !q || `${r.name} ${ldBase(w.path)} ${w.branch || ""} ${w.path}`.toLowerCase().includes(q));
+      const wts = r.worktrees.filter((w) => !q || `${r.name} ${r.parent || ""} ${ldBase(w.path)} ${w.branch || ""} ${w.path}`.toLowerCase().includes(q));
       if (!wts.length) return "";
-      return `<div class="ld-repo"><div class="ld-rname">${esc(r.name)} <span class="muted">${ldIsGit(r) ? "git" : "폴더"}</span></div>${wts.map((w) => `<button type="button" class="ld-wt${ld.target === w.path ? " on" : ""}" data-ld-wt="${esc(w.path)}" title="${esc(w.path)}"><span>${esc(w.isMain ? r.name : ldBase(w.path))}</span><span class="muted">${w.branch ? esc(w.branch) : ""}${w.liveAgents ? ` · 에이전트 ${w.liveAgents}` : ""}</span></button>`).join("")}</div>`;
+      // a board project in a subfolder of a repository: "paper-draft › figures"
+      const title = r.parent ? `<span class="muted">${esc(r.parent)} ›</span> ${esc(r.name)}` : esc(r.name);
+      return `<div class="ld-repo"><div class="ld-rname">${title} <span class="muted">${r.parent ? esc(r.subPath || "") : ldIsGit(r) ? "git" : "폴더"}</span></div>${wts.map((w) => `<button type="button" class="ld-wt${ld.target === w.path ? " on" : ""}" data-ld-wt="${esc(w.path)}" title="${esc(w.path)}"><span>${esc(w.isMain ? r.name : ldBase(w.path))}</span><span class="muted">${w.branch ? esc(w.branch) : ""}${w.liveAgents ? ` · 에이전트 ${w.liveAgents}` : ""}</span></button>`).join("")}</div>`;
     }).join("") || `<p class="muted">일치하는 프로젝트 없음</p>`;
   }
   // Model field: a searchable list of every model the harness offers (a <datalist> would hide all but the entries

@@ -58,6 +58,205 @@ pub struct Ask {
     /// tool call id (answer verification); not part of the API
     #[serde(skip)]
     pub call_id: String,
+    /// omp `ask` with an HTML form: the text and images before/around the fields, as plain
+    /// blocks `{kind: "text", text}` / `{kind: "image", src, alt}` (no HTML passes through)
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub intro: Vec<Value>,
+}
+
+/// omp 18.18 `ask {html: "<form>…</form>"}`: fieldsets of radios / checkboxes become questions
+/// (legend = question, label text = option), a `select` too, and every free input (text,
+/// number, textarea) a question without options. Other text and `<img>` become intro blocks.
+pub fn from_html(html: &str, call_id: &str, at: i64) -> Option<Ask> {
+    static TAG: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r"(?is)<(/?)([a-z0-9]+)([^>]*)>").unwrap());
+    static ATTR: LazyLock<regex::Regex> = LazyLock::new(|| regex::Regex::new(r#"(?is)([a-z-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))"#).unwrap());
+    let attrs = |s: &str| -> std::collections::HashMap<String, String> {
+        ATTR.captures_iter(s).map(|c| (c[1].to_lowercase(), c.get(2).or(c.get(3)).or(c.get(4)).map(|m| m.as_str().to_string()).unwrap_or_default())).collect()
+    };
+    let has = |s: &str, w: &str| s.split(|c: char| c.is_whitespace() || c == '/').any(|x| x.eq_ignore_ascii_case(w));
+    let unesc =
+        |t: &str| t.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", "\"").replace("&#39;", "'").replace("&nbsp;", " ");
+    let clean = |t: &str| unesc(&t.split_whitespace().collect::<Vec<_>>().join(" "));
+    let mut intro: Vec<Value> = vec![];
+    let mut qs: Vec<AskQuestion> = vec![];
+    // state while walking the tags
+    let mut text = String::new();
+    let mut in_fieldset = false;
+    let mut legend: Option<String> = None;
+    let mut in_legend = false;
+    let mut in_label = false;
+    let mut label_text = String::new();
+    let mut label_input: Option<(String, String, String, bool)> = None; // (type, name, value, checked)
+    let mut group: Vec<(String, String, String, bool)> = vec![]; // (type, name, label, checked)
+    let mut select: Option<(String, Vec<String>, Option<usize>)> = None;
+    let mut in_option = false;
+    let mut skip = 0usize; // inside script/style
+    let mut last = 0usize;
+    let flush_text = |text: &mut String, intro: &mut Vec<Value>| {
+        let t = clean(text);
+        if !t.is_empty() {
+            intro.push(serde_json::json!({"kind": "text", "text": t}));
+        }
+        text.clear();
+    };
+    let free = |name: &str, label: &str, qs: &mut Vec<AskQuestion>| {
+        qs.push(AskQuestion { id: name.to_string(), question: label.to_string(), options: vec![], multi: false, recommended: None, header: None });
+    };
+    for c in TAG.captures_iter(html) {
+        let m = c.get(0).unwrap();
+        let between = &html[last..m.start()];
+        last = m.end();
+        if skip == 0 {
+            if in_legend {
+                legend.get_or_insert_with(String::new).push_str(between);
+            } else if in_option {
+                if let Some(s) = select.as_mut() {
+                    if let Some(o) = s.1.last_mut() {
+                        o.push_str(between);
+                    }
+                }
+            } else if in_label {
+                label_text.push_str(between);
+            } else if !in_fieldset {
+                text.push_str(between);
+            }
+        }
+        let close = !c[1].is_empty();
+        let tag = c[2].to_lowercase();
+        let a = &c[3];
+        match (tag.as_str(), close) {
+            ("script" | "style", false) => skip += 1,
+            ("script" | "style", true) => skip = skip.saturating_sub(1),
+            _ if skip > 0 => {}
+            ("p" | "div" | "li" | "tr" | "br" | "h1" | "h2" | "h3" | "h4" | "ul" | "ol" | "table", _) if !in_fieldset && !in_label => {
+                flush_text(&mut text, &mut intro);
+            }
+            ("img", false) => {
+                flush_text(&mut text, &mut intro);
+                let at = attrs(a);
+                if let Some(src) = at.get("src").filter(|s| !s.is_empty() && !s.starts_with("javascript:")) {
+                    intro.push(serde_json::json!({"kind": "image", "src": src, "alt": at.get("alt").cloned().unwrap_or_default()}));
+                }
+            }
+            ("fieldset", false) => {
+                flush_text(&mut text, &mut intro);
+                in_fieldset = true;
+                legend = None;
+                group.clear();
+            }
+            ("fieldset", true) => {
+                in_fieldset = false;
+                if !group.is_empty() {
+                    let multi = group.iter().any(|g| g.0 == "checkbox");
+                    let name = group[0].1.clone();
+                    qs.push(AskQuestion {
+                        id: if name.is_empty() { format!("q{}", qs.len() + 1) } else { name },
+                        question: legend.as_deref().map(clean).unwrap_or_default(),
+                        options: group.iter().map(|g| AskOption { label: g.2.clone(), description: None }).collect(),
+                        multi,
+                        recommended: group.iter().position(|g| g.3),
+                        header: None,
+                    });
+                }
+                group.clear();
+            }
+            ("legend", false) => in_legend = true,
+            ("legend", true) => in_legend = false,
+            ("label", false) => {
+                in_label = true;
+                label_text.clear();
+                label_input = None;
+            }
+            ("label", true) => {
+                in_label = false;
+                let lt = clean(&label_text);
+                match label_input.take() {
+                    Some((t, n, _, ch)) if t == "radio" || t == "checkbox" => group.push((t, n, lt, ch)),
+                    Some((_, n, _, _)) => free(&n, &lt, &mut qs),
+                    None => {
+                        if let Some((n, opts, sel)) = select.take() {
+                            qs.push(AskQuestion {
+                                id: n,
+                                question: lt,
+                                options: opts.iter().map(|o| AskOption { label: clean(o), description: None }).collect(),
+                                multi: false,
+                                recommended: sel,
+                                header: None,
+                            });
+                        }
+                    }
+                }
+            }
+            ("input", false) => {
+                let at = attrs(a);
+                let t = at.get("type").map(|x| x.to_lowercase()).unwrap_or_else(|| "text".into());
+                if matches!(t.as_str(), "hidden" | "submit" | "button" | "reset" | "image" | "file") {
+                    continue;
+                }
+                let v = (t.clone(), at.get("name").cloned().unwrap_or_default(), at.get("value").cloned().unwrap_or_default(), has(a, "checked"));
+                if in_label {
+                    label_input = Some(v);
+                } else if t == "radio" || t == "checkbox" {
+                    group.push((t, v.1, v.2, v.3));
+                } else {
+                    free(&v.1, &at.get("placeholder").cloned().unwrap_or_default(), &mut qs);
+                }
+            }
+            ("textarea", false) => {
+                let at = attrs(a);
+                let v = ("textarea".to_string(), at.get("name").cloned().unwrap_or_default(), String::new(), false);
+                if in_label {
+                    label_input = Some(v);
+                } else {
+                    free(&v.1, &at.get("placeholder").cloned().unwrap_or_default(), &mut qs);
+                }
+            }
+            ("select", false) => select = Some((attrs(a).get("name").cloned().unwrap_or_default(), vec![], None)),
+            ("option", false) => {
+                in_option = true;
+                if let Some(s) = select.as_mut() {
+                    if has(a, "selected") {
+                        s.2 = Some(s.1.len());
+                    }
+                    s.1.push(String::new());
+                }
+            }
+            ("option", true) => in_option = false,
+            ("select", true) if !in_label => {
+                if let Some((n, opts, sel)) = select.take() {
+                    qs.push(AskQuestion {
+                        id: n,
+                        question: String::new(),
+                        options: opts.iter().map(|o| AskOption { label: clean(o), description: None }).collect(),
+                        multi: false,
+                        recommended: sel,
+                        header: None,
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
+    flush_text(&mut text, &mut intro);
+    if qs.is_empty() {
+        return None;
+    }
+    // the mirror fields older UI code reads: the first question with options
+    let first = qs.iter().find(|q| !q.options.is_empty()).or(qs.first()).cloned().unwrap();
+    Some(Ask {
+        question: if first.question.is_empty() {
+            intro.iter().rev().find_map(|b| b["text"].as_str()).unwrap_or("").to_string()
+        } else {
+            first.question.clone()
+        },
+        options: first.options.clone(),
+        multi: first.multi,
+        questions: qs,
+        asked_at: at,
+        ask_kind: "form",
+        call_id: call_id.to_string(),
+        intro,
+    })
 }
 
 fn ts_of(v: &Value) -> i64 {
@@ -96,6 +295,7 @@ fn from_questions(qs: &[Value], call_id: &str, at: i64, multi_key: &str) -> Opti
         asked_at: at,
         ask_kind: "question",
         call_id: call_id.to_string(),
+        intro: vec![],
     })
 }
 
@@ -111,8 +311,23 @@ pub fn feed(kind: &str, r: &Value, open: &mut Option<Ask>) {
                 Some("assistant") => {
                     for c in m["content"].as_array().into_iter().flatten() {
                         if c["type"] == "toolCall" && c["name"] == "ask" {
-                            let qs = c["arguments"]["questions"].as_array().cloned().unwrap_or_default();
-                            *open = from_questions(&qs, c["id"].as_str().unwrap_or(""), ts_of(&r["timestamp"]), "multi");
+                            let (id, at) = (c["id"].as_str().unwrap_or(""), ts_of(&r["timestamp"]));
+                            *open = match c["arguments"]["html"].as_str() {
+                                // 18.18: an HTML form
+                                Some(h) => from_html(h, id, at).or_else(|| {
+                                    Some(Ask {
+                                        question: String::new(),
+                                        options: vec![],
+                                        multi: false,
+                                        questions: vec![],
+                                        asked_at: at,
+                                        ask_kind: "form",
+                                        call_id: id.into(),
+                                        intro: vec![],
+                                    })
+                                }),
+                                None => from_questions(&c["arguments"]["questions"].as_array().cloned().unwrap_or_default(), id, at, "multi"),
+                            };
                         }
                     }
                 }
@@ -723,5 +938,40 @@ mod tests {
         assert_eq!(qs.iter().map(|q| (q.id.as_str(), q.options.len())).collect::<Vec<_>>(), [("astro", 2), ("base", 1)]);
         assert_eq!(qs[0].question, "astro 제목 후보입니다.");
         assert_eq!(qs[0].options[0].description.as_deref(), Some("제 추천."));
+    }
+
+    /// omp 18.18 `ask {html}` (2026-11-11: a question showed as "working · ask").
+    #[test]
+    fn html_form_asks_parse() {
+        let html = r#"<form><p>Four drafts <b>left</b>.</p><img src="../a/A.png" alt="A"><p>More</p><img src="b.png"><script>x()</script>
+<fieldset><legend>Which one?</legend><label><input type="radio" name="pick" value="a" checked> 1. A</label><label><input type="radio" name="pick" value="b"> 2. B</label></fieldset>
+<fieldset><legend>Also</legend><label><input type="checkbox" name="extra" value="x"> X</label><label><input type="checkbox" name="extra" value="y" checked> Y</label></fieldset>
+<label>Mix notes <input type="text" name="mix" placeholder="optional"></label>
+<label>Size <select name="size"><option>S</option><option selected>M</option></select></label></form>"#;
+        let a = from_html(html, "c1", 5).unwrap();
+        assert_eq!(a.ask_kind, "form");
+        let qs: Vec<(&str, &str, usize, bool, Option<usize>)> =
+            a.questions.iter().map(|q| (q.id.as_str(), q.question.as_str(), q.options.len(), q.multi, q.recommended)).collect();
+        assert_eq!(
+            qs,
+            vec![
+                ("pick", "Which one?", 2, false, Some(0)),
+                ("extra", "Also", 2, true, Some(1)),
+                ("mix", "Mix notes", 0, false, None),
+                ("size", "Size", 2, false, Some(1))
+            ]
+        );
+        assert_eq!(a.questions[0].options[1].label, "2. B");
+        let imgs: Vec<&str> = a.intro.iter().filter_map(|b| b["src"].as_str()).collect();
+        assert_eq!(imgs, vec!["../a/A.png", "b.png"]);
+        assert!(a.intro.iter().all(|b| !b.to_string().contains("x()")), "scripts dropped");
+        // the real record
+        if let Ok(t) = std::fs::read_to_string("/home/axect/ai_tmp/ask-html-20261111/record.json") {
+            let v: Value = serde_json::from_str(&t).unwrap();
+            let mut open = None;
+            feed("omp", &v, &mut open);
+            let a = open.expect("ask open");
+            assert!(!a.questions.is_empty() && a.intro.iter().filter(|b| b["kind"] == "image").count() == 4, "{a:?}");
+        }
     }
 }

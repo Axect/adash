@@ -90,6 +90,20 @@ pub fn queued(kind: &str, screen: &[String]) -> Option<Value> {
     Some(json!({"phrase": p, "sendNowKey": k}))
 }
 
+/// The turn was stopped by the user and the harness waits at an empty prompt: Antigravity prints
+/// "Interrupted · What should Antigravity CLI do instead?" and leaves no finished model step, so
+/// its conversation alone would still read as working.
+pub fn interrupted(kind: &str, screen: &[String]) -> bool {
+    if kind != "antigravity" {
+        return false;
+    }
+    let rows: Vec<&str> = screen.iter().map(|l| l.as_str()).filter(|l| !l.trim().is_empty()).collect();
+    let tail = &rows[rows.len().saturating_sub(ROWS)..];
+    let stopped = tail.iter().any(|l| l.contains("Interrupted · What should Antigravity CLI do instead?"));
+    let empty_prompt = tail.iter().any(|l| l.trim() == ">");
+    stopped && empty_prompt
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,5 +173,14 @@ mod tests {
         assert_eq!(queued("antigravity", &s(&["> working", "뭐하는중이야 (alt+m to send immediately)"])).unwrap()["sendNowKey"], "M-m");
         assert!(queued("claude", &s(&["(alt+m to send immediately)"])).is_none());
         assert_eq!(queued("claude", &s(&["  > follow up", "Press up to edit queued messages"])).unwrap()["sendNowKey"], "Enter");
+    }
+
+    #[test]
+    fn agy_interrupted_at_an_empty_prompt() {
+        let scr = s(&["  생각은 어때?", "  ⎿  Interrupted · What should Antigravity CLI do instead?", "────", ">", "────", "press ctrl+c again to exit"]);
+        assert!(interrupted("antigravity", &scr));
+        let typed = s(&["  ⎿  Interrupted · What should Antigravity CLI do instead?", "> next instruction"]);
+        assert!(!interrupted("antigravity", &typed), "something typed: a new turn is coming");
+        assert!(!interrupted("omp", &scr));
     }
 }

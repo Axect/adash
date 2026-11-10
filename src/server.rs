@@ -158,6 +158,8 @@ pub struct Shared {
     pub queued: Mutex<HashMap<String, Value>>,
     /// handle → harness updated since the agent started
     pub outdated: Mutex<HashMap<String, Value>>,
+    /// handle → when the user stopped its turn (kept while the screen shows it stopped)
+    pub interrupted: Mutex<HashMap<String, i64>>,
     pub catalog: Mutex<crate::launch::Cached>,
     /// Phase C: approved phones/tablets (tailscale serve), and the tailnet host/allowed logins
     pub devices: Mutex<crate::mobile::Devices>,
@@ -584,6 +586,9 @@ pub fn op_send_files(snap: &Snapshot, key: &str, text: &str, images: &[String], 
         }
     }
     let h = a.handle.clone().ok_or("agent has no terminal")?;
+    if a.agent_type == "antigravity" {
+        dismiss_agy_notice(&h);
+    }
     let mut file = None;
     let sent_at = now_ms();
     let mut typed = text.to_string();
@@ -655,6 +660,111 @@ fn parse_answer(j: &Value) -> Option<crate::ask::Answer> {
     }
 }
 
+/// omp 18.18 HTML-form ask: one box with every field's rows (options, an automatic "Other"
+/// row per choice group, text fields) and a Submit row. Keys, as its footer and a test session
+/// show: ↑/↓ move the cursor; on an option Enter chooses (single) or Space toggles (multi);
+/// on "Other" and text fields typed text then Enter; Enter on Submit sends. Each step moves the
+/// cursor by reading the screen; the session's toolResult for the call decides success.
+fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, progress: &dyn Fn(&str, Value)) -> Result<Value, (u16, String)> {
+    let h = a.handle.clone().ok_or((409u16, "agent has no terminal".to_string()))?;
+    let path = a.session_path.clone().ok_or((409u16, "no session file".to_string()))?;
+    let list = j["answers"].as_array().cloned().unwrap_or_default();
+    let get = |id: &str| list.iter().find(|x| x["id"].as_str() == Some(id)).and_then(parse_answer);
+    // (the caller holds the terminal's send lock)
+    let start = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    // the dialog rows: (text, cursor here)
+    let rows = || -> Vec<(String, bool)> {
+        let s = term::screen(&h).unwrap_or_default();
+        let top = s.iter().rposition(|l| l.contains("─ Ask ─")).unwrap_or(0);
+        s[top..]
+            .iter()
+            .take_while(|l| !l.starts_with('├') && !l.starts_with('╰'))
+            .filter_map(|l| l.strip_prefix('│'))
+            .map(|l| {
+                let mut c = l.chars();
+                let (c0, c1, c2) = (c.next(), c.next(), c.next());
+                let cur = c0 == Some(' ')
+                    && c1.is_some_and(|x| x != ' ' && ("\u{f054}›❯▶>→".contains(x) || ('\u{e000}'..='\u{f8ff}').contains(&x)))
+                    && c2 == Some(' ');
+                (l.trim().to_string(), cur)
+            })
+            .collect()
+    };
+    let key = |k: &str| term::send_keys(&h, &[k]).map_err(|e| (502u16, e));
+    // move the cursor onto the row whose text contains `want` (first match after `after`)
+    let goto = |want: &str| -> Result<(), (u16, String)> {
+        let want: String = want.chars().take(14).collect();
+        for _ in 0..60 {
+            let r = rows();
+            let Some(cur) = r.iter().position(|x| x.1) else { return Err((409, "the question box is not on the screen; answer in the terminal".into())) };
+            if r[cur].0.contains(&want) {
+                return Ok(());
+            }
+            let Some(t) = r.iter().position(|x| !x.1 && x.0.contains(&want)) else {
+                return Err((409, format!("no row '{want}' in the question box; answer in the terminal")));
+            };
+            key(if t > cur { "Down" } else { "Up" })?;
+            std::thread::sleep(Duration::from_millis(120));
+        }
+        Err((409, format!("could not reach '{want}'; answer in the terminal")))
+    };
+    let n = ask.questions.len();
+    for (k, q) in ask.questions.iter().enumerate() {
+        progress("keys", json!({"k": k + 1, "n": n}));
+        let ans = get(&q.id).ok_or((400u16, format!("missing answer for '{}'", q.id)))?;
+        if q.options.is_empty() {
+            // a text field: its label row is the cursor stop
+            let label = if q.question.is_empty() { q.id.clone() } else { q.question.clone() };
+            goto(&label)?;
+            if let crate::ask::Answer::Text(t) = &ans {
+                term::send_text(&h, t).map_err(|e| (502u16, e))?;
+            }
+            key("Enter")?;
+        } else {
+            match &ans {
+                crate::ask::Answer::One(i) => {
+                    goto(&q.options.get(*i).ok_or((400u16, format!("no option {i} in '{}'", q.id)))?.label)?;
+                    key("Enter")?;
+                }
+                crate::ask::Answer::Many(ix) => {
+                    for i in ix {
+                        goto(&q.options.get(*i).ok_or((400u16, format!("no option {i} in '{}'", q.id)))?.label)?;
+                        key("Space")?;
+                        std::thread::sleep(Duration::from_millis(150));
+                    }
+                }
+                crate::ask::Answer::Text(t) => {
+                    goto("Other")?;
+                    term::send_text(&h, t).map_err(|e| (502u16, e))?;
+                    key("Enter")?;
+                }
+            }
+        }
+        std::thread::sleep(Duration::from_millis(250));
+    }
+    goto("Submit")?;
+    progress("verifying", json!({}));
+    key("Enter")?;
+    let t0 = now_ms();
+    while now_ms() - t0 < 15_000 {
+        std::thread::sleep(Duration::from_millis(500));
+        let mut f = std::fs::File::open(&path).map_err(|e| (502u16, e.to_string()))?;
+        let mut buf = String::new();
+        use std::io::{Read, Seek};
+        let _ = f.seek(std::io::SeekFrom::Start(start));
+        let _ = f.read_to_string(&mut buf);
+        if let Some(v) = buf
+            .lines()
+            .filter_map(|l| serde_json::from_str::<Value>(l).ok())
+            .find(|v| v["message"]["role"] == "toolResult" && v["message"]["toolCallId"].as_str() == Some(ask.call_id.as_str()))
+        {
+            return Ok(json!({"ok": true, "name": a.name, "recorded": v["message"]["details"]["answers"]}));
+        }
+    }
+    term::snapshot(&h, "ask-form-unconfirmed");
+    Err((502, "the form was submitted but no answer was recorded; check the terminal".into()))
+}
+
 /// Answer an open omp `ask` (one or several questions) by driving its TUI.
 /// Per question: read the box (must show that question), move from the visible cursor
 /// (it starts on a recommended option), Enter selects (single) / Space toggles + Enter
@@ -671,6 +781,9 @@ pub fn op_answer(a: &crate::collect::Agent, j: &Value, progress: &dyn Fn(&str, V
     use crate::ask::{current_question, excerpt, keys, result_matches, review_answers, review_matches, review_text, screen, Answer, Screen};
     let conflict = |m: &str| (409u16, m.to_string());
     let ask = a.ask.clone().ok_or_else(|| conflict("no open question"))?;
+    if ask.ask_kind == "form" && a.agent_type == "omp" && !ask.call_id.is_empty() {
+        return op_answer_form(a, &ask, j, progress);
+    }
     if ask.ask_kind != "question" || ask.call_id.is_empty() {
         return Err(conflict("question is not mapped to a session record (or is a permission prompt); answer in the terminal"));
     }
@@ -1248,7 +1361,17 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let au = sh.auth.plock();
     let qd = sh.queued.plock();
     let od = sh.outdated.plock();
+    let it = sh.interrupted.plock();
     for a in snap.agents.iter_mut() {
+        // stopped by the user: waiting, but not my turn (no new user step since)
+        if let Some(t) = a.handle.as_ref().and_then(|h| it.get(h)) {
+            if a.state == "working" && a.state_since <= *t + 1_000 {
+                a.state = "idle".into();
+                a.state_since = *t;
+                a.needs_human = false;
+                a.interrupted_at = Some(*t);
+            }
+        }
         a.outdated = a.handle.as_ref().and_then(|h| od.get(h)).cloned();
         a.queued = a.handle.as_ref().and_then(|h| qd.get(h)).cloned();
         a.draft = a.handle.as_ref().and_then(|h| d.get(h)).filter(|v| !v.is_null()).cloned();
@@ -1341,16 +1464,25 @@ fn restart_outdated(sh: &Shared, names: &[String], when_idle: bool) -> Value {
                         match r {
                             Ok(v) => {
                                 // the first one of a harness: a sign-in screen stops the rest
+                                let h = v["open"]["handle"].as_str().unwrap_or("").to_string();
                                 if i == 0 && list.len() > 1 {
-                                    let h = v["open"]["handle"].as_str().unwrap_or("").to_string();
+                                    // a sign-in screen (its own phrases only) stops the rest; the
+                                    // harness's input box showing ends the check early
                                     let t0 = now_ms();
                                     while now_ms() - t0 < 20_000 {
                                         std::thread::sleep(Duration::from_secs(2));
-                                        if term::screen(&h).is_ok_and(|l| crate::auth::detect(&kind, &l).is_some()) {
+                                        let Ok(l) = term::screen(&h) else { continue };
+                                        if crate::auth::detect(&kind, &l).is_some() {
                                             blocked = true;
                                             break;
                                         }
+                                        if now_ms() - t0 >= 6_000 && l.iter().any(|x| x.starts_with("> ") || x.trim() == ">" || x.contains("? for shortcuts")) {
+                                            break;
+                                        }
                                     }
+                                }
+                                if kind == "antigravity" {
+                                    dismiss_agy_notice(&h);
                                 }
                                 out.push(json!({"name": a.name, "action": "restart", "ok": true, "signIn": blocked}));
                             }
@@ -1364,7 +1496,23 @@ fn restart_outdated(sh: &Shared, names: &[String], when_idle: bool) -> Value {
         hs.into_iter().filter_map(|h| h.join().ok()).flatten().collect()
     });
     results.extend(done);
+    for r in &results {
+        eprintln!(
+            "adash: restart-outdated {}: {} {}",
+            r["name"].as_str().unwrap_or("?"),
+            r["action"].as_str().unwrap_or("?"),
+            r["reason"].as_str().unwrap_or(if r["ok"] == true { "ok" } else { "" })
+        );
+    }
     json!({"results": results, "pending": crate::outdated::WHEN_IDLE.plock().iter().cloned().collect::<Vec<_>>()})
+}
+
+/// agy announces news in a box ending "esc to dismiss" that holds the input: close it first.
+pub fn dismiss_agy_notice(h: &str) {
+    if term::screen(h).is_ok_and(|l| l.iter().rev().take(15).any(|x| x.trim_start_matches(['┃', ' ']).starts_with("esc to dismiss"))) {
+        let _ = term::send_keys(h, &["Escape"]);
+        std::thread::sleep(Duration::from_millis(400));
+    }
 }
 
 /// Messages sent while the agent waited at its "trust this folder?" screen: delivered once the
@@ -1428,6 +1576,14 @@ fn scan_auth(sh: &Arc<Shared>) {
     for a in &agents {
         let Some(h) = &a.handle else { continue };
         let Ok(lines) = term::screen(h) else { continue };
+        {
+            let mut it = sh.interrupted.plock();
+            if crate::auth::interrupted(&a.agent_type, &lines) {
+                it.entry(h.clone()).or_insert_with(now_ms);
+            } else if a.agent_type == "antigravity" {
+                it.remove(h);
+            }
+        }
         if let Some(mut v) = crate::auth::queued(&a.agent_type, &lines) {
             v["since"] = prev_q.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             queued.insert(h.clone(), v);
@@ -1751,6 +1907,7 @@ pub fn serve(port: u16) -> Res<()> {
         auth: Mutex::new(HashMap::new()),
         queued: Mutex::new(HashMap::new()),
         outdated: Mutex::new(HashMap::new()),
+        interrupted: Mutex::new(HashMap::new()),
         catalog: Mutex::new(crate::launch::Cached::default()),
         devices: Mutex::new(crate::mobile::Devices::load()),
         ts_host: ts.0,
@@ -3068,7 +3225,29 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
             let s = snap();
             let r = match *action {
                 "focus" => op_focus(&s, name),
-                "interrupt" => op_interrupt(&s, name),
+                "interrupt" => {
+                    // agy: a second Ctrl+C at its stopped prompt quits it; never send one there
+                    let a = find(&s.agents, name).cloned().ok_or_else(|| format!("unknown agent {name}"));
+                    let stopped = a
+                        .as_ref()
+                        .ok()
+                        .filter(|a| a.agent_type == "antigravity")
+                        .and_then(|a| a.handle.clone())
+                        .filter(|h| sh.interrupted.plock().contains_key(h) || term::screen(h).is_ok_and(|l| crate::auth::interrupted("antigravity", &l)));
+                    if let Some(h) = stopped {
+                        sh.interrupted.plock().entry(h).or_insert_with(now_ms);
+                        refresh(sh);
+                        return Ok((200, json!({"ok": true, "name": name, "alreadyStopped": true})));
+                    }
+                    let r = op_interrupt(&s, name);
+                    if let (Ok(_), Ok(a)) = (&r, &a) {
+                        if let (Some(h), "antigravity") = (&a.handle, a.agent_type.as_str()) {
+                            sh.interrupted.plock().insert(h.clone(), now_ms());
+                        }
+                    }
+                    refresh(sh);
+                    r
+                }
                 "send" => {
                     let images: Vec<String> =
                         j["images"].as_array().map(|a| a.iter().filter_map(|x| x.as_str().map(String::from)).collect()).unwrap_or_default();

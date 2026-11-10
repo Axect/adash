@@ -86,6 +86,31 @@ pub fn workspaces(snap: &crate::collect::Snapshot) -> Res<Value> {
             out.push(json!({"name": name, "path": path, "worktrees": worktrees}));
         }
     }
+    // board projects working in a folder no entry above covers (a subfolder of a repository, a
+    // folder outside meta.yaml): listed as their own entry, under the enclosing one if any
+    let covered = |p: &str| out.iter().any(|e| e["worktrees"].as_array().into_iter().flatten().any(|w| w["path"].as_str().is_some_and(|x| same(x, p))));
+    let mut extra: Vec<(i64, Value)> = vec![];
+    let mut done: Vec<String> = vec![];
+    for a in &snap.agents {
+        let p = a.worktree_path.trim_end_matches('/').to_string();
+        if p.is_empty() || covered(&p) || done.contains(&p) || !Path::new(&p).is_dir() {
+            continue;
+        }
+        done.push(p.clone());
+        let parent = out
+            .iter()
+            .filter_map(|e| Some((e["name"].as_str()?.to_string(), e["path"].as_str()?.trim_end_matches('/').to_string())))
+            .filter(|(_, ep)| p.starts_with(&format!("{ep}/")))
+            .max_by_key(|(_, ep)| ep.len());
+        let used = snap.agents.iter().filter(|b| same(&b.worktree_path, &p)).map(|b| b.state_since).max().unwrap_or(0);
+        extra.push((
+            used,
+            json!({"name": a.project, "path": p, "parent": parent.as_ref().map(|x| &x.0), "subPath": parent.as_ref().and_then(|x| p.strip_prefix(&format!("{}/", x.1))),
+                   "worktrees": [{"path": p, "branch": null, "isMain": true, "liveAgents": live(&p)}]}),
+        ));
+    }
+    extra.sort_by_key(|x| std::cmp::Reverse(x.0));
+    out.extend(extra.into_iter().map(|x| x.1));
     Ok(json!({"projects": out}))
 }
 
@@ -211,6 +236,10 @@ fn agent_command(agent: &str, model: Option<&str>, effort: Option<&str>, prompt:
     let mut parts = vec![bin.to_string()];
     parts.extend(model_args(agent, model, effort)?.iter().map(|a| crate::lifecycle::sq(a)));
     if let Some(p) = prompt.filter(|p| !p.trim().is_empty()) {
+        // agy reads a first prompt only from `-i` (a bare argument is refused)
+        if agent == "antigravity" {
+            parts.push("-i".into());
+        }
         parts.push(crate::lifecycle::sq(p));
     }
     Ok(parts.join(" "))

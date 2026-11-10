@@ -153,6 +153,10 @@ pub fn close(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
 pub fn restart(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
     let h = a.handle.clone().ok_or_else(|| err(409, "no_terminal", json!({})))?;
     let main = crate::session::scan_procs().remove(&h).unwrap_or_default().into_iter().find(|p| p.kind == a.agent_type);
+    if a.agent_type == "antigravity" {
+        // a news box holds the input (and the exit keys)
+        crate::server::dismiss_agy_notice(&h);
+    }
     let mut cj = j.clone();
     cj["mode"] = json!("graceful");
     let closed = close(snap, a, &cj)?;

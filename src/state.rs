@@ -193,6 +193,7 @@ mod tests {
             asked_at: 0,
             ask_kind: "permission",
             call_id: String::new(),
+            intro: vec![],
         });
         let snap = Snapshot {
             agents: vec![

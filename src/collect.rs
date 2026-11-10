@@ -51,6 +51,8 @@ pub struct Agent {
     pub queued: Option<Value>,
     /// runs a harness version that has since been updated: {running, installed, why}
     pub outdated: Option<Value>,
+    /// the user stopped the turn (ms); the agent waits, not counted as my turn
+    pub interrupted_at: Option<i64>,
     /// "정하실 것" items in the latest answer: [{id, text, options}]
     pub decisions: Value,
     /// hash of the message the decisions came from (changes when a new answer arrives)
@@ -232,7 +234,26 @@ impl Collector {
             }
             let mut ask = derive_ask(&state, if mapped { sess.ask.clone() } else { None });
             // no options known in the record: read the Ask dialog off the screen, once per ask
-            if let Some(q) = ask.as_mut().filter(|q| q.options.is_empty()) {
+            // form asks: images relative to the agent's folder become absolute paths (served by /file)
+            if let Some(q) = ask.as_mut().filter(|q| q.ask_kind == "form") {
+                for b in q.intro.iter_mut().filter(|b| b["kind"] == "image") {
+                    let src = b["src"].as_str().unwrap_or("").to_string();
+                    if !src.contains("://") && !src.starts_with('/') {
+                        let mut p = std::path::PathBuf::from(&wpath);
+                        for c in std::path::Path::new(&src).components() {
+                            match c {
+                                std::path::Component::ParentDir => {
+                                    p.pop();
+                                }
+                                std::path::Component::Normal(x) => p.push(x),
+                                _ => {}
+                            }
+                        }
+                        b["src"] = serde_json::json!(p.to_string_lossy());
+                    }
+                }
+            }
+            if let Some(q) = ask.as_mut().filter(|q| q.options.is_empty() && q.ask_kind != "form") {
                 if self.screen_asks.len() > 200 {
                     self.screen_asks.clear();
                 }
@@ -296,6 +317,7 @@ impl Collector {
                     auth: None,
                     queued: None,
                     outdated: None,
+                    interrupted_at: None,
                     decisions: Value::Null,
                     decisions_from: None,
                     decisions_answered: false,
