@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.0 — 2026-11-11
+
+- Questions: omp's HTML-form `ask` (omp 18.18) is shown as a question card with its text and images and answered from the dashboard, page by page, checked against the form's `k/N` progress; a failure says how many fields went in. While an agent asks, the question card replaces the message box and the draft returns afterwards. Claude Code sessions map exactly through their pid file, so their questions show too.
+- Terminal view with key input for every agent. Sign-in prompts become state "sign-in needed" with a card (open the URL, copy the code, restart when another window is signed in); folder-trust prompts become state "trust" with a card, held messages are delivered once the folder is trusted, and launches from the dashboard or by an agent inside its own folder accept it automatically (`launch.autoTrust`, `adash term new --no-trust`).
+- Restart an agent on the same session. Agents running a harness that was updated since they started are marked (running vs installed version, update and start times) and can be restarted together, now or when they finish (`adash restart --outdated`, optional `restart.autoOutdated`). "Fix all" retries errors and restarts agents stuck at sign-in; after a reboot one agent per harness starts first so a sign-in screen does not stop them all.
+- Model and effort: omp switches through `/switch` when available, with a restart-then-switch for sessions older than the installed omp; a switch shows at once in the badge, info panel and context size. Badges name the model (`opus`, `fable`, `astra`, `argon`, `sol`); Antigravity's model is read from the conversation when it was not on the command line, and resume keeps the original flags.
+- Slash commands come from the installed omp and Claude Code, so every built-in (for example `/reload-plugins`) completes.
+- Chat: images returned by tools are shown; a copy button on every message, and copied selections become Markdown with formula sources; Typst-style inline math is converted for rendering and failures show the source; the decision card folds to one line (folded by default on phones); a pending bubble no longer stays "sending".
+- Antigravity: first step, thinking and notices in the transcript; input queued by agy is shown with a send-now button; an interrupt ends the working state, a second Ctrl+C is not sent; its news box is dismissed before input.
+- New session: folder completion in the project path, and projects in subfolders of a repository are listed and searchable.
+- Snooze for 1, 6, 12 or 24 hours or a custom length up to 30 days.
+- Phone: swipes take effect at once and a tap opens the chat. Popovers stay on screen at any zoom and in fullscreen; short names on my-turn rows are no longer cut.
+- Build: changes under `web/` rebuild the binary.
+
 ## 0.2.0 — 2026-11-04
 
 - Session files are read line by line safely: a line whose newline is visible before the rest of it (a torn read during a large write) is read again next round instead of being skipped, so an agent no longer stays "working" after its last answer; a file rewritten under the reader is read again from the start. The Antigravity transcript picks up model steps updated in place.
