@@ -532,9 +532,6 @@ impl SessionCache {
                     fc.turn.last_human = Some(fc.turn.last_human.map_or(s.ts, |h| h.max(s.ts)));
                     fc.turn.prompt = s.text.clone().filter(|t| !t.trim().is_empty()).or(fc.turn.prompt.take());
                 }
-                if s.kind == crate::agy::MODEL && s.status == crate::agy::FINISHED {
-                    fc.turn.last_answer = Some(fc.turn.last_answer.map_or(s.ts, |h| h.max(s.ts)));
-                }
                 // agy notes a failed provider call as a system step ("API error (attempt 1): …")
                 // and retries; a later user / model / tool step means it got through
                 match s.kind {
@@ -555,6 +552,14 @@ impl SessionCache {
             }
             // steps still running are read again next time (agy updates them in place)
             fc.offset = crate::agy::resume_after(fc.offset as i64, &steps).max(0) as u64;
+            // an answer is a finished model step with text: agy also finishes a model step before
+            // every tool call, and those carry only thinking (seen in real conversations)
+            for s in steps
+                .iter()
+                .filter(|s| s.kind == crate::agy::MODEL && s.status == crate::agy::FINISHED && s.text.as_deref().is_some_and(|t| !t.trim().is_empty()))
+            {
+                fc.turn.last_answer = Some(fc.turn.last_answer.map_or(s.ts, |h| h.max(s.ts)));
+            }
             if let Some(p) = crate::agy::phase(&steps) {
                 // keep the phase start while it doesn't change
                 if fc.turn.phase.is_none_or(|(o, _)| o != p.0) {
@@ -859,6 +864,32 @@ pub(crate) fn codex_file(p: &Proc) -> Option<(PathBuf, bool)> {
 
 #[cfg(test)]
 mod tests {
+    /// agy finishes a model step between tool calls; only the one that ends the turn is an
+    /// answer (2026-11-11: a working agy agent counted as unread).
+    #[test]
+    fn agy_answer_only_when_the_turn_ends() {
+        let dir = std::env::temp_dir().join(format!("adash-agyans-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("c.db");
+        let c = rusqlite::Connection::open(&db).unwrap();
+        c.execute_batch("CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);").unwrap();
+        let mut cache = super::SessionCache::default();
+        // user, then model → tool → model → tool, read as the turn goes
+        for (i, k) in [(0, 14), (1, 15), (2, 132), (3, 15), (4, 132)] {
+            c.execute("INSERT INTO steps VALUES (?1, ?2, 3, NULL, NULL)", [i, k]).unwrap();
+            let t = cache.update_agy(&db).3;
+            assert!(t.last_answer.is_none(), "no answer while working (step {i})");
+        }
+        // the answer: a model step with text (field 20.1)
+        let text = [vec![0xa2u8, 0x01, 4], vec![0x0a, 2], b"ok".to_vec()].concat();
+        c.execute("INSERT INTO steps VALUES (5, 15, 3, NULL, ?1)", [&text]).unwrap();
+        let t = cache.update_agy(&db).3;
+        assert!(t.last_answer.is_some(), "the turn ended on a model step");
+        assert_eq!(t.phase.map(|p| p.0), Some(false));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// agy writes a failed provider call as a system step (type 17) and retries; the turn carries
     /// the error until a later step (2026-11-11: an agent showed "working" for 30 minutes).
     #[test]
@@ -928,7 +959,7 @@ mod tests {
         let c = rusqlite::Connection::open(&db).unwrap();
         c.execute_batch(
             "CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);
-             INSERT INTO steps VALUES (1, 14, 3, NULL, NULL), (2, 15, 1, NULL, NULL);",
+             INSERT INTO steps VALUES (1, 14, 3, NULL, NULL), (2, 15, 1, NULL, X'A201040A026F6B');",
         )
         .unwrap();
         let mut cache = super::SessionCache::default();
