@@ -53,6 +53,21 @@ pub(crate) fn feed_omp(v: &Value, a: &mut Acc) {
         a.thinking = v["thinkingLevel"].as_str().filter(|s| !s.is_empty()).map(String::from);
         return;
     }
+    // a model switch counts from the moment it is recorded, not from the next answer
+    if v["type"] == "model_change" {
+        if let Some(m) = v["model"].as_str().filter(|m| !m.is_empty()) {
+            match m.split_once('/') {
+                Some((p, id)) => {
+                    a.provider = Some(p.to_string());
+                    a.model = Some(id.to_string());
+                }
+                None => a.model = Some(m.to_string()),
+            }
+            // the context window and prices follow the new model
+            a.window = None;
+        }
+        return;
+    }
     if v["type"] == "compaction" {
         a.compactions += 1;
         a.last_compaction = ts_of(v);
@@ -425,5 +440,24 @@ mod tests {
         assert_eq!(thinking_flag(&args(&["omp", "--model", "x", "--thinking", "high"])).as_deref(), Some("high"));
         assert_eq!(thinking_flag(&args(&["omp", "--thinking=low"])).as_deref(), Some("low"));
         assert_eq!(thinking_flag(&args(&["omp", "--model", "x"])), None);
+    }
+
+    /// 2026-11-10: after `/model` the badge kept the old model until the next answer.
+    #[test]
+    fn a_model_switch_counts_before_the_next_answer() {
+        let mut a = Acc::default();
+        for l in [
+            r#"{"type":"message","timestamp":"2026-11-10T02:40:00Z","message":{"role":"assistant","provider":"anthropic","model":"claude-opus-5-5","usage":{}}}"#,
+            r#"{"type":"model_change","timestamp":"2026-11-10T02:45:28Z","model":"anthropic/claude-fable-5-2","role":"temporary"}"#,
+        ] {
+            feed("omp", &serde_json::from_str(l).unwrap(), &mut a);
+        }
+        assert_eq!((a.model.as_deref(), a.provider.as_deref()), (Some("claude-fable-5-2"), Some("anthropic")));
+        feed(
+            "omp",
+            &serde_json::from_str(r#"{"type":"message","message":{"role":"assistant","provider":"openai","model":"gpt-6-sol","usage":{}}}"#).unwrap(),
+            &mut a,
+        );
+        assert_eq!(a.model.as_deref(), Some("gpt-6-sol"), "a later answer wins again");
     }
 }

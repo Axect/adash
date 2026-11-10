@@ -397,6 +397,18 @@ fn parse_line(kind: &str, line: &str, fc: &mut FileCache) {
                         fc.model = Some(m.to_string());
                     }
                 }
+            } else if line.contains("\"role\":\"assistant\"") && line.contains("\"model\":") {
+                // the latest of model_change and the answering model is the current one (same rule
+                // as usage)
+                if let Ok(v) = serde_json::from_str::<Value>(line) {
+                    let m = &v["message"];
+                    if let Some(id) = m["model"].as_str().filter(|x| !x.is_empty()) {
+                        fc.model = Some(match m["provider"].as_str() {
+                            Some(p) if !id.contains('/') => format!("{p}/{id}"),
+                            _ => id.to_string(),
+                        });
+                    }
+                }
             } else if line.contains("\"toolName\":\"todo\"") {
                 let Ok(v) = serde_json::from_str::<Value>(line) else { return };
                 let m = &v["message"];
