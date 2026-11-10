@@ -2803,13 +2803,43 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
             Ok((200, crate::model_switch::view(&a)))
         }
         (Method::Post, ["api", "agents", name, "model"]) => {
-            let a = agent_for(sh, name, q("identity").as_deref())?;
-            let r = crate::model_switch::apply(&a, j["model"].as_str().filter(|s| !s.is_empty()), j["effort"].as_str().filter(|s| !s.is_empty()));
+            let mut a = agent_for(sh, name, q("identity").as_deref())?;
+            let (model, effort) = (j["model"].as_str().filter(|s| !s.is_empty()), j["effort"].as_str().filter(|s| !s.is_empty()));
+            if j["restartFirst"] == true {
+                // an agent started before its harness was updated: restart on the same session,
+                // wait until it is back and idle, then switch
+                let s = snap();
+                crate::lifecycle::restart(&s, &a, &json!({}))
+                    .map_err(|(c, v)| (c, v["error"].as_str().or(v["reason"].as_str()).unwrap_or("restart failed").to_string()))?;
+                let t0 = now_ms();
+                loop {
+                    std::thread::sleep(Duration::from_secs(2));
+                    refresh(sh);
+                    if let Some(b) = sh.snap.plock().agents.iter().find(|b| b.name == a.name && b.handle != a.handle && b.state != "working").cloned() {
+                        a = b;
+                        // the harness draws its input box a moment after its session appears
+                        std::thread::sleep(Duration::from_secs(3));
+                        break;
+                    }
+                    if now_ms() - t0 > 90_000 {
+                        return Err((504, "restarted, but the agent did not come back within 90 s; change the model from its chat".into()));
+                    }
+                }
+            }
+            let r = crate::model_switch::apply(&a, model, effort);
             if let Some(db) = sh.analytics.plock().as_ref() {
-                db.log_action("model", &a.name, &json!({"model": j["model"], "effort": j["effort"], "ok": r.is_ok()}));
+                db.log_action("model", &a.name, &json!({"model": j["model"], "effort": j["effort"], "ok": r.is_ok(), "restartFirst": j["restartFirst"]}));
             }
             refresh(sh);
-            r.map(|v| (200, v))
+            match r {
+                Ok(v) => Ok((200, v)),
+                // a process older than the installed harness: say so and offer the restart
+                Err((_, e)) if a.agent_type == "omp" && sh.outdated.plock().contains_key(a.handle.as_deref().unwrap_or("")) => Ok((
+                    409,
+                    json!({"error": format!("이 세션은 omp 업데이트 전에 시작되어 모델 변경이 되지 않습니다 · 다시 시작하세요 ({e})"), "reason": "outdated", "restartable": true}),
+                )),
+                Err(e) => Err(e),
+            }
         }
         (Method::Get, ["api", "agents", name, "usage", "hourly"]) => {
             let a = agent_for(sh, name, q("identity").as_deref())?;

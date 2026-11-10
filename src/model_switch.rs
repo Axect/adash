@@ -282,6 +282,34 @@ pub fn omp_model_confirmed(has_file: bool, appended: &str, screen: &str, id: &st
     !label.is_empty() && (status.contains(&format!(" {label} ")) || status.contains(&format!(" {short} ")))
 }
 
+/// The running omp has `/switch <model>` (session-only switch by id): its own executable, also
+/// when replaced on disk since (`/proc/<pid>/exe`), defines the command.
+fn omp_has_switch(pid: u32) -> bool {
+    let Ok(b) = std::fs::read(format!("/proc/{pid}/exe")) else { return false };
+    let has = |s: &[u8]| b.windows(s.len()).any(|w| w == s);
+    has(b"name: \"switch\",") && has(b"Session-only model: ")
+}
+
+/// omp: `/switch <provider/id>`, confirmed by the session's `model_change` record or the status
+/// line. Err when nothing changed (the caller then tries the picker).
+fn omp_switch_command(h: &str, path: Option<&std::path::Path>, id: &str, label: &str) -> Result<(), (u16, String)> {
+    let start = path.and_then(|p| std::fs::metadata(p).ok()).map(|m| m.len()).unwrap_or(0);
+    crate::term::send_line(h, &format!("/switch {id}")).map_err(|e| (502, e))?;
+    for _ in 0..15 {
+        std::thread::sleep(Duration::from_millis(400));
+        let appended = path.map(|p| new_lines(p, start)).unwrap_or_default();
+        let screen = crate::term::screen(h).map(|v| v.join("\n")).unwrap_or_default();
+        if omp_model_confirmed(path.is_some_and(|p| p.exists()), &appended, &screen, id, label) {
+            return Ok(());
+        }
+        if screen.contains(&format!("Unknown model: {id}")) {
+            return Err((404, format!("omp does not know the model {id}")));
+        }
+    }
+    crate::term::snapshot(h, "omp-switch-unconfirmed");
+    Err((502, format!("sent /switch {id} but no model change was confirmed")))
+}
+
 /// omp: open the session-only picker (Alt+P), type the id, check the highlighted row is
 /// exactly it, Enter, confirm. Anything unexpected closes the picker and fails.
 fn omp_switch(h: &str, path: Option<&std::path::Path>, id: &str, label: &str) -> Result<(), (u16, String)> {
@@ -299,16 +327,42 @@ fn omp_switch(h: &str, path: Option<&std::path::Path>, id: &str, label: &str) ->
         Err((502, why))
     };
     let start = path.and_then(|p| std::fs::metadata(p).ok()).map(|m| m.len()).unwrap_or(0);
+    // wait for the picker (up to 2 s); a key lost while omp redraws gets one more try
+    let opened = |tries: u32| {
+        for _ in 0..tries {
+            std::thread::sleep(Duration::from_millis(200));
+            if screen().contains("Session-only switch") {
+                return true;
+            }
+        }
+        false
+    };
     crate::term::send_keys(h, &["M-p"]).map_err(|e| (502, e))?;
-    std::thread::sleep(Duration::from_millis(900));
-    if !screen().contains("Session-only switch") {
-        return fail("omp's session-only model picker (Alt+P) did not open".into());
+    if !opened(10) {
+        let _ = crate::term::send_keys(h, &["Escape"]);
+        std::thread::sleep(Duration::from_millis(300));
+        crate::term::send_keys(h, &["M-p"]).map_err(|e| (502, e))?;
+        if !opened(10) {
+            return fail("omp's model picker did not open (Alt+P); nothing changed".into());
+        }
     }
     crate::term::send_text(h, id).map_err(|e| (502, e))?;
-    std::thread::sleep(Duration::from_millis(900));
-    match picker_highlight(&screen()) {
-        Some(sel) if sel == id => {}
-        other => return fail(format!("the picker highlighted {other:?}, not {id}; nothing changed")),
+    // the search filters as it goes: wait until the highlighted row settles on the id
+    let mut sel = None;
+    for _ in 0..10 {
+        std::thread::sleep(Duration::from_millis(200));
+        sel = picker_highlight(&screen());
+        if sel.as_deref() == Some(id) {
+            break;
+        }
+    }
+    if sel.as_deref() != Some(id) {
+        // keep the picker on the snapshot (closing first hid why)
+        crate::term::snapshot(h, "omp-model-picker-open");
+        return fail(match sel {
+            Some(s) => format!("omp's picker highlighted {s}, not {id}; nothing changed"),
+            None => format!("omp's picker shows no row for {id}; nothing changed"),
+        });
     }
     crate::term::send_keys(h, &["Enter"]).map_err(|e| (502, e))?;
     for _ in 0..12 {
@@ -347,11 +401,21 @@ pub fn apply(a: &Agent, model: Option<&str>, effort: Option<&str>) -> Result<Val
     let path = a.session_path.clone();
     let lk = crate::term::send_lock(&h);
     let _g = lk.plock();
+    let mut how = "Alt+P";
     if let (Some(m), "omp") = (model, a.agent_type.as_str()) {
         let label = models_of("omp").into_iter().find(|x| x.id == m).map(|x| x.label).unwrap_or_default();
-        omp_switch(&h, path.as_deref(), m, &label)?;
+        // `/switch <id>` when this omp has it (exact, no picker); else the Alt+P picker
+        let pid = crate::session::scan_procs().remove(&h).and_then(|v| v.into_iter().find(|p| p.kind == "omp")).map(|p| p.pid);
+        how = match pid.filter(|p| omp_has_switch(*p)) {
+            Some(_) => match omp_switch_command(&h, path.as_deref(), m, &label) {
+                Ok(()) => "/switch",
+                Err((404, e)) => return Err((404, e)),
+                Err(_) => omp_switch(&h, path.as_deref(), m, &label).map(|_| "Alt+P")?,
+            },
+            None => omp_switch(&h, path.as_deref(), m, &label).map(|_| "Alt+P")?,
+        };
         if lines.is_empty() {
-            return Ok(json!({"ok": true, "name": a.name, "model": model, "effort": effort, "sent": ["Alt+P"]}));
+            return Ok(json!({"ok": true, "name": a.name, "model": model, "effort": effort, "sent": [how]}));
         }
     }
     let start = path.as_deref().and_then(|p| std::fs::metadata(p).ok()).map(|m| m.len()).unwrap_or(0);
@@ -364,7 +428,7 @@ pub fn apply(a: &Agent, model: Option<&str>, effort: Option<&str>) -> Result<Val
         let appended = path.as_deref().map(|p| new_lines(p, start)).unwrap_or_default();
         let screen = crate::term::screen(&h).map(|v| v.join("\n")).unwrap_or_default();
         if confirmed(&a.agent_type, path.is_some(), &appended, &screen, model, effort) {
-            let mut sent: Vec<String> = if model.is_some() && a.agent_type == "omp" { vec!["Alt+P".into()] } else { vec![] };
+            let mut sent: Vec<String> = if model.is_some() && a.agent_type == "omp" { vec![how.into()] } else { vec![] };
             sent.extend(lines.iter().cloned());
             return Ok(json!({"ok": true, "name": a.name, "model": model, "effort": effort, "sent": sent}));
         }

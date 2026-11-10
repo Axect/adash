@@ -3806,6 +3806,7 @@ if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모
         const m = e.target.closest("[data-mp-model]"); if (m && !m.disabled) { mp.model = m.dataset.mpModel; return renderModelPop(); }
         const f = e.target.closest("[data-mp-effort]"); if (f && !f.disabled) { mp.effort = f.dataset.mpEffort; return renderModelPop(); }
         if (e.target.closest("#mp-apply")) return applyModel();
+        if (e.target.closest("#mp-restart")) { applyModel.restart = true; return applyModel(); }
         if (e.target.closest("#mp-close")) return closeModelPop();
       });
     }
@@ -3848,7 +3849,7 @@ if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모
         : d.canSetEffort !== false && mp.model ? `<p class="muted small">${esc(L2("이 모델은 effort 단계가 없습니다", "This model has no effort levels"))}</p>` : ""}
       ${d.persistsDefault && changed && !off ? `<p class="mp-warn small">${esc(L2("이 선택은 Claude Code 의 새 세션 기본값으로도 저장됩니다", "This choice is also saved as Claude Code's default for new sessions"))}</p>` : ""}
       ${why ? `<p class="mp-why small">${esc(why)}</p>` : ""}
-      ${mp.err ? `<p class="mp-err small">${esc(mp.err)}</p>` : ""}
+      ${mp.err ? `<p class="mp-err small">${esc(mp.err)}</p>` : ""}${mp.restart ? `<p><button type="button" class="primary" id="mp-restart">${esc(L2("다시 시작 후 모델 적용", "Restart, then apply"))}</button></p>` : ""}
       <div class="mp-foot"><span class="muted small">${mp.busy ? esc(L2("적용 중… 하네스 확인을 기다리는 중", "Applying… waiting for the harness to confirm")) : ""}</span><span class="spacer"></span><button type="button" id="mp-apply" class="primary"${!changed || off || mp.busy ? " disabled" : ""}>${esc(mp.busy ? L2("적용 중…", "Applying…") : L2("적용", "Apply"))}</button></div>`;
     if (mp.anchor?.isConnected) placePop(el, mp.anchor); else if (!isMobile()) placePop(el, document.querySelector(`[data-model-pick="${CSS.escape(mp.name || "")}"]`) || el);
     if (keepFocus && el.querySelector("#mp-q")) { const i = el.querySelector("#mp-q"); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
@@ -3857,11 +3858,13 @@ if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모
     const name = mp.name, d = mp.data, cur = d?.current || {};
     const body = {}; if (mp.model && mp.model !== cur.model) body.model = mp.model; if (mp.effort && mp.effort !== cur.effort) body.effort = mp.effort;
     if (!Object.keys(body).length) return;
-    mp.busy = true; mp.err = ""; renderModelPop();
+    // after "이 세션은 omp 업데이트 전에 시작…": the same choice once more, after a restart
+    if (applyModel.restart) { body.restartFirst = true; applyModel.restart = false; toast(L2(`${name} 다시 시작한 뒤 모델을 바꾸는 중…`, `Restarting ${name}, then switching…`), 20000); }
+    mp.busy = true; mp.err = ""; mp.restart = false; renderModelPop();
     // The server waits for the harness to confirm (session record or screen line): 200 = switched.
     // 409 working/asking/draft/unsupported · 400 not in the list · 502 not confirmed → its {error} text.
     try { await api("POST", `/api/agents/${enc(name)}/model`, body, { quiet: true }); }
-    catch (e) { if (mp.name !== name) return; mp.busy = false; mp.err = e.message; renderModelPop(); toast(`${name}: ${e.message}`, 5000); return; }
+    catch (e) { if (mp.name !== name) return; mp.busy = false; mp.err = e.message; mp.restart = !!e.data?.restartable; renderModelPop(); toast(`${name}: ${e.message}`, 5000); return; }
     const label = (d.models || []).find((m) => m.id === body.model)?.label || body.model;
     toast(L2(`${name} · ${[label, body.effort && `effort ${body.effort}`].filter(Boolean).join(" · ")} 로 바뀜`, `${name} switched to ${[label, body.effort && `effort ${body.effort}`].filter(Boolean).join(" · ")}`), 3000);
     if (mp.name === name) closeModelPop();
