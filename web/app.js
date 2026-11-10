@@ -220,6 +220,9 @@
     // Retry buttons sit inside rows/cards that open the chat on click: handle them here and stop there.
     const rb = e.target.closest("[data-retry], [data-retry-all]");
     if (rb) { e.preventDefault(); e.stopPropagation(); return rb.dataset.retryAll != null ? retryAllErrors() : retryAgent(rb.dataset.retry, rb); }
+    // Restart-when-idle reservation: the ↻ mark (in a row that opens the chat) and the info panel button cancel it.
+    const oc = e.target.closest("[data-od-cancel]");
+    if (oc) { e.preventDefault(); e.stopPropagation(); return odCancel(oc.dataset.odCancel); }
     // "다시 열기" on offline rows/cards: act here so the row's own click (open chat) doesn't also fire.
     const ro = e.target.closest("[data-reopen]");
     if (ro) { e.preventDefault(); e.stopPropagation(); return reopenAgent(ro.dataset.reopen); }
@@ -328,6 +331,19 @@
         if (a && body.effort) { a.usage = a.usage || {}; a.usage.thinking = body.effort; }
         res({ ok: true, sent: body });
       }, 900));
+    }
+    // Fixture: harness updated under some sessions; restart = the session comes back current.
+    if (path === "/api/restart-outdated" && method === "POST") {
+      fixtureApi.odPend ||= new Set();
+      if (body?.cancel) { (body.names || [...fixtureApi.odPend]).forEach((n) => fixtureApi.odPend.delete(n)); return { pending: [...fixtureApi.odPend] }; }
+      const results = fixtureData.agents.filter((a) => a.outdated && (!body?.names || body.names.includes(a.name)) && (!body?.harness || a.agentType === body.harness)).map((a) => {
+        const p = odPlan(a, !!body?.whenIdle);
+        if (p === "now") { delete a.outdated; return { name: a.name, action: "restarted" }; }
+        if (p === "later") { fixtureApi.odPend.add(a.name); return { name: a.name, action: "later" }; }
+        return { name: a.name, action: "skip", reason: p };
+      });
+      setTimeout(refresh, 50);
+      return { results, pending: [...fixtureApi.odPend] };
     }
     m = path.match(/^\/api\/agents\/([^/]+)\/snooze$/);
     if (m && method === "POST") {
@@ -963,7 +979,7 @@
     // Items carry a fold priority (data-f, higher folds first): when the top bar is short of room (English labels,
     // narrow windows) fitSummary() hides 작업 중 → 기타 → 곧 식음 → 미확인; the tooltip keeps every count.
     const si = (f, html, first) => `<span class="si"${f ? ` data-f="${f}"` : ""}>${first ? "" : sep}${html}</span>`;
-    H("#summary").innerHTML = `<span title="${esc(tip)}">${si(0, `내 차례 <b class="${c.mine ? "alert" : ""}">${c.mine}</b>`, true)}${si(0, `<span class="lb">질문 </span><b class="${c.asking ? "ask-n" : ""}">${c.asking}</b>`)}${c.error ? si(0, `<span class="lb">오류 </span><b class="err-n">${c.error}</b>`) : ""}${si(1, `미확인 <b>${c.unread}</b>`)}${si(3, `기타 <b>${c.other}</b>`)}${soon ? si(2, `<span title="${esc(soonTip)}">곧 식음 <b class="held-n">${soon}</b></span>`) : ""}${si(4, `작업 중 <b>${c.working}</b>`)}</span>${retryAll}` +
+    H("#summary").innerHTML = `<span title="${esc(tip)}">${si(0, `내 차례 <b class="${c.mine ? "alert" : ""}">${c.mine}</b>`, true)}${si(0, `<span class="lb">질문 </span><b class="${c.asking ? "ask-n" : ""}">${c.asking}</b>`)}${c.error ? si(0, `<span class="lb">오류 </span><b class="err-n">${c.error}</b>`) : ""}${si(1, `미확인 <b>${c.unread}</b>`)}${si(3, `기타 <b>${c.other}</b>`)}${soon ? si(2, `<span title="${esc(soonTip)}">곧 식음 <b class="held-n">${soon}</b></span>`) : ""}${si(4, `작업 중 <b>${c.working}</b>`)}</span>${retryAll}${odSummaryBtn()}` +
       "";
     // History unavailable: say so under the header instead of a hidden summary note.
     const hb = $("#hist-banner");
@@ -1328,7 +1344,54 @@
     const t = String(s.agentType || "").toLowerCase(), mono = HARNESS[t] || (t.slice(0, 3) || "?"), cls = HARNESS[t] ? mono : "other";
     // usage.model is the live model (it follows /model switches); s.model is what the session was started with.
     const mdl = s.usage?.model || s.model, fam = modelFamily(mdl);
-    return `<span class="hb h-${cls}${fam ? " has-m" : ""}${live ? "" : " off"}" title="${esc(`${s.agentType || "?"} · ${mdl || L2("모델 알 수 없음", "model unknown")}${s.role ? `\n역할: ${s.role}` : ""}${live ? "" : "\n종료됨"}`)}"><i class="hg"></i><span class="hn">${esc(mono)}</span>${fam ? `<span class="hm">${esc(fam)}</span>` : ""}</span>`;
+    return `<span class="hb h-${cls}${fam ? " has-m" : ""}${live ? "" : " off"}" title="${esc(`${s.agentType || "?"} · ${mdl || L2("모델 알 수 없음", "model unknown")}${s.role ? `\n역할: ${s.role}` : ""}${live ? "" : "\n종료됨"}`)}"><i class="hg"></i><span class="hn">${esc(mono)}</span>${fam ? `<span class="hm">${esc(fam)}</span>` : ""}</span>${live ? odMark(s) : ""}`;
+  }
+  // ---------- harness updated under a running session (v46): /api/state agents[].outdated {installed, running, why} ----------
+  // Restart-when-idle reservations are only in /api/restart-outdated responses (`pending`); kept here per page.
+  const odPending = new Set();
+  const odTip = (o) => L2(`실행 중 ${o.running || "?"} → 설치 ${o.installed || "?"} · 다시 시작하면 적용`, `Running ${o.running || "?"} → installed ${o.installed || "?"} · restart to apply`);
+  function odMark(s) {
+    if (odPending.has(s.name)) return `<span class="od-mark pend" title="${esc(L2("작업이 끝나면 다시 시작 예약됨 · 누르면 취소", "Restart when idle is scheduled · click to cancel"))}" data-od-cancel="${esc(s.name)}">↻</span>`;
+    return s.outdated ? `<span class="od-mark" title="${esc(odTip(s.outdated))}">↑</span>` : "";
+  }
+  const odAgents = () => (state?.agents || []).filter((a) => a.outdated);
+  // Mirrors outdated::plan(): what a bulk restart will do with each agent.
+  function odPlan(a, whenIdle) {
+    if (a.state === "asking" || a.state === "trust") return "skip_asking";
+    if (String(a.draft?.text || "").trim()) return "skip_draft";
+    if (a.state === "working") return whenIdle ? "later" : "skip_working";
+    return "now";
+  }
+  const OD_ACT = { now: ["바로 재시작", "restart now"], later: ["작업 끝나면 재시작", "restart when idle"], skip_asking: ["건너뜀: 질문 중", "skip: asking"], skip_draft: ["건너뜀: 입력창 초안 있음", "skip: unsent draft"], skip_working: ["건너뜀: 작업 중", "skip: working"], not_outdated: ["건너뜀: 이미 최신", "skip: up to date"], sign_in_first: ["건너뜀: 먼저 로그인 필요", "skip: sign in first"] };
+  const odActLabel = (k) => { const v = OD_ACT[k]; return v ? L2(v[0], v[1]) : k; };
+  function odSummaryBtn() {
+    const list = odAgents(); if (!list.length) return "";
+    const by = {}; list.forEach((a) => (by[a.agentType || "?"] = (by[a.agentType || "?"] || 0) + 1));
+    const tip = Object.entries(by).map(([k, n]) => `${k} ${n}`).join(" · ");
+    return `<button type="button" class="od-btn" data-act="od-all" title="${esc(`${L2("하네스가 업데이트된 세션", "Sessions whose harness was updated")}\n${tip}`)}">↑ ${L2(`업데이트된 세션 ${list.length} · 모두 재시작`, `${list.length} updated · restart all`)}</button>`;
+  }
+  function odDialog(names) {
+    const list = odAgents().filter((a) => !names || names.includes(a.name));
+    if (!list.length) return toast(L2("업데이트된 세션이 없습니다", "No updated sessions"));
+    const rows = (wi) => list.map((a) => `<tr><td>${esc(a.name)}</td><td class="muted">${esc(a.agentType || "")} ${esc(a.outdated.running || "")}→${esc(a.outdated.installed || "")}</td><td class="od-act-${odPlan(a, wi)}">${esc(odActLabel(odPlan(a, wi)))}</td></tr>`).join("");
+    dialog(`<h3>${esc(L2(`다시 시작 · ${list.length}개`, `Restart · ${list.length}`))}</h3><p class="muted small">${esc(L2("다시 시작하면 업데이트된 하네스로 같은 세션을 다시 엽니다. 질문 중이거나 입력창 초안이 있는 세션은 건너뜁니다.", "Each session reopens on the updated harness. Sessions asking a question or holding a draft are skipped."))}</p>
+      <label class="ld-check"><input type="checkbox" id="od-wi" checked> ${esc(L2("작업 중인 세션도 끝나면 재시작", "Also restart working sessions when they finish"))}</label>
+      <div class="od-list"><table id="od-tbl">${rows(true)}</table></div>`, L2("다시 시작", "Restart"), () => odRun(list.map((a) => a.name), $("#od-wi")?.checked !== false));
+    $("#od-wi").addEventListener("change", (e) => { $("#od-tbl").innerHTML = rows(e.target.checked); });
+  }
+  async function odRun(names, whenIdle) {
+    let r;
+    try { r = await api("POST", "/api/restart-outdated", { names, whenIdle }); } catch (e) { return toast(L2(`다시 시작 실패: ${e.message}`, `Restart failed: ${e.message}`)); }
+    odPending.clear(); (r?.pending || []).forEach((n) => odPending.add(n));
+    const res = r?.results || [], n = (f) => res.filter(f).length;
+    const now = n((x) => x.action !== "later" && x.action !== "skip"), later = n((x) => x.action === "later"), skip = n((x) => x.action === "skip");
+    toast(L2(`재시작 ${now} · 예약 ${later} · 건너뜀 ${skip}`, `restarted ${now} · scheduled ${later} · skipped ${skip}`), 4000);
+    if (!FIXTURE) refresh(); else render();
+  }
+  async function odCancel(name) {
+    try { const r = await api("POST", "/api/restart-outdated", { cancel: true, names: [name] }); odPending.clear(); (r?.pending || []).forEach((n) => odPending.add(n)); }
+    catch (e) { return toast(e.message); }
+    toast(L2(`${name} 재시작 예약 취소`, `${name} restart cancelled`), 2000); render();
   }
   // 연결 보기 (item 2): basic = request spans + connector ticks, all = every curve, off = nothing.
   let linkMode = localStorage.getItem("adash.links") || "basic";
@@ -3877,7 +3940,7 @@ if (compact && a.agentType) parts.push(`<div class="u-row"><span class="u-k">모
     else {
       const pr = a.progress, n = esc(a.name), tx = ov.tx;
 html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
-          <dt>하네스</dt><dd>${esc(a.agentType || "?")}</dd>
+          <dt>하네스</dt><dd>${esc(a.agentType || "?")}${a.outdated ? ` <span class="od-mark" title="${esc(odTip(a.outdated))}">↑ ${esc(a.outdated.running || "")} → ${esc(a.outdated.installed || "")}</span> ${odPending.has(a.name) ? `<button type="button" data-od-cancel="${esc(a.name)}">${L2("예약 취소", "Cancel")}</button>` : `<button type="button" data-act="od-one" data-name="${esc(a.name)}">${L2("다시 시작", "Restart")}</button>`}` : ""}</dd>
           <dt>모델</dt><dd><button type="button" class="model-btn" data-model-pick="${n}" title="${esc(L2("모델·effort 바꾸기", "Change model / effort"))}">${esc([a.usage?.model || a.model || L2("알 수 없음", "unknown"), a.usage?.thinking ? `thinking ${a.usage.thinking}` : ""].filter(Boolean).join(" · "))} <span class="muted">▾</span></button></dd>
           <dt>상태</dt><dd>${esc(stateKo(a.state))} · ${fmtMin(sinceMin(a))}${a.snoozedUntil ? ` · ${L2("미룸", "snoozed")} ~${fmtUntil(a.snoozedUntil)}` : ""}</dd>
           ${cacheState(a) ? `<dt>캐시</dt><dd${cacheBasis(a) ? ` title="${esc(cacheBasis(a))}"` : ""}><span class="badge ${esc(cacheState(a))}">${CACHE_KO[cacheState(a)] || esc(cacheState(a))}</span>${cacheExp(a) && cacheState(a) !== "cold" ? ` <span class="cd" data-exp="${cacheExp(a)}" data-basis="${esc(cacheBasis(a))}"></span>` : ""}</dd>` : ""}
@@ -4655,6 +4718,8 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     else if (a === "interrupt") interruptDlg(name);
     else if (a === "ask-skip") askSkipDlg(ov.name);
     else if (a === "side-tog") { $(".ov").classList.toggle("side-open"); fitOvHead(); }
+    else if (a === "od-all") odDialog(null);
+    else if (a === "od-one") odDialog([name]);
     else if (a === "send-force") sendComposer(true);
     else if (a === "pending-drop" || a === "pending-resend") {
       const p = ov.pending[+b.dataset.i]; if (!p) return;
@@ -4908,7 +4973,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       html = model.groups.map((g) => `<section class="mproj"><div class="mp-head"><b>${esc(g.name)}</b>${g.asking ? `<span class="ask-n">질문 ${g.asking}</span>` : ""}${g.unread ? `<span class="unread-n">미확인 ${g.unread}</span>` : ""}<span class="spacer"></span><span class="muted small">에이전트 ${g.allCount}</span><button class="g-more m" data-proj-menu="${esc(g.name)}" aria-label="프로젝트 메뉴">⋯</button></div>
         ${g.members.map((a) => `<div class="mp-row" data-magent="${esc(a.name)}">${harnessBadge(a.s, a.live)}<span class="mp-n${a.unread ? " unread" : ""}"><span class="mp-nt">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}${a.live ? netIcon(a.s) : ""}</span><span class="mp-st muted">${a.live ? stateLine(a) : `<button class="reopen-btn m" data-reopen="${esc(a.name)}">다시 열기</button>`}</span>${sparkline(a)}</div>`).join("")}${g.hidden.length ? `<div class="mp-row mp-off muted small" data-toggle-offline="${esc(g.name)}">${expandedOffline.has(g.name) ? "오프라인 접기" : `오프라인 ${g.hidden.length}개 숨김`}</div>` : ""}</section>`).join("") + hiddenProjHtml(true);
     } else if (mtab === "more") {
-      html = `${capListHtml()}<div class="mmore"><button class="primary" data-act="m-new">새 세션</button><button data-act="m-sessions">지난 세션</button><button data-act="m-reports">보고서</button><button data-act="m-push">알림·기기 설정</button><button data-open-tab="threads">검토 요청 목록</button><button data-open-tab="tasks">내 할 일</button><button class="font-btn">표시 설정</button></div>`;
+      html = `${capListHtml()}<div class="mmore"><button class="primary" data-act="m-new">새 세션</button>${odAgents().length ? `<button data-act="od-all">↑ ${L2(`업데이트된 세션 ${odAgents().length} · 모두 재시작`, `${odAgents().length} updated · restart all`)}</button>` : ""}<button data-act="m-sessions">지난 세션</button><button data-act="m-reports">보고서</button><button data-act="m-push">알림·기기 설정</button><button data-open-tab="threads">검토 요청 목록</button><button data-open-tab="tasks">내 할 일</button><button class="font-btn">표시 설정</button></div>`;
     }
     H("#mobile").innerHTML = html;
   }

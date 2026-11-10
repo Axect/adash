@@ -2661,6 +2661,7 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
             let ts = threads::load_all();
             let mut v = state::build(&snap(), &meta, &ts);
             v["restoreHeld"] = json!(crate::restore::held());
+            v["restartPending"] = json!(crate::outdated::WHEN_IDLE.plock().iter().cloned().collect::<Vec<_>>());
             let cutoff = now_ms() - 7 * 86_400_000;
             {
                 let now = now_ms();

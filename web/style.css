@@ -1153,3 +1153,10 @@ body.mobile .snz-custom .snz-n, body.mobile .snz-custom select, body.mobile .snz
 .ask-foot { display: flex; align-items: center; gap: 8px; margin-top: 6px; }
 .ask-foot .linkish { height: auto; padding: 0; border: none; background: none; color: var(--muted); text-decoration: underline; font-size: inherit; }
 body.mobile .ask-card.ask-dock .ask-text { min-height: 44px; font-size: 16px; }
+/* harness updated under a running session */
+.od-mark { flex: none; margin-left: 3px; font: 600 11px/1 var(--mono); color: var(--muted); cursor: help; }
+.od-mark.pend { color: var(--info-cache); cursor: pointer; }
+.od-btn { flex: none; margin-left: 10px; height: 22px; padding: 0 8px; font-size: var(--fs-xs); color: var(--fg); }
+.od-list { max-height: 50vh; overflow: auto; margin-top: 8px; }
+.od-list td { padding: 3px 8px 3px 0; font-size: .9em; white-space: nowrap; }
+.od-act-now { color: var(--fg); } .od-act-later { color: var(--info-cache); } [class^="od-act-skip"] { color: var(--muted); }
