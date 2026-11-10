@@ -150,6 +150,16 @@ pub fn open(db: &Path) -> Res<Connection> {
 
 /// Steps with idx > `after` in order.
 /// The model a conversation ran on: the most frequent `gemini-*` name in its generator metadata.
+/// An agy system notice about a failed provider call (it retries by itself).
+pub fn is_api_error(t: &str) -> bool {
+    let t = t.trim_start();
+    t.starts_with("API error")
+        || t.contains("stream idle timeout")
+        || t.contains("context deadline exceeded")
+        || t.contains("RESOURCE_EXHAUSTED")
+        || crate::session::status_in(t).is_some_and(|s| s == 429 || s >= 500)
+}
+
 /// A CLI log written after `since` records a sign-in ("Experiments refreshed after login") at or
 /// after it: the user signed in, in some agy process.
 pub fn signed_in_after(since: i64) -> bool {

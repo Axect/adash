@@ -160,6 +160,8 @@ pub struct Shared {
     pub outdated: Mutex<HashMap<String, Value>>,
     /// handle → when the user stopped its turn (kept while the screen shows it stopped)
     pub interrupted: Mutex<HashMap<String, i64>>,
+    /// handle → (screen hash, session mtime, CPU ticks of its process tree, unchanged since)
+    pub stall: Mutex<HashMap<String, (u64, i64, u64, i64)>>,
     pub catalog: Mutex<crate::launch::Cached>,
     /// Phase C: approved phones/tablets (tailscale serve), and the tailnet host/allowed logins
     pub devices: Mutex<crate::mobile::Devices>,
@@ -1367,7 +1369,11 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let qd = sh.queued.plock();
     let od = sh.outdated.plock();
     let it = sh.interrupted.plock();
+    let stall = sh.stall.plock();
+    let stall_ms = crate::config::get().notifications.stall_minutes as i64 * 60_000;
     for a in snap.agents.iter_mut() {
+        a.stalled_since =
+            a.handle.as_ref().and_then(|h| stall.get(h)).map(|x| x.3).filter(|s| a.state == "working" && stall_ms > 0 && now_ms() - s >= stall_ms);
         // stopped by the user: waiting, but not my turn (no new user step since)
         if let Some(t) = a.handle.as_ref().and_then(|h| it.get(h)) {
             if a.state == "working" && a.state_since <= *t + 1_000 {
@@ -1396,6 +1402,60 @@ fn signed_in_elsewhere(s: &Snapshot, a: &crate::collect::Agent, since: i64) -> b
     let other =
         s.agents.iter().any(|o| o.agent_type == a.agent_type && o.identity != a.identity && o.handle.is_some() && o.state != "auth" && o.state_since > since);
     other || (a.agent_type == "antigravity" && crate::agy::signed_in_after(since))
+}
+
+/// CPU ticks (user + system) of a process and all its descendants.
+fn tree_ticks(pid: u32) -> u64 {
+    let mut total = 0u64;
+    let mut stack = vec![pid];
+    let mut n = 0;
+    while let Some(p) = stack.pop() {
+        n += 1;
+        if n > 400 {
+            break;
+        }
+        if let Ok(st) = std::fs::read_to_string(format!("/proc/{p}/stat")) {
+            // fields after the ")" of the command name: utime is 14th, stime 15th overall
+            if let Some(rest) = st.rsplit_once(')').map(|x| x.1) {
+                let f: Vec<&str> = rest.split_whitespace().collect();
+                total += f.get(11).and_then(|x| x.parse::<u64>().ok()).unwrap_or(0) + f.get(12).and_then(|x| x.parse::<u64>().ok()).unwrap_or(0);
+            }
+        }
+        for t in std::fs::read_dir(format!("/proc/{p}/task")).into_iter().flatten().flatten() {
+            if let Ok(c) = std::fs::read_to_string(t.path().join("children")) {
+                stack.extend(c.split_whitespace().filter_map(|x| x.parse::<u32>().ok()));
+            }
+        }
+    }
+    total
+}
+
+/// Working agents whose session, screen (spinners and counters aside) and process tree (CPU) all
+/// stood still: `stalled_since` (shown after `notifications.stallMinutes`).
+fn scan_stalls(sh: &Shared, agents: &[crate::collect::Agent]) {
+    use std::hash::{Hash, Hasher};
+    let procs = crate::session::scan_procs();
+    let mut st = sh.stall.plock();
+    let now = now_ms();
+    let mut keep = HashMap::new();
+    for a in agents.iter().filter(|a| a.state == "working") {
+        let Some(h) = &a.handle else { continue };
+        let Ok(lines) = term::screen(h) else { continue };
+        let mut hs = std::collections::hash_map::DefaultHasher::new();
+        for l in &lines {
+            l.chars().filter(|c| !c.is_ascii_digit() && !('\u{2800}'..='\u{28ff}').contains(c) && !"◐◓◑◒⠁|/-\\".contains(*c)).collect::<String>().hash(&mut hs);
+        }
+        let hash = hs.finish();
+        let mt = a.session_path.as_deref().map(crate::util::mtime_ms).unwrap_or(0);
+        let ticks = procs.get(h).and_then(|v| v.iter().find(|p| p.kind == a.agent_type)).map(|p| tree_ticks(p.pid)).unwrap_or(0);
+        let since = match st.get(h) {
+            // more than ~1 s of CPU since the last look: a tool or the harness is busy
+            Some(&(ph, pm, pt, s)) if ph == hash && pm == mt && ticks.saturating_sub(pt) < 100 => s,
+            _ => now,
+        };
+        keep.insert(h.clone(), (hash, mt, ticks, since));
+    }
+    *st = keep;
 }
 
 /// Updated harnesses (once a minute): mark the agents; restart the ones waiting for their turn to
@@ -1619,6 +1679,7 @@ fn scan_auth(sh: &Arc<Shared>) {
     }
     *sh.auth.plock() = found;
     *sh.queued.plock() = queued;
+    scan_stalls(sh, &agents);
 }
 
 /// B4 detection (every ~60 s): pointer lines `[marker] @brief 를 읽고 답해줘` in live agents'
@@ -1913,6 +1974,7 @@ pub fn serve(port: u16) -> Res<()> {
         queued: Mutex::new(HashMap::new()),
         outdated: Mutex::new(HashMap::new()),
         interrupted: Mutex::new(HashMap::new()),
+        stall: Mutex::new(HashMap::new()),
         catalog: Mutex::new(crate::launch::Cached::default()),
         devices: Mutex::new(crate::mobile::Devices::load()),
         ts_host: ts.0,

@@ -108,6 +108,8 @@ struct FileCache {
     offset: u64,
     /// JSONL files
     pos: crate::util::JsonlPos,
+    /// agy: step idx of the provider error in `turn.error`
+    err_idx: i64,
     /// agy: highest step idx seen (`offset` is where the next read starts; it can stay behind
     /// this while a step is still running)
     seen: u64,
@@ -533,6 +535,22 @@ impl SessionCache {
                 if s.kind == crate::agy::MODEL && s.status == crate::agy::FINISHED {
                     fc.turn.last_answer = Some(fc.turn.last_answer.map_or(s.ts, |h| h.max(s.ts)));
                 }
+                // agy notes a failed provider call as a system step ("API error (attempt 1): …")
+                // and retries; a later user / model / tool step means it got through
+                match s.kind {
+                    crate::agy::SYSTEM => {
+                        if let Some(t) = s.text.as_deref().filter(|t| crate::agy::is_api_error(t)) {
+                            let line = t.lines().next().unwrap_or(t);
+                            fc.turn.error =
+                                Some(ErrInfo { status: status_in(line), message: error_summary(line), provider: Some("google".into()), model: None, at: s.ts });
+                            fc.err_idx = s.idx;
+                        }
+                    }
+                    crate::agy::USER | crate::agy::MODEL | crate::agy::TOOL if fc.turn.error.is_some() && s.idx > fc.err_idx => {
+                        fc.turn.error = None;
+                    }
+                    _ => {}
+                }
                 fc.seen = fc.seen.max(s.idx as u64);
             }
             // steps still running are read again next time (agy updates them in place)
@@ -841,6 +859,38 @@ pub(crate) fn codex_file(p: &Proc) -> Option<(PathBuf, bool)> {
 
 #[cfg(test)]
 mod tests {
+    /// agy writes a failed provider call as a system step (type 17) and retries; the turn carries
+    /// the error until a later step (2026-11-11: an agent showed "working" for 30 minutes).
+    #[test]
+    fn agy_api_error_step_is_kept_until_progress() {
+        let dir = std::env::temp_dir().join(format!("adash-agyerr-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let db = dir.join("c.db");
+        let ld = |field: u32, data: &[u8]| -> Vec<u8> {
+            let tag = (field << 3) | 2;
+            let mut o = if tag < 128 { vec![tag as u8] } else { vec![(tag as u8) | 0x80, (tag >> 7) as u8] };
+            o.push(data.len() as u8);
+            o.extend_from_slice(data);
+            o
+        };
+        let err = ld(24, &ld(3, &ld(2, b"API error (attempt 1): request failed: stream idle timeout (5m0s): context deadline exceeded")));
+        let c = rusqlite::Connection::open(&db).unwrap();
+        c.execute_batch("CREATE TABLE steps (idx INTEGER PRIMARY KEY, step_type INTEGER, status INTEGER, metadata BLOB, step_payload BLOB);").unwrap();
+        c.execute("INSERT INTO steps VALUES (0, 14, 3, NULL, NULL)", []).unwrap();
+        c.execute("INSERT INTO steps VALUES (1, 17, 3, NULL, ?1)", [&err]).unwrap();
+        let mut cache = super::SessionCache::default();
+        let t = cache.update_agy(&db).3;
+        assert!(t.error.as_ref().is_some_and(|e| e.message.contains("stream idle timeout")), "{t:?}");
+        assert_eq!(t.phase.map(|p| p.0), Some(true), "still working (retrying)");
+        c.execute("INSERT INTO steps VALUES (2, 15, 3, NULL, NULL)", []).unwrap();
+        // a later step: the call got through
+        let mut later = super::SessionCache::default();
+        assert!(later.update_agy(&db).3.error.is_none(), "read in one go");
+        assert!(cache.update_agy(&db).3.error.is_none());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     /// Claude Code does not keep its jsonl open; its pid file names the session (2026-11-09: a
     /// Claude agent asking a question showed as idle because its mapping was only a guess).
     #[test]

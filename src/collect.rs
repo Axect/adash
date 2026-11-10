@@ -71,6 +71,10 @@ pub struct Agent {
     pub hidden: bool,
     /// state "error": the provider error that ended the last turn {status, message, provider, model, at}
     pub last_error: Option<crate::session::ErrInfo>,
+    /// a provider call failed and the harness retries by itself (agy): shown, not yet an error
+    pub retrying: Option<crate::session::ErrInfo>,
+    /// working but neither the session nor the screen changed since (ms): "응답 없음"
+    pub stalled_since: Option<i64>,
     /// state "error": how the dashboard retries this harness {label, how}
     pub retry: Option<Value>,
     pub note: String,
@@ -274,7 +278,18 @@ impl Collector {
                 }
             }
             // the last turn ended on a provider error and nothing happened since: state "error"
-            let last_error = if mapped { sess.turn.error.clone() } else { None }.filter(|_| state != "working" && state != "asking" && state != "idle");
+            // agy keeps working (retrying) after a failed call: the error shows at once and becomes
+            // the state when nothing else happened for 5 minutes
+            let mut retrying = None;
+            let agy_retry = agent_type == "antigravity" && state == "working" && mapped && sess.turn.error.is_some();
+            let last_error =
+                if mapped { sess.turn.error.clone() } else { None }.filter(|_| agy_retry || (state != "working" && state != "asking" && state != "idle"));
+            let last_error = last_error.filter(|e| !agy_retry || now - e.at > 300_000).or_else(|| {
+                if agy_retry {
+                    retrying = sess.turn.error.clone();
+                }
+                None
+            });
             if let Some(e) = &last_error {
                 state = "error".into();
                 state_since = e.at;
@@ -330,6 +345,8 @@ impl Collector {
                     snoozed_until: None,
                     hidden: false,
                     retry: last_error.as_ref().map(|_| crate::server::retry_info(&agent_type)),
+                    retrying,
+                    stalled_since: None,
                     last_error,
                     note: String::new(),
                     identity,

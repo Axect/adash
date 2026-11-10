@@ -4074,7 +4074,8 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       else if (m.role === "error") blocks.push([m.id, errorBubble(m)]);
       else if (m.role === "shell") blocks.push([m.id, shellBubble(m)]);
       else if (m.role === "media") blocks.push([m.id, mediaRow(m)]);
-      else if (m.role === "thinking") blocks.push([m.id, `<details class="m thinking" title="${esc(tsTitle(m.ts))}"><summary>${t_("생각")}</summary><div class="md">${md(m.text, ov.name, m.id)}</div></details>`]);
+      // open state survives re-renders (same as tool groups); no text: no block
+      else if (m.role === "thinking") { if (m.text?.trim()) blocks.push([`${m.id}:${ov.openGroups.has(m.id)}`, `<details class="m thinking" data-gid="${esc(m.id)}"${ov.openGroups.has(m.id) ? " open" : ""} title="${esc(tsTitle(m.ts))}"><summary>${t_("생각")}</summary><div class="md">${md(m.text, ov.name, m.id)}</div></details>`]); }
       else blocks.push([m.id, `<div class="m system${tx?.source === "terminal" ? " term" : ""}" title="${esc(tsTitle(m.ts))}">${esc(m.text)}</div>`]);
     }
     ov.pending.forEach((p, i) => blocks.push([`p:${i}:${p.stale ? 1 : 0}`, `<div class="m user pending md${p.stale ? " stale" : ""}">${p.text.trim() ? md(p.text, ov.name) : ""}${thumbs(p.urls.map((u, k) => [u, p.images[k]]))}${fileChips(p.files || [], p.sizes, false)}${p.stale ? `<div class="pend-st">${L2("전송 확인 안 됨", "Delivery not confirmed")} <button type="button" data-act="pending-resend" data-i="${i}">${L2("다시 보내기", "Send again")}</button> <button type="button" data-act="pending-drop" data-i="${i}">${L2("지우기", "Dismiss")}</button></div>` : ""}</div>`]));

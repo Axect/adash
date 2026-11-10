@@ -78,6 +78,10 @@
         },
         "silenceHarness": {
           "type": "boolean"
+        },
+        "stallMinutes": {
+          "minimum": 0,
+          "type": "integer"
         }
       },
       "type": "object"
