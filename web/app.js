@@ -1349,7 +1349,9 @@
   // ---------- harness updated under a running session (v46): /api/state agents[].outdated {installed, running, why} ----------
   // Restart-when-idle reservations are only in /api/restart-outdated responses (`pending`); kept here per page.
   const odPending = new Set();
-  const odTip = (o) => L2(`실행 중 ${o.running || "?"} → 설치 ${o.installed || "?"} · 다시 시작하면 적용`, `Running ${o.running || "?"} → installed ${o.installed || "?"} · restart to apply`);
+  // installedAt (binary mtime) / startedAt (process start), ms: shown when the server sends them.
+  const odHm = (t) => { const d = new Date(+t); if (!t || Number.isNaN(+d)) return ""; const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; return d.toDateString() === new Date().toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`; };
+  const odTip = (o) => [L2(`실행 중 ${o.running || "?"} → 설치 ${o.installed || "?"}`, `Running ${o.running || "?"} → installed ${o.installed || "?"}`), o.installedAt ? L2(`업데이트 ${odHm(o.installedAt)}`, `updated ${odHm(o.installedAt)}`) : "", o.startedAt ? L2(`이 세션 시작 ${odHm(o.startedAt)}`, `session started ${odHm(o.startedAt)}`) : "", L2("다시 시작하면 적용", "restart to apply")].filter(Boolean).join(" · ");
   function odMark(s) {
     if (odPending.has(s.name)) return `<span class="od-mark pend" title="${esc(L2("작업이 끝나면 다시 시작 예약됨 · 누르면 취소", "Restart when idle is scheduled · click to cancel"))}" data-od-cancel="${esc(s.name)}">↻</span>`;
     return s.outdated ? `<span class="od-mark" title="${esc(odTip(s.outdated))}">↑</span>` : "";

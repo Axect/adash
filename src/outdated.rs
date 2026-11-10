@@ -97,6 +97,9 @@ pub fn scan(agents: &[Agent]) -> HashMap<String, Value> {
             if a.agent_type == "omp" && v["running"].is_null() {
                 v["running"] = json!(a.session_path.as_deref().and_then(omp_runtime));
             }
+            // when the installed binary was written and when this process started (ms)
+            v["installedAt"] = json!(bin.as_deref().map(crate::util::mtime_ms).filter(|m| *m > 0));
+            v["startedAt"] = json!(p.start_ms);
             out.insert(h.clone(), v);
         }
     }
