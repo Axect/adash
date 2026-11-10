@@ -156,6 +156,8 @@ pub struct Shared {
     pub auth: Mutex<HashMap<String, Value>>,
     /// handle → input held by the harness until its turn ends
     pub queued: Mutex<HashMap<String, Value>>,
+    /// handle → harness updated since the agent started
+    pub outdated: Mutex<HashMap<String, Value>>,
     pub catalog: Mutex<crate::launch::Cached>,
     /// Phase C: approved phones/tablets (tailscale serve), and the tailnet host/allowed logins
     pub devices: Mutex<crate::mobile::Devices>,
@@ -1245,7 +1247,9 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let d = sh.drafts.plock();
     let au = sh.auth.plock();
     let qd = sh.queued.plock();
+    let od = sh.outdated.plock();
     for a in snap.agents.iter_mut() {
+        a.outdated = a.handle.as_ref().and_then(|h| od.get(h)).cloned();
         a.queued = a.handle.as_ref().and_then(|h| qd.get(h)).cloned();
         a.draft = a.handle.as_ref().and_then(|h| d.get(h)).filter(|v| !v.is_null()).cloned();
         // a login prompt on the screen: the agent waits for the user whatever its transcript says
@@ -1264,6 +1268,103 @@ fn signed_in_elsewhere(s: &Snapshot, a: &crate::collect::Agent, since: i64) -> b
     let other =
         s.agents.iter().any(|o| o.agent_type == a.agent_type && o.identity != a.identity && o.handle.is_some() && o.state != "auth" && o.state_since > since);
     other || (a.agent_type == "antigravity" && crate::agy::signed_in_after(since))
+}
+
+/// Updated harnesses (once a minute): mark the agents; restart the ones waiting for their turn to
+/// end, and with `[restart] autoOutdated` every idle one.
+fn scan_outdated(sh: &Arc<Shared>) {
+    let snap = sh.snap.plock().clone();
+    *sh.outdated.plock() = crate::outdated::scan(&snap.agents);
+    let od = sh.outdated.plock().clone();
+    let auto = crate::config::get().restart.auto_outdated;
+    let mut go: Vec<String> = vec![];
+    {
+        let mut later = crate::outdated::WHEN_IDLE.plock();
+        for a in &snap.agents {
+            let is_old = a.handle.as_ref().is_some_and(|h| od.contains_key(h));
+            if later.contains(&a.name) && (!is_old || a.state != "working") {
+                later.remove(&a.name);
+                if is_old && crate::outdated::plan(a, false) == "now" {
+                    go.push(a.name.clone());
+                }
+            } else if auto && is_old && crate::outdated::plan(a, false) == "now" {
+                go.push(a.name.clone());
+            }
+        }
+    }
+    if !go.is_empty() {
+        let sh = sh.clone();
+        std::thread::spawn(move || {
+            let r = restart_outdated(&sh, &go, false);
+            eprintln!("adash: restarted updated agents: {r}");
+        });
+    }
+}
+
+/// Restart outdated agents (by name): idle ones now, working ones after their turn when
+/// `when_idle`, asking / drafts skipped. Per harness one at a time; the first restart of a
+/// harness is checked for a sign-in screen before the rest follow.
+fn restart_outdated(sh: &Shared, names: &[String], when_idle: bool) -> Value {
+    let snap = sh.snap.plock().clone();
+    let od = sh.outdated.plock().clone();
+    let mut by_kind: HashMap<String, Vec<crate::collect::Agent>> = HashMap::new();
+    let mut results = vec![];
+    for a in snap.agents.iter().filter(|a| names.contains(&a.name)) {
+        if !a.handle.as_ref().is_some_and(|h| od.contains_key(h)) {
+            results.push(json!({"name": a.name, "action": "skip", "reason": "not_outdated"}));
+            continue;
+        }
+        match crate::outdated::plan(a, when_idle) {
+            "now" => by_kind.entry(a.agent_type.clone()).or_default().push(a.clone()),
+            "later" => {
+                crate::outdated::WHEN_IDLE.plock().insert(a.name.clone());
+                results.push(json!({"name": a.name, "action": "later"}));
+            }
+            why => results.push(json!({"name": a.name, "action": "skip", "reason": why})),
+        }
+    }
+    let done: Vec<Value> = std::thread::scope(|sc| {
+        let hs: Vec<_> = by_kind
+            .into_iter()
+            .map(|(kind, list)| {
+                sc.spawn(move || {
+                    let mut out = vec![];
+                    let mut blocked = false;
+                    for (i, a) in list.iter().enumerate() {
+                        if blocked {
+                            out.push(json!({"name": a.name, "action": "skip", "reason": "sign_in_first"}));
+                            continue;
+                        }
+                        let s = sh.snap.plock().clone();
+                        let r = crate::lifecycle::restart(&s, a, &json!({}));
+                        refresh(sh);
+                        match r {
+                            Ok(v) => {
+                                // the first one of a harness: a sign-in screen stops the rest
+                                if i == 0 && list.len() > 1 {
+                                    let h = v["open"]["handle"].as_str().unwrap_or("").to_string();
+                                    let t0 = now_ms();
+                                    while now_ms() - t0 < 20_000 {
+                                        std::thread::sleep(Duration::from_secs(2));
+                                        if term::screen(&h).is_ok_and(|l| crate::auth::detect(&kind, &l).is_some()) {
+                                            blocked = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                out.push(json!({"name": a.name, "action": "restart", "ok": true, "signIn": blocked}));
+                            }
+                            Err((code, v)) => out.push(json!({"name": a.name, "action": "restart", "ok": false, "code": code, "reason": v["reason"].as_str().or(v["error"].as_str()).unwrap_or("failed")})),
+                        }
+                    }
+                    out
+                })
+            })
+            .collect();
+        hs.into_iter().filter_map(|h| h.join().ok()).flatten().collect()
+    });
+    results.extend(done);
+    json!({"results": results, "pending": crate::outdated::WHEN_IDLE.plock().iter().cloned().collect::<Vec<_>>()})
 }
 
 /// Messages sent while the agent waited at its "trust this folder?" screen: delivered once the
@@ -1649,6 +1750,7 @@ pub fn serve(port: u16) -> Res<()> {
         drafts: Mutex::new(HashMap::new()),
         auth: Mutex::new(HashMap::new()),
         queued: Mutex::new(HashMap::new()),
+        outdated: Mutex::new(HashMap::new()),
         catalog: Mutex::new(crate::launch::Cached::default()),
         devices: Mutex::new(crate::mobile::Devices::load()),
         ts_host: ts.0,
@@ -1846,6 +1948,7 @@ fn background_round(sh: &Arc<Shared>, n: u32) {
     crate::restore::tick(&snap);
     scan_drafts(sh);
     scan_auth(sh);
+    scan_outdated(sh);
     scan_btw(&snap);
     for mut st in crate::magi::RunState::load_all().into_iter().filter(|r| matches!(r.status.as_str(), "queued" | "held")) {
         // a run nobody delivered within a day is stale
@@ -2725,6 +2828,30 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
         (Method::Post, ["api", "agents", name, "retry"]) => {
             let a = find(&sh.snap.plock().agents, name).cloned().ok_or((404, format!("unknown agent {name}")))?;
             op_retry(sh, &a).map(|v| (200, v))
+        }
+        (Method::Post, ["api", "restart-outdated"]) => {
+            // {names?, harness?, whenIdle?, cancel?}: restart agents whose harness was updated
+            if j["cancel"] == true {
+                let mut l = crate::outdated::WHEN_IDLE.plock();
+                match j["names"].as_array() {
+                    Some(ns) => ns.iter().filter_map(|n| n.as_str()).for_each(|n| {
+                        l.remove(n);
+                    }),
+                    None => l.clear(),
+                }
+                return Ok((200, json!({"pending": l.iter().cloned().collect::<Vec<_>>()})));
+            }
+            let s = snap();
+            let od = sh.outdated.plock().clone();
+            let names: Vec<String> = s
+                .agents
+                .iter()
+                .filter(|a| a.handle.as_ref().is_some_and(|h| od.contains_key(h)))
+                .filter(|a| j["harness"].as_str().is_none_or(|k| k == a.agent_type))
+                .filter(|a| j["names"].as_array().is_none_or(|ns| ns.iter().any(|n| n.as_str() == Some(a.name.as_str()))))
+                .map(|a| a.name.clone())
+                .collect();
+            Ok((200, restart_outdated(sh, &names, j["whenIdle"] == true)))
         }
         (Method::Post, ["api", "fix-all"]) => {
             // errors: retry; sign-in screens: restart on the same session when the harness is

@@ -25,7 +25,15 @@ pub struct Config {
     pub network: Network,
     pub mobile: Mobile,
     pub launch: Launch,
+    pub restart: Restart,
     pub theme: ThemeDefaults,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Restart {
+    /// restart idle agents on the same session as soon as their harness was updated
+    pub auto_outdated: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -134,6 +142,7 @@ impl Default for Config {
             network: Network::default(),
             mobile: Mobile::default(),
             launch: Launch::default(),
+            restart: Restart::default(),
             theme: ThemeDefaults::default(),
         }
     }
@@ -299,6 +308,10 @@ pub fn config_text(c: &Config) -> String {
          # agents started from the dashboard accept the harness's \"trust this folder?\" screen\n\
          autoTrust = {autotrust}\n\
          \n\
+         [restart]\n\
+         # restart idle agents (same session) as soon as their harness was updated\n\
+         autoOutdated = {autoout}\n\
+         \n\
          [theme]\n\
          # themes a device uses until it picks its own (`adash theme list`)\n\
          {tdark}\
@@ -314,6 +327,7 @@ pub fn config_text(c: &Config) -> String {
         net = c.network.enabled,
         ts = c.mobile.tailscale,
         autotrust = c.launch.auto_trust,
+        autoout = c.restart.auto_outdated,
         tdark = opt("dark", &c.theme.dark, "dark"),
         tlight = opt("light", &c.theme.light, "catppuccin-latte"),
     )
@@ -395,6 +409,7 @@ pub fn schema() -> serde_json::Value {
             "network": {"type": "object", "additionalProperties": false, "properties": {"enabled": {"type": "boolean"}, "probes": {"type": "object", "additionalProperties": {"type": "string", "format": "uri"}}}},
             "mobile": {"type": "object", "additionalProperties": false, "properties": {"tailscale": {"type": "boolean"}}},
             "launch": {"type": "object", "additionalProperties": false, "properties": {"autoTrust": {"type": "boolean"}}},
+            "restart": {"type": "object", "additionalProperties": false, "properties": {"autoOutdated": {"type": "boolean"}}},
             "theme": {"type": "object", "additionalProperties": false, "properties": {"dark": s("theme for dark mode (default dark, adash dark)"), "light": s("theme for light mode (default catppuccin-latte)")}}
         }
     })

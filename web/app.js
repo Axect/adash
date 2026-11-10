@@ -5059,7 +5059,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     H("#rp-list").innerHTML = rp.list.length ? rp.list.map((r) => {
       const hl = Object.entries(r.headline || {}).slice(0, 4).map(([k, v]) => `<span>${esc(HEADLINE_KO[k] || k)} <b>${esc(v)}</b></span>`).join("");
       return `<div class="rp-item${rp.sel === r.id ? " on" : ""}" data-rp="${esc(r.id)}"><div class="rp-t"><b>${esc(r.title || r.id)}</b><span class="muted small">${esc(PERIOD_KO[r.period] || r.period || "")}</span></div>
-        <div class="muted small">${esc(r.from || "")} – ${esc(r.to || "")}${r.generatedAt ? ` · ${new Date(r.generatedAt).toLocaleString("ko-KR")}` : ""}</div>${hl ? `<div class="rp-hl">${hl}</div>` : ""}
+        <div class="muted small">${esc(rpRange(r))}</div>${hl ? `<div class="rp-hl">${hl}</div>` : ""}
         <div class="rp-act"><button data-rp-open="${esc(r.id)}">열기</button>${r.hasPdf !== false ? `<a href="${esc(reportUrl(r.id, true))}" download>PDF</a>` : ""}</div></div>`;
     }).join("") : `<p class="muted small rp-empty">아직 보고서가 없습니다. '지금 만들기'로 만들 수 있습니다.</p>`;
   }
@@ -5071,11 +5071,26 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
   }
   function openReports() {
     if (ov.open) closeChat();
-    $("#reports").hidden = false;
+    $("#reports").hidden = false; document.body.classList.add("rp-lock");
+    // Back button closes it (one history entry while open).
+    if (!window.history.state?.rp) window.history.pushState({ ...(window.history.state || {}), rp: 1 }, "");
     $("#rp-frame").hidden = !rp.sel; $("#rp-empty").hidden = !!rp.sel;
     loadReports();
   }
-  const closeReports = () => { $("#reports").hidden = true; };
+  const closeReports = (fromPop) => {
+    if ($("#reports").hidden) return;
+    $("#reports").hidden = true; document.body.classList.remove("rp-lock");
+    if (fromPop !== true && window.history.state?.rp) window.history.back();
+  };
+  window.addEventListener("popstate", () => closeReports(true));
+  // "11/2–11/8 · 생성 11/9 12:30": from/to may be ms (to = exclusive midnight) or "YYYY-MM-DD" (inclusive).
+  function rpRange(r) {
+    const day = (v, end) => { if (v == null || v === "") return ""; let d = typeof v === "number" || /^\d{10,}$/.test(String(v)) ? new Date(+v) : new Date(`${v}T00:00:00`);
+      if (Number.isNaN(+d)) return String(v); if (end && typeof v !== "string" || end && /^\d+$/.test(String(v))) { if (d.getHours() === 0 && d.getMinutes() === 0) d = new Date(+d - 1); } return `${d.getMonth() + 1}/${d.getDate()}`; };
+    const a = day(r.from), b = day(r.to, true), g = r.generatedAt ? new Date(+r.generatedAt) : null;
+    const gen = g && !Number.isNaN(+g) ? `${L2("생성", "made")} ${g.getMonth() + 1}/${g.getDate()} ${String(g.getHours()).padStart(2, "0")}:${String(g.getMinutes()).padStart(2, "0")}` : "";
+    return [a || b ? (a === b ? a : `${a}–${b}`) : "", gen].filter(Boolean).join(" · ");
+  }
   async function makeReport() {
     const period = $("#rp-period").value;
     const body = { period };
@@ -5101,7 +5116,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     } catch { done(); }
   }
   $("#open-reports").addEventListener("click", openReports);
-  $("#rp-close").addEventListener("click", closeReports);
+  $("#rp-close").addEventListener("click", () => closeReports());
   $("#rp-make").addEventListener("click", makeReport);
   $("#rp-period").addEventListener("change", (e) => { const c = e.target.value === "custom"; $("#rp-from").hidden = !c; $("#rp-to").hidden = !c; });
   $("#reports").addEventListener("click", (e) => {

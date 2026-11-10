@@ -22,6 +22,7 @@ mod mobile;
 mod model_switch;
 mod network;
 mod notify;
+mod outdated;
 mod palette;
 mod paths;
 mod platform;
@@ -637,6 +638,30 @@ fn run() -> Res<()> {
                     None => h["title"].as_str().unwrap_or("").to_string(),
                 };
                 println!("{}{}{}{}{}", pad(&fmt_since(h["lastTs"].as_i64().unwrap_or(0)), 8), pad(h["project"].as_str().unwrap_or(""), 18), pad(h["agentType"].as_str().unwrap_or(""), 8), pad(&title, 60), h["file"].as_str().unwrap_or(""));
+            }
+            Ok(())
+        }
+        "restart" => {
+            // `adash restart --outdated [--harness omp] [--when-idle]`
+            if !a.has("outdated") {
+                return Err("usage: adash restart --outdated [--harness KIND] [--when-idle]".into());
+            }
+            if !server_up() {
+                return Err("the adash server is not running".into());
+            }
+            let mut body = json!({"whenIdle": a.has("when-idle")});
+            if let Some(k) = a.get("harness") {
+                body["harness"] = json!(k);
+            }
+            let (code, v) = http("POST", "/api/restart-outdated", Some(&body))?;
+            if code >= 400 {
+                return Err(v["error"].as_str().unwrap_or("failed").to_string());
+            }
+            for r in v["results"].as_array().into_iter().flatten() {
+                println!("{:<28} {:<8} {}", r["name"].as_str().unwrap_or(""), r["action"].as_str().unwrap_or(""), r["reason"].as_str().unwrap_or(if r["ok"] == true { "ok" } else { "" }));
+            }
+            if v["results"].as_array().is_none_or(|r| r.is_empty()) {
+                println!("no agent runs an updated harness");
             }
             Ok(())
         }

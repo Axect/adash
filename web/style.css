@@ -487,22 +487,26 @@ body.answering .chat > :not(#ask-card), body.answering .side { opacity: .55; }
 .mg-sec-runs { margin-bottom: 12px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
 .magi-mark.warn { color: var(--info-warn); border-color: var(--info-warn); } .magi-mark.bad { color: var(--signal-error-text); border-color: var(--signal-error-text); } .magi-mark.ok { color: var(--warm); border-color: var(--warm); }
 /* ---------- Phase D: reports ---------- */
-.reports { position: fixed; inset: 0; z-index: 22; display: flex; align-items: center; justify-content: center; background: rgba(17, 24, 39, .28); }
-.rp-box { width: 96vw; height: 94vh; display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.reports { position: fixed; inset: 0; z-index: 22; display: flex; align-items: center; justify-content: center; background: rgba(17, 24, 39, .28); overflow: hidden; overscroll-behavior: contain; }
+/* .reports > * is zoomed by --ui-zoom: divide the box by it so the zoomed box still fits the screen (else the head
+   leaves the top of the viewport and there is no way back). */
+.rp-box { width: calc(96vw / var(--ui-zoom, 1)); height: calc(94vh / var(--ui-zoom, 1)); max-height: calc(94dvh / var(--ui-zoom, 1)); display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.rp-head { flex: none; }
+body.rp-lock { overflow: hidden; }
 .rp-head { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 var(--pad); border-bottom: 1px solid var(--border); }
 .rp-head h3 { margin: 0; font-size: var(--fs-l); }
 .rp-body { flex: 1; min-height: 0; display: grid; grid-template-columns: clamp(240px, 22vw, 380px) minmax(0, 1fr); }
-.rp-list { overflow: auto; border-right: 1px solid var(--border); }
+.rp-list { overflow: auto; overscroll-behavior: contain; min-height: 0; border-right: 1px solid var(--border); }
 .rp-item { padding: 10px 14px; border-bottom: 1px solid var(--border); cursor: pointer; }
 .rp-item:hover, .rp-item.on { background: var(--hl); }
 .rp-item.on { box-shadow: inset 2px 0 0 var(--accent); }
 .rp-t { display: flex; gap: 8px; align-items: baseline; }
 .rp-hl { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; font-size: var(--fs-s); color: var(--muted); } .rp-hl b { color: var(--fg); font-weight: 600; }
 .rp-act { display: flex; gap: 10px; align-items: center; margin-top: 6px; } .rp-act a { color: var(--ui-link); font-size: var(--fs-s); }
-.rp-view { position: relative; min-width: 0; }
+.rp-view { position: relative; min-width: 0; min-height: 0; overflow: hidden; }
 .rp-view iframe { width: 100%; height: 100%; border: none; background: #fff; }
 .rp-empty { padding: 20px; }
-body.mobile .rp-box { width: 100vw; height: 100dvh; border-radius: 0; border: none; }
+body.mobile .rp-box { width: calc(100vw / var(--ui-zoom, 1)); height: calc(100dvh / var(--ui-zoom, 1)); max-height: none; border-radius: 0; border: none; }
 body.mobile .rp-body { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
 body.mobile .rp-list { max-height: 34vh; border-right: none; border-bottom: 1px solid var(--border); }
 body.mobile .rp-head { flex-wrap: wrap; height: auto; padding: 8px; }

@@ -108,6 +108,15 @@
       },
       "type": "object"
     },
+    "restart": {
+      "additionalProperties": false,
+      "properties": {
+        "autoOutdated": {
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
     "terminal": {
       "additionalProperties": false,
       "properties": {

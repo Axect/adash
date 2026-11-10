@@ -49,6 +49,8 @@ pub struct Agent {
     pub auth: Option<Value>,
     /// input the harness holds until its turn ends: {phrase, sendNowKey, since}
     pub queued: Option<Value>,
+    /// runs a harness version that has since been updated: {running, installed, why}
+    pub outdated: Option<Value>,
     /// "정하실 것" items in the latest answer: [{id, text, options}]
     pub decisions: Value,
     /// hash of the message the decisions came from (changes when a new answer arrives)
@@ -293,6 +295,7 @@ impl Collector {
                     draft: None,
                     auth: None,
                     queued: None,
+                    outdated: None,
                     decisions: Value::Null,
                     decisions_from: None,
                     decisions_answered: false,
