@@ -675,7 +675,8 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     // the dialog rows: (text, cursor here)
     let rows = || -> Vec<(String, bool)> {
         let s = term::screen(&h).unwrap_or_default();
-        let top = s.iter().rposition(|l| l.contains("─ Ask ─")).unwrap_or(0);
+        // the box title is "─ Ask ─" or, on a paged form, "─ Ask · k/N ─"
+        let top = s.iter().rposition(|l| l.starts_with('╭') && l.contains("─ Ask")).unwrap_or(0);
         s[top..]
             .iter()
             .take_while(|l| !l.starts_with('├') && !l.starts_with('╰'))
@@ -700,17 +701,21 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
             if r[cur].0.contains(&want) {
                 return Ok(());
             }
-            let Some(t) = r.iter().position(|x| !x.1 && x.0.contains(&want)) else {
-                return Err((409, format!("no row '{want}' in the question box; answer in the terminal")));
-            };
-            key(if t > cur { "Down" } else { "Up" })?;
+            // not on this page: fields are answered in order, so the target lies further down
+            let t = r.iter().position(|x| !x.1 && x.0.contains(&want));
+            key(match t {
+                Some(t) if t < cur => "Up",
+                _ => "Down",
+            })?;
             std::thread::sleep(Duration::from_millis(120));
         }
-        Err((409, format!("could not reach '{want}'; answer in the terminal")))
+        Err((409, format!("could not reach '{want}' in the question box; answer in the terminal")))
     };
     let n = ask.questions.len();
+    let tag = |k: usize, r: Result<(), (u16, String)>| r.map_err(|(c, e)| (c, format!("{e} (fields answered: {k} of {n})")));
     for (k, q) in ask.questions.iter().enumerate() {
         progress("keys", json!({"k": k + 1, "n": n}));
+        let goto = |w: &str| tag(k, goto(w));
         let ans = get(&q.id).ok_or((400u16, format!("missing answer for '{}'", q.id)))?;
         if q.options.is_empty() {
             // a text field: its label row is the cursor stop
@@ -742,7 +747,7 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
         }
         std::thread::sleep(Duration::from_millis(250));
     }
-    goto("Submit")?;
+    tag(n, goto("Submit"))?;
     progress("verifying", json!({}));
     key("Enter")?;
     let t0 = now_ms();
