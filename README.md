@@ -116,6 +116,16 @@ adash only manages agents running in its own tmux server (`tmux -L adash`); ever
 
 `adash harnesses` lists which harnesses are enabled and the versions each adapter was tested with. Session formats are not stable APIs. When a harness changes its format, the affected view degrades (for example, the chat falls back to the terminal screen) rather than failing.
 
+### Provider limits (top bar)
+
+The top bar's Claude / OpenAI / Google percentages come from `omp usage` when omp is installed and reports that provider; otherwise from the harness itself. Each source is read every 5 minutes; when one fails, the last value stays, marked stale.
+
+| Provider | Without omp | How |
+|---|---|---|
+| Claude | `claude -p /usage --no-session-persistence --output-format json` | no model call; run in an empty folder of adash's data directory, no session file is kept |
+| OpenAI (Codex) | the newest `rate_limits` in `~/.codex/sessions` | nothing is run; stale after 6 h without a Codex session |
+| Google (Antigravity) | `agy -p /usage --output-format json` | no model call; run in an empty folder of adash's data directory |
+
 ## Configuration
 
 Two files in the config directory (Linux `$XDG_CONFIG_HOME/adash` or `~/.config/adash`; macOS `~/Library/Application Support/adash` unless `XDG_CONFIG_HOME` is set):

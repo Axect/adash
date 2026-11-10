@@ -407,6 +407,8 @@ pub struct Capacity {
     fetched_at: Option<i64>,
     last_try: Option<Instant>,
     error: Option<String>,
+    /// the last good usage per harness read from the harness itself (agy, claude, codex)
+    own: std::collections::HashMap<String, Value>,
 }
 
 fn vendor_of(provider: &str) -> &'static str {
@@ -454,6 +456,142 @@ pub fn shape_usage(raw: &Value) -> Vec<Value> {
     vendors.into_iter().map(|(vendor, provider, accounts)| json!({"vendor": vendor, "provider": provider, "accounts": accounts})).collect()
 }
 
+/// Antigravity's own `/usage` (`agy -p "/usage" --output-format json`): no model call. Each group
+/// (Gemini models, Claude and GPT models) becomes an account of provider `google-antigravity`.
+pub fn agy_usage_shape(v: &Value) -> Option<Value> {
+    let groups = v["command"]["data"]["groups"].as_array()?;
+    let accounts: Vec<Value> = groups
+        .iter()
+        .map(|g| {
+            let name = g["name"].as_str().unwrap_or("Antigravity");
+            let label = if name.starts_with("Gemini") { "Gemini".to_string() } else if name.starts_with("Claude") { "Claude·GPT via Antigravity".to_string() } else { name.to_string() };
+            let limits: Vec<Value> = g["buckets"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .map(|b| {
+                    let w = match b["window"].as_str() {
+                        Some("weekly") => "7d",
+                        Some(x) => x,
+                        None => "",
+                    };
+                    let reset = b["reset_time"].as_str().and_then(|t| chrono::DateTime::parse_from_rfc3339(t).ok()).map(|t| t.timestamp_millis());
+                    json!({"id": b["id"], "label": b["name"], "windowLabel": w, "usedFraction": b["remaining_fraction"].as_f64().map(|r| (1.0 - r).max(0.0)), "resetsAt": reset, "status": null, "unit": "percent"})
+                })
+                .collect();
+            json!({"account": label, "plan": null, "limits": limits})
+        })
+        .collect();
+    (!accounts.is_empty()).then(|| json!({"vendor": "google", "provider": "google-antigravity", "source": "agy", "accounts": accounts}))
+}
+
+/// Claude Code's `/usage` text: lines `Current week (all models): 34% used · resets Nov 14, 12pm
+/// (Asia/Shanghai)`. Each `(label)` becomes an account; unknown lines are ignored. The reset is kept
+/// as Claude prints it (`resetsText`).
+pub fn claude_usage_shape(text: &str) -> Option<Value> {
+    static RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+        regex::Regex::new(r"^\s*(Current [^:(]+?)(?:\s*\(([^)]*)\))?:\s*(\d+(?:\.\d+)?)% used(?:\s*·\s*resets\s*(.+?))?\s*$").unwrap()
+    });
+    let mut accounts: Vec<(String, Vec<Value>)> = vec![];
+    for c in text.lines().filter_map(|l| RE.captures(l)) {
+        let win = c[1].trim().to_lowercase();
+        let w = if win.contains("week") {
+            "7d"
+        } else if win.contains("session") || win.contains("5") {
+            "5h"
+        } else {
+            win.as_str()
+        }
+        .to_string();
+        let acct = c.get(2).map(|m| m.as_str().to_string()).unwrap_or_else(|| "all models".into());
+        let used = c[3].parse::<f64>().ok().map(|p| p / 100.0);
+        let lim = json!({"id": format!("claude:{w}:{acct}"), "label": c[1].trim(), "windowLabel": w, "usedFraction": used, "resetsAt": null, "resetsText": c.get(4).map(|m| m.as_str()), "status": null, "unit": "percent"});
+        match accounts.iter_mut().find(|a| a.0 == acct) {
+            Some(a) => a.1.push(lim),
+            None => accounts.push((acct, vec![lim])),
+        }
+    }
+    (!accounts.is_empty()).then(|| {
+        json!({"vendor": "claude", "provider": "anthropic", "source": "claude", "accounts": accounts.into_iter().map(|(a, l)| json!({"account": a, "plan": null, "limits": l})).collect::<Vec<_>>()})
+    })
+}
+
+/// `claude -p /usage` without a session file, in an empty folder of adash's data directory.
+fn fetch_claude_usage() -> Res<Value> {
+    let bin = find_bin("claude").ok_or("claude not installed")?;
+    let dir = crate::platform::data_dir().join("usage-run");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let out = crate::platform::timeout(35)
+        .arg(&bin)
+        .args(["-p", "/usage", "--no-session-persistence", "--output-format", "json"])
+        .current_dir(&dir)
+        .output()
+        .map_err(|e| e.to_string())?;
+    let v: Value = serde_json::from_slice(&out.stdout).map_err(|e| format!("claude /usage: {e}"))?;
+    claude_usage_shape(v["result"].as_str().unwrap_or("")).ok_or_else(|| "claude /usage: no usage lines".to_string())
+}
+
+/// Codex: the newest `rate_limits` in its session files (no process started); stale after 6 h.
+pub fn codex_usage_shape(rl: &Value, at: i64) -> Option<Value> {
+    let limits: Vec<Value> = ["primary", "secondary"]
+        .iter()
+        .filter_map(|k| {
+            let x = &rl[*k];
+            x.is_object().then(|| {
+                let mins = x["window_minutes"].as_i64().unwrap_or(0);
+                let w = if mins >= 1440 { format!("{}d", mins / 1440) } else { format!("{}h", mins / 60) };
+                json!({"id": format!("codex:{k}"), "label": w, "windowLabel": w, "usedFraction": x["used_percent"].as_f64().map(|p| p / 100.0), "resetsAt": x["resets_at"].as_i64().map(|s| s * 1000), "status": null, "unit": "percent"})
+            })
+        })
+        .collect();
+    (!limits.is_empty()).then(|| {
+        json!({"vendor": "openai", "provider": "openai-codex", "source": "codex-session", "seenAt": at, "stale": now_ms() - at > 6 * 3_600_000,
+               "accounts": [{"account": "Codex", "plan": rl["plan_type"], "limits": limits}]})
+    })
+}
+
+fn fetch_codex_usage() -> Res<Value> {
+    let root = crate::util::home().join(".codex/sessions");
+    let mut newest: Option<(i64, std::path::PathBuf)> = None;
+    for back in 0..14 {
+        let d = root.join((chrono::Local::now() - chrono::Duration::days(back)).format("%Y/%m/%d").to_string());
+        for e in std::fs::read_dir(&d).into_iter().flatten().flatten() {
+            let m = crate::util::mtime_ms(&e.path());
+            if newest.as_ref().is_none_or(|n| m > n.0) {
+                newest = Some((m, e.path()));
+            }
+        }
+        if newest.is_some() {
+            break;
+        }
+    }
+    let (m, f) = newest.ok_or("no Codex session files")?;
+    let text = std::fs::read_to_string(&f).map_err(|e| e.to_string())?;
+    let rl = text
+        .lines()
+        .rev()
+        .filter(|l| l.contains("\"rate_limits\""))
+        .find_map(|l| serde_json::from_str::<Value>(l).ok().map(|v| v["payload"]["rate_limits"].clone()))
+        .ok_or("no rate limits in the newest Codex session")?;
+    codex_usage_shape(&rl, m).ok_or_else(|| "Codex rate limits without windows".into())
+}
+
+/// Run `agy /usage` (30 s cap) in an empty folder of adash's data directory.
+fn fetch_agy_usage() -> Res<Value> {
+    let bin = find_bin("agy").ok_or("agy not installed")?;
+    let dir = crate::platform::data_dir().join("agy-usage");
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let out = crate::platform::timeout(35)
+        .arg(&bin)
+        .args(["-p", "/usage", "--output-format", "json", "--print-timeout", "30s"])
+        .current_dir(&dir)
+        .output()
+        .map_err(|e| e.to_string())?;
+    let v: Value = serde_json::from_slice(&out.stdout)
+        .map_err(|e| format!("agy /usage: {e}: {}", String::from_utf8_lossy(&out.stderr).chars().take(200).collect::<String>()))?;
+    agy_usage_shape(&v).ok_or_else(|| format!("agy /usage: no usage groups ({})", v["status"]))
+}
+
 impl Capacity {
     /// Refresh when due: periodic (5 min) or forced (`?refresh=1`, at most once per 60 s).
     pub fn refresh(&mut self, force: bool) -> Option<Value> {
@@ -465,9 +603,38 @@ impl Capacity {
             return None;
         }
         self.last_try = Some(Instant::now());
-        match fetch_usage() {
-            Ok(raw) => {
-                let vendors = shape_usage(&raw);
+        // omp's report first (when omp is there); each provider it lacks from its own harness
+        let omp = fetch_usage();
+        let omp_ok = omp.is_ok();
+        let omp_err = omp.as_ref().err().cloned();
+        let mut vendors = omp.map(|r| shape_usage(&r)).unwrap_or_default();
+        let has = |vs: &Vec<Value>, f: &dyn Fn(&str) -> bool| vs.iter().any(|v| v["provider"].as_str().is_some_and(f));
+        let sources: [(&str, &str, fn() -> Res<Value>, &dyn Fn(&str) -> bool); 3] = [
+            ("antigravity", "agy", fetch_agy_usage, &|p: &str| p.contains("antigravity")),
+            ("claude", "claude", fetch_claude_usage, &|p: &str| p == "anthropic"),
+            ("codex", "codex", fetch_codex_usage, &|p: &str| p.starts_with("openai")),
+        ];
+        for (key, bin, fetch, covers) in sources {
+            if has(&vendors, covers) || find_bin(bin).is_none() {
+                continue;
+            }
+            match fetch() {
+                Ok(v) => {
+                    self.own.insert(key.to_string(), v.clone());
+                    vendors.push(v);
+                }
+                Err(e) => {
+                    eprintln!("adash: usage from {bin}: {e}");
+                    if let Some(mut old) = self.own.get(key).cloned() {
+                        old["stale"] = json!(true);
+                        vendors.push(old);
+                    }
+                }
+            }
+        }
+        let raw_ok: Res<()> = if omp_ok || !vendors.is_empty() { Ok(()) } else { Err(omp_err.unwrap_or_else(|| "no usage source".into())) };
+        match raw_ok {
+            Ok(()) => {
                 self.value = Some(json!(vendors));
                 self.fetched_at = Some(now_ms());
                 self.error = None;
@@ -557,5 +724,45 @@ mod tests {
         assert_eq!(vendors, ["claude", "openai", "google", "other"]);
         assert_eq!(v[1]["accounts"].as_array().unwrap().len(), 2);
         assert!((v[2]["accounts"][0]["limits"][0]["usedFraction"].as_f64().unwrap() - 0.16).abs() < 1e-9);
+    }
+}
+
+#[cfg(test)]
+mod agy_usage_tests {
+    #[test]
+    fn agy_usage_groups_become_accounts() {
+        let v: serde_json::Value = serde_json::json!({"command": {"name": "usage", "data": {"groups": [
+            {"name": "Gemini Models", "buckets": [{"id": "gemini-weekly", "name": "Weekly Limit Remaining", "window": "weekly", "remaining_fraction": 0.94, "reset_time": "2026-11-14T17:24:17Z"},
+                                                {"id": "gemini-5h", "name": "Five Hour Limit Remaining", "window": "5h", "remaining_fraction": 0.93}]},
+            {"name": "Claude and GPT models", "buckets": [{"id": "3p-weekly", "window": "weekly", "remaining_fraction": 1}]}]}}});
+        let s = super::agy_usage_shape(&v).unwrap();
+        assert_eq!(s["provider"], "google-antigravity");
+        assert_eq!(s["accounts"][0]["account"], "Gemini");
+        let l = &s["accounts"][0]["limits"];
+        assert_eq!(l[0]["windowLabel"], "7d");
+        assert!((l[0]["usedFraction"].as_f64().unwrap() - 0.06).abs() < 1e-9);
+        assert_eq!(l[0]["resetsAt"], 1794677057000i64);
+        assert_eq!(s["accounts"][1]["account"], "Claude·GPT via Antigravity");
+        assert!(super::agy_usage_shape(&serde_json::json!({"status": "SUCCESS"})).is_none());
+    }
+
+    #[test]
+    fn claude_and_codex_usage_parse() {
+        let t = "You are currently using your subscription\n\nCurrent week (all models): 34% used · resets Nov 14, 12pm (Asia/Shanghai)\nCurrent week (Fable): 24% used · resets Nov 14, 12pm (Asia/Shanghai)\nCurrent session: 5% used · resets 3pm\nsomething else";
+        let v = super::claude_usage_shape(t).unwrap();
+        let acc: Vec<&str> = v["accounts"].as_array().unwrap().iter().map(|a| a["account"].as_str().unwrap()).collect();
+        assert_eq!(acc, vec!["all models", "Fable"]);
+        let l = &v["accounts"][0]["limits"];
+        assert_eq!((l[0]["windowLabel"].as_str(), l[0]["usedFraction"].as_f64()), (Some("7d"), Some(0.34)));
+        assert_eq!(l[0]["resetsText"], "Nov 14, 12pm (Asia/Shanghai)");
+        assert_eq!(l[1]["windowLabel"], "5h");
+        assert!(super::claude_usage_shape("no usage here").is_none());
+        let rl = serde_json::json!({"primary": {"used_percent": 48.0, "window_minutes": 300, "resets_at": 1793862443}, "secondary": {"used_percent": 12.5, "window_minutes": 10080}});
+        let c = super::codex_usage_shape(&rl, crate::util::now_ms()).unwrap();
+        let l = &c["accounts"][0]["limits"];
+        assert_eq!((l[0]["windowLabel"].as_str(), l[0]["usedFraction"].as_f64(), l[0]["resetsAt"].as_i64()), (Some("5h"), Some(0.48), Some(1793862443000)));
+        assert_eq!(l[1]["windowLabel"], "7d");
+        assert_eq!(c["stale"], false);
+        assert_eq!(super::codex_usage_shape(&rl, 0).unwrap()["stale"], true);
     }
 }
