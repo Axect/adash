@@ -664,6 +664,24 @@ fn parse_answer(j: &Value) -> Option<crate::ask::Answer> {
     }
 }
 
+/// The rows of the last omp Ask box on a screen (title "─ Ask" or "─ Ask · k/N") with whether the
+/// cursor is on each; empty when no box is drawn.
+fn form_rows(s: &[String]) -> Vec<(String, bool)> {
+    let Some(top) = s.iter().rposition(|l| l.starts_with('╭') && l.contains("─ Ask")) else { return vec![] };
+    s[top + 1..]
+        .iter()
+        .take_while(|l| !l.starts_with('├') && !l.starts_with('╰'))
+        .filter_map(|l| l.strip_prefix('│'))
+        .map(|l| {
+            let mut c = l.chars();
+            let (c0, c1, c2) = (c.next(), c.next(), c.next());
+            let cur =
+                c0 == Some(' ') && c1.is_some_and(|x| x != ' ' && ("\u{f054}›❯▶>→".contains(x) || ('\u{e000}'..='\u{f8ff}').contains(&x))) && c2 == Some(' ');
+            (l.trim().to_string(), cur)
+        })
+        .collect()
+}
+
 /// omp 18.18 HTML-form ask: one box with every field's rows (options, an automatic "Other"
 /// row per choice group, text fields) and a Submit row. Keys, as its footer and a test session
 /// show: ↑/↓ move the cursor; on an option Enter chooses (single) or Space toggles (multi);
@@ -677,24 +695,7 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     // (the caller holds the terminal's send lock)
     let start = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
     // the dialog rows: (text, cursor here)
-    let rows = || -> Vec<(String, bool)> {
-        let s = term::screen(&h).unwrap_or_default();
-        // the box title is "─ Ask ─" or, on a paged form, "─ Ask · k/N ─"
-        let top = s.iter().rposition(|l| l.starts_with('╭') && l.contains("─ Ask")).unwrap_or(0);
-        s[top..]
-            .iter()
-            .take_while(|l| !l.starts_with('├') && !l.starts_with('╰'))
-            .filter_map(|l| l.strip_prefix('│'))
-            .map(|l| {
-                let mut c = l.chars();
-                let (c0, c1, c2) = (c.next(), c.next(), c.next());
-                let cur = c0 == Some(' ')
-                    && c1.is_some_and(|x| x != ' ' && ("\u{f054}›❯▶>→".contains(x) || ('\u{e000}'..='\u{f8ff}').contains(&x)))
-                    && c2 == Some(' ');
-                (l.trim().to_string(), cur)
-            })
-            .collect()
-    };
+    let rows = || form_rows(&term::screen(&h).unwrap_or_default());
     let key = |k: &str| term::send_keys(&h, &[k]).map_err(|e| (502u16, e));
     // move the cursor onto the row whose text contains `want` (first match after `after`)
     let goto = |want: &str| -> Result<(), (u16, String)> {
@@ -705,7 +706,19 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
                 // omp draws an empty frame while the box is hidden (Alt+H); adash never sends Alt+H
                 return Err((409, "the question box is hidden or empty on the screen (omp Alt+H shows it); answer in the terminal".into()));
             }
-            let Some(cur) = r.iter().position(|x| x.1) else { return Err((409, "the question box is not on the screen; answer in the terminal".into())) };
+            // a long description fills the first page of a paged form ("Ask · 1/N", "←/→ page"):
+            // the fields are on a later page
+            let Some(cur) = r.iter().position(|x| x.1) else {
+                let paged = term::screen(&h).is_ok_and(|l| l.iter().any(|x| x.contains("←/→ page")));
+                let open = term::screen(&h).is_ok_and(|l| l.iter().any(|x| x.contains("next field")));
+                if paged || open {
+                    // the cursor row is below the visible part: a page turn or a step brings it up
+                    key(if paged { "Right" } else { "Down" })?;
+                    std::thread::sleep(Duration::from_millis(200));
+                    continue;
+                }
+                return Err((409, "the question box is not on the screen; answer in the terminal".into()));
+            };
             if r[cur].0.contains(&want) {
                 return Ok(());
             }
@@ -1493,7 +1506,7 @@ fn scan_outdated(sh: &Arc<Shared>) {
         let mut later = crate::outdated::WHEN_IDLE.plock();
         for a in &snap.agents {
             let is_old = a.handle.as_ref().is_some_and(|h| od.contains_key(h));
-            if later.contains(&a.name) && (!is_old || a.state != "working") {
+            if later.contains(&a.name) && (!is_old || !matches!(a.state.as_str(), "working" | "asking")) {
                 later.remove(&a.name);
                 if is_old && crate::outdated::plan(a, false) == "now" {
                     go.push(a.name.clone());
@@ -1516,6 +1529,10 @@ fn scan_outdated(sh: &Arc<Shared>) {
 /// `when_idle`, asking / drafts skipped. Per harness one at a time; the first restart of a
 /// harness is checked for a sign-in screen before the rest follow.
 fn restart_outdated(sh: &Shared, names: &[String], when_idle: bool) -> Value {
+    restart_outdated_with(sh, names, when_idle, false)
+}
+
+fn restart_outdated_with(sh: &Shared, names: &[String], when_idle: bool, now_asking: bool) -> Value {
     let snap = sh.snap.plock().clone();
     let od = sh.outdated.plock().clone();
     let mut by_kind: HashMap<String, Vec<crate::collect::Agent>> = HashMap::new();
@@ -1525,7 +1542,7 @@ fn restart_outdated(sh: &Shared, names: &[String], when_idle: bool) -> Value {
             results.push(json!({"name": a.name, "action": "skip", "reason": "not_outdated"}));
             continue;
         }
-        match crate::outdated::plan(a, when_idle) {
+        match crate::outdated::plan_with(a, when_idle, now_asking) {
             "now" => by_kind.entry(a.agent_type.clone()).or_default().push(a.clone()),
             "later" => {
                 crate::outdated::WHEN_IDLE.plock().insert(a.name.clone());
@@ -1547,7 +1564,7 @@ fn restart_outdated(sh: &Shared, names: &[String], when_idle: bool) -> Value {
                             continue;
                         }
                         let s = sh.snap.plock().clone();
-                        let r = crate::lifecycle::restart(&s, a, &json!({}));
+                        let r = crate::lifecycle::restart(&s, a, &json!({"confirmWorking": now_asking, "renotifyAsk": now_asking}));
                         refresh(sh);
                         match r {
                             Ok(v) => {
@@ -3147,7 +3164,7 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
                 .filter(|a| j["names"].as_array().is_none_or(|ns| ns.iter().any(|n| n.as_str() == Some(a.name.as_str()))))
                 .map(|a| a.name.clone())
                 .collect();
-            Ok((200, restart_outdated(sh, &names, j["whenIdle"] == true)))
+            Ok((200, restart_outdated_with(sh, &names, j["whenIdle"] == true, j["restartAsking"] == true)))
         }
         (Method::Post, ["api", "fix-all"]) => {
             // errors: retry; sign-in screens: restart on the same session when the harness is
@@ -3813,5 +3830,26 @@ mod retry_tests {
             assert_eq!(super::retry_mode(t), "message");
             assert!(super::retry_info(t)["how"].as_str().unwrap().contains(super::RETRY_MESSAGE));
         }
+    }
+
+    /// 2026-11-11: a long description filled the first page of a paged form; the box is there,
+    /// the fields are not visible, so the answer must turn the page instead of giving up.
+    #[test]
+    fn long_form_first_page_has_a_box_but_no_cursor() {
+        let mut screen: Vec<String> = vec!["╭─ Ask ─── old box".into(), "│ old".into(), "╰─── 2 fields ───".into(), String::new(), "╭─ Ask · 1/2 ─────".into()];
+        screen.extend(
+            ["│ 다섯 영역 분류와 75/25 배분으로 …", "│", "│ [Image: Carbon v5-3 [image/png] 1754x987]", "│ 4. Carbon v5-1 \"층 + 화살표\""]
+                .iter()
+                .map(|x| x.to_string()),
+        );
+        screen.push("├──────────".into());
+        screen.push("│ \u{f0311} choose · ↑/↓ move · \u{f0312} next field · \u{f12b7} cancel · Alt+H hide · ←/→ page".into());
+        screen.push("╰──────────".into());
+        let r = super::form_rows(&screen);
+        assert_eq!(r.len(), 4, "the last box, not the earlier one");
+        assert!(r.iter().all(|x| !x.1), "no cursor row on the description page");
+        assert!(!r.iter().all(|x| x.0.is_empty()), "not a hidden (empty) box");
+        let opts = vec!["╭─ Ask · 2/2 ─".to_string(), "│ \u{f054} \u{f192} 1. Carbon".into(), "│   \u{f10c} 2. Fable".into(), "├──".into()];
+        assert_eq!(super::form_rows(&opts).iter().position(|x| x.1), Some(0));
     }
 }

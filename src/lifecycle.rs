@@ -157,6 +157,16 @@ pub fn restart(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
         // a news box holds the input (and the exit keys)
         crate::server::dismiss_agy_notice(&h);
     }
+    // an open question is cancelled by the restart: with `renotifyAsk`, tell the agent afterwards
+    let asked: Vec<String> = a
+        .ask
+        .as_ref()
+        .filter(|_| a.state == "asking")
+        .map(|q| {
+            q.questions.iter().map(|x| if x.question.is_empty() { x.id.clone() } else { x.question.clone() }).filter(|t| !t.is_empty()).collect::<Vec<_>>()
+        })
+        .map(|v| if v.is_empty() { vec![a.ask.as_ref().map(|q| q.question.clone()).unwrap_or_default()] } else { v })
+        .unwrap_or_default();
     let mut cj = j.clone();
     cj["mode"] = json!("graceful");
     let closed = close(snap, a, &cj)?;
@@ -174,7 +184,31 @@ pub fn restart(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
         let handle = term::create(Path::new(&p.cwd), &a.project, &a.name, Some(&cmd), None).map_err(|x| err(502, "create_failed", json!({"error": x})))?;
         json!({"ok": true, "name": a.name, "handle": handle, "command": cmd})
     };
-    Ok(json!({"ok": true, "name": a.name, "restarted": true, "close": closed, "open": opened}))
+    let mut notified = false;
+    if j["renotifyAsk"] == true && !asked.is_empty() {
+        if let Some(h) = opened["handle"].as_str().map(String::from) {
+            let name = a.name.clone();
+            let text = format!(
+                "[adash] 이전 질문이 재시작으로 취소됐습니다. 필요하면 다시 물어봐 주세요: {}",
+                asked.iter().filter(|t| !t.is_empty()).cloned().collect::<Vec<_>>().join(" / ")
+            );
+            // after the harness is up and idle
+            std::thread::spawn(move || {
+                for _ in 0..30 {
+                    std::thread::sleep(Duration::from_secs(3));
+                    let Ok(l) = term::screen(&h) else { continue };
+                    if l.iter().any(|x| x.starts_with("> ") || x.trim() == ">" || x.trim_start().starts_with('❯') || x.contains("? for shortcuts")) {
+                        std::thread::sleep(Duration::from_secs(2));
+                        let _ = term::send_line(&h, &text);
+                        eprintln!("adash: {name}: told about the cancelled question");
+                        return;
+                    }
+                }
+            });
+            notified = true;
+        }
+    }
+    Ok(json!({"ok": true, "name": a.name, "restarted": true, "close": closed, "open": opened, "askRenotify": notified}))
 }
 
 /// Launch details for a closed/offline agent: the dashboard's close record, else the

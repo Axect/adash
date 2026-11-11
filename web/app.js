@@ -1360,13 +1360,14 @@
   }
   const odAgents = () => (state?.agents || []).filter((a) => a.outdated);
   // Mirrors outdated::plan(): what a bulk restart will do with each agent.
-  function odPlan(a, whenIdle) {
-    if (a.state === "asking" || a.state === "trust") return "skip_asking";
+  function odPlan(a, whenIdle, nowAsking) {
+    if (a.state === "trust") return "skip_trust";
+    if (a.state === "asking") return nowAsking ? "now" : whenIdle ? "later" : "skip_asking";
     if (String(a.draft?.text || "").trim()) return "skip_draft";
     if (a.state === "working") return whenIdle ? "later" : "skip_working";
     return "now";
   }
-  const OD_ACT = { now: ["바로 재시작", "restart now"], later: ["작업 끝나면 재시작", "restart when idle"], skip_asking: ["건너뜀: 질문 중", "skip: asking"], skip_draft: ["건너뜀: 입력창 초안 있음", "skip: unsent draft"], skip_working: ["건너뜀: 작업 중", "skip: working"], not_outdated: ["건너뜀: 이미 최신", "skip: up to date"], sign_in_first: ["건너뜀: 먼저 로그인 필요", "skip: sign in first"] };
+  const OD_ACT = { now: ["바로 재시작", "restart now"], later: ["작업 끝나면 재시작", "restart when idle"], skip_asking: ["건너뜀: 질문 중", "skip: asking"], skip_trust: ["건너뜀: 폴더 신뢰 필요 (카드에서 '이 폴더 신뢰')", "skip: folder trust needed"], skip_draft: ["건너뜀: 입력창 초안 있음", "skip: unsent draft"], skip_working: ["건너뜀: 작업 중", "skip: working"], not_outdated: ["건너뜀: 이미 최신", "skip: up to date"], sign_in_first: ["건너뜀: 먼저 로그인 필요", "skip: sign in first"] };
   const odActLabel = (k) => { const v = OD_ACT[k]; return v ? L2(v[0], v[1]) : k; };
   function odSummaryBtn() {
     const list = odAgents(); if (!list.length) return "";
@@ -1377,15 +1378,17 @@
   function odDialog(names) {
     const list = odAgents().filter((a) => !names || names.includes(a.name));
     if (!list.length) return toast(L2("업데이트된 세션이 없습니다", "No updated sessions"));
-    const rows = (wi) => list.map((a) => `<tr><td>${esc(a.name)}</td><td class="muted">${esc(a.agentType || "")} ${esc(a.outdated.running || "")}→${esc(a.outdated.installed || "")}</td><td class="od-act-${odPlan(a, wi)}">${esc(odActLabel(odPlan(a, wi)))}</td></tr>`).join("");
+    const rows = (wi, na) => list.map((a) => { const p = odPlan(a, wi, na); const lab = p === "later" && a.state === "asking" ? L2("질문 답하면 재시작", "restart after the answer") : odActLabel(p); return `<tr><td>${esc(a.name)}</td><td class="muted">${esc(a.agentType || "")} ${esc(a.outdated.running || "")}→${esc(a.outdated.installed || "")}</td><td class="od-act-${p}">${esc(lab)}</td></tr>`; }).join("");
     dialog(`<h3>${esc(L2(`다시 시작 · ${list.length}개`, `Restart · ${list.length}`))}</h3><p class="muted small">${esc(L2("다시 시작하면 업데이트된 하네스로 같은 세션을 다시 엽니다. 질문 중이거나 입력창 초안이 있는 세션은 건너뜁니다.", "Each session reopens on the updated harness. Sessions asking a question or holding a draft are skipped."))}</p>
       <label class="ld-check"><input type="checkbox" id="od-wi" checked> ${esc(L2("작업 중인 세션도 끝나면 재시작", "Also restart working sessions when they finish"))}</label>
-      <div class="od-list"><table id="od-tbl">${rows(true)}</table></div>`, L2("다시 시작", "Restart"), () => odRun(list.map((a) => a.name), $("#od-wi")?.checked !== false));
-    $("#od-wi").addEventListener("change", (e) => { $("#od-tbl").innerHTML = rows(e.target.checked); });
+      ${list.some((a) => a.state === "asking") ? `<label class="ld-check"><input type="checkbox" id="od-na"> ${esc(L2("질문 중인 세션도 지금 재시작 (질문은 취소되고, 다시 물어보라고 알림)", "Restart sessions with an open question now (the question is cancelled; the agent is told to ask again)"))}</label>` : ""}
+      <div class="od-list"><table id="od-tbl">${rows(true, false)}</table></div>`, L2("다시 시작", "Restart"), () => odRun(list.map((a) => a.name), $("#od-wi")?.checked !== false, !!$("#od-na")?.checked));
+    const upd = () => { $("#od-tbl").innerHTML = rows($("#od-wi").checked, !!$("#od-na")?.checked); };
+    $("#od-wi").addEventListener("change", upd); $("#od-na")?.addEventListener("change", upd);
   }
-  async function odRun(names, whenIdle) {
+  async function odRun(names, whenIdle, restartAsking) {
     let r;
-    try { r = await api("POST", "/api/restart-outdated", { names, whenIdle }); } catch (e) { return toast(L2(`다시 시작 실패: ${e.message}`, `Restart failed: ${e.message}`)); }
+    try { r = await api("POST", "/api/restart-outdated", { names, whenIdle, restartAsking: !!restartAsking }); } catch (e) { return toast(L2(`다시 시작 실패: ${e.message}`, `Restart failed: ${e.message}`)); }
     odPending.clear(); (r?.pending || []).forEach((n) => odPending.add(n));
     const res = r?.results || [], n = (f) => res.filter(f).length;
     const now = n((x) => x.action !== "later" && x.action !== "skip"), later = n((x) => x.action === "later"), skip = n((x) => x.action === "skip");
@@ -2457,15 +2460,20 @@
   // 다시 시작: graceful close + reopen of the same session (the harness re-reads its sign-in).
   // Working / asking / a draft: the same warnings as 종료, then confirmed.
   function restartAgent(name) {
+    // an open question: it is cancelled; offer to have the agent ask again afterwards
+    if (agentBy(name)?.state === "asking") {
+      dialog(`<h3>${t_("다시 시작")} · ${esc(name)}</h3><p>${esc(L2("질문이 취소됩니다.", "The open question is cancelled."))}</p><label class="ld-check"><input type="checkbox" id="rs-reask" checked> ${esc(L2("다시 시작 후 에이전트에게 같은 질문을 다시 물어보라고 알리기", "Tell the agent to ask again after the restart"))}</label>`, t_("다시 시작"), () => doRestart(name, true, $("#rs-reask")?.checked !== false));
+      return;
+    }
     const warn = closeWarnings([name]);
     if (!warn.length) return doRestart(name, false);
     dialog(`<h3>${t_("다시 시작")} · ${esc(name)}</h3><p>${t_("정상 종료한 뒤 같은 세션으로 다시 엽니다.")}</p><div class="close-warn"><b>${t_("주의")}</b><ul>${warn.join("")}</ul></div>`, t_("다시 시작"), () => doRestart(name, true));
   }
-  async function doRestart(name, confirmed) {
+  async function doRestart(name, confirmed, reask) {
     const wasAuth = agentBy(name)?.state === "auth";
     toast(`${name} ${t_("다시 시작하는 중…")}`, 15000);
     try {
-      await api("POST", `/api/agents/${enc(name)}/restart`, confirmed ? { confirmWorking: true, discardDraft: true } : {}, { quiet: true });
+      await api("POST", `/api/agents/${enc(name)}/restart`, confirmed ? { confirmWorking: true, discardDraft: true, renotifyAsk: !!reask } : {}, { quiet: true });
       toast(`${name} ${t_("다시 시작함")}`, 3000);
     } catch (e) {
       toast(`${t_("다시 시작하지 않음:")} ${e.status === 409 ? CLOSE_WHY[e.reason] || e.message : e.message}`, 6000);
@@ -3648,7 +3656,7 @@
     if (j.state === "running") return `<div class="aj running"><b>답 넣는 중 ${prog}…</b><span class="muted small">${esc(ANS_STEP_KO[j.step] || j.step || "")}</span>${bar}<div class="muted small">끝날 때까지 다른 조작은 잠시 막아 둡니다</div></div>`;
     if (j.state === "done") return `<div class="aj done"><b>${j.verified === false ? "답을 넣었습니다 · 반영은 확인하지 못함" : "답을 넣었습니다 ✓"}</b>${prog ? `<span class="muted small">${prog}</span>` : ""}${j.verified === false ? `<div class="muted small">터미널에서 한 번 확인해 주세요.</div><div class="aj-act"><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div>` : ""}</div>`;
     if (j.state === "unknown") return `<div class="aj warn"><b>진행 상태를 확인하지 못했습니다</b><div class="muted small">답이 들어갔을 수 있습니다. 다시 보내기 전에 터미널에서 확인하세요.${j.reason ? ` (${esc(j.reason)})` : ""}</div><div class="aj-act"><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div></div>`;
-    return `<div class="aj failed"><b>답을 넣지 못했습니다${prog ? ` (${prog}에서 멈춤)` : ""}</b><div class="muted small">${esc(j.reason || "이유 없음")}</div><div class="aj-act"><button class="primary" data-act="aj-retry">다시 시도</button><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div></div>`;
+    return `<div class="aj failed"><b>답을 넣지 못했습니다${prog ? ` (${prog}에서 멈춤)` : ""}</b><div class="muted small">${esc(j.reason || "이유 없음")}</div><div class="aj-act"><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button><button class="primary" data-act="aj-retry">다시 시도</button><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div></div>`;
   }
   const normJob = (r) => ({ state: r.state || r.status || "running", step: r.step || r.phase, k: r.k ?? r.done ?? r.progress?.done, n: r.n ?? r.total ?? r.progress?.total, verified: r.verified, reason: r.reason || r.error });
   function setJob(name, j) { answerJobs.set(name, { ...answerJobs.get(name), ...j, name }); renderAskCard(); render(); }

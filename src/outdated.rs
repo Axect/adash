@@ -122,10 +122,20 @@ fn omp_runtime(f: &Path) -> Option<String> {
 pub static WHEN_IDLE: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(Default::default);
 
 /// What a bulk restart does with one agent: "now", "later" (working), or a skip reason.
+/// `now_asking`: restart agents with an open question at once (the question is cancelled);
+/// otherwise they wait like working ones (after the answer and the turn that follows).
 pub fn plan(a: &Agent, when_idle: bool) -> &'static str {
+    plan_with(a, when_idle, false)
+}
+
+pub fn plan_with(a: &Agent, when_idle: bool, now_asking: bool) -> &'static str {
     let draft = a.draft.as_ref().and_then(|d| d["text"].as_str()).is_some_and(|t| !t.trim().is_empty());
     match a.state.as_str() {
-        "asking" | "trust" => "skip_asking",
+        // a restart shows the same trust screen again
+        "trust" => "skip_trust",
+        "asking" if now_asking => "now",
+        "asking" if when_idle => "later",
+        "asking" => "skip_asking",
         _ if draft => "skip_draft",
         "working" if when_idle => "later",
         "working" => "skip_working",
@@ -156,7 +166,10 @@ mod tests {
         assert_eq!(plan(&a("done", false), false), "now");
         assert_eq!(plan(&a("working", false), true), "later");
         assert_eq!(plan(&a("working", false), false), "skip_working");
-        assert_eq!(plan(&a("asking", false), true), "skip_asking");
+        assert_eq!(plan(&a("asking", false), true), "later", "after the answer and its turn");
+        assert_eq!(plan(&a("asking", false), false), "skip_asking");
+        assert_eq!(plan_with(&a("asking", false), true, true), "now");
+        assert_eq!(plan(&a("trust", false), true), "skip_trust");
         assert_eq!(plan(&a("idle", true), true), "skip_draft");
     }
 }
