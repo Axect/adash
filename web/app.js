@@ -1261,7 +1261,9 @@
     if (/^codex/.test(m)) return "codex";
     if ((x = m.match(/^gpt-?[\d.]+(?:-([a-z]+))?/))) return x[1] && !/^(mini|nano|pro|turbo|codex|chat)$/.test(x[1]) ? x[1].slice(0, 6) : x[1] === "codex" ? "codex" : `gpt${m.match(/^gpt-?(\d+)/)?.[1] || ""}`.slice(0, 6);
     if ((x = m.match(/^(o\d)\b/))) return x[1];
-    if (/gemini|argon/.test(m)) return /argon/.test(m) ? "argon" : /flash/.test(m) ? "flash" : "gem";
+    // gemini-<version>-<name>[-variant]: the named line ("argon", "carbon", "flash", "pro")
+    if ((x = m.match(/^gemini-[\d.]+-([a-z]+)/))) return x[1].slice(0, 6);
+    if (/gemini|argon|carbon/.test(m)) return (m.match(/argon|carbon|flash/) || ["gem"])[0];
     for (const [re, f] of [[/glm/, "glm"], [/grok/, "grok"], [/deepseek/, "ds"], [/qwen/, "qwen"], [/kimi/, "kimi"], [/opus|sonnet|haiku|fable|mythos/, null]]) if (re.test(m)) return f || m.match(re)[0];
     return (m.match(/[a-z]+/)?.[0] || "").slice(0, 6);
   }
