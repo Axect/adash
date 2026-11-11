@@ -640,9 +640,13 @@
     const names = new Set(agents.map((a) => a.name));
     return { ...h, agents, projects: (h.projects || []).filter((p) => inScope(p.name)), threads: (h.threads || []).filter((t) => names.has(t.from) || names.has(t.to)) };
   }
+  // Restart-when-idle reservations (agent names); see the outdated section below.
+  const odPending = new Set();
   function setState(s) {
     themeVersionSeen(s?.themeVersion);
     state = scopeState(s);
+    // the server's restart-when-idle list is authoritative: a restarted or cancelled agent drops its ↻ at once
+    if (Array.isArray(state?.restartPending)) { odPending.clear(); state.restartPending.forEach((n) => odPending.add(n)); }
     $("#status").textContent = `갱신 ${new Date(FIXTURE ? s.generatedAt : Date.now()).toLocaleTimeString("ko-KR")}`;
     connOk();
     if (!$("#dlg").open) render();
@@ -1349,8 +1353,8 @@
     return `<span class="hb h-${cls}${fam ? " has-m" : ""}${live ? "" : " off"}" title="${esc(`${s.agentType || "?"} · ${mdl || L2("모델 알 수 없음", "model unknown")}${s.role ? `\n역할: ${s.role}` : ""}${live ? "" : "\n종료됨"}`)}"><i class="hg"></i><span class="hn">${esc(mono)}</span>${fam ? `<span class="hm">${esc(fam)}</span>` : ""}</span>${live ? odMark(s) : ""}`;
   }
   // ---------- harness updated under a running session (v46): /api/state agents[].outdated {installed, running, why} ----------
-  // Restart-when-idle reservations are only in /api/restart-outdated responses (`pending`); kept here per page.
-  const odPending = new Set();
+  // Restart-when-idle reservations: /api/state restartPending (synced in setState), and the
+  // /api/restart-outdated response `pending` right after a click.
   // installedAt (binary mtime) / startedAt (process start), ms: shown when the server sends them.
   const odHm = (t) => { const d = new Date(+t); if (!t || Number.isNaN(+d)) return ""; const hm = `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; return d.toDateString() === new Date().toDateString() ? hm : `${d.getMonth() + 1}/${d.getDate()} ${hm}`; };
   const odTip = (o) => [L2(`실행 중 ${o.running || "?"} → 설치 ${o.installed || "?"}`, `Running ${o.running || "?"} → installed ${o.installed || "?"}`), o.installedAt ? L2(`업데이트 ${odHm(o.installedAt)}`, `updated ${odHm(o.installedAt)}`) : "", o.startedAt ? L2(`이 세션 시작 ${odHm(o.startedAt)}`, `session started ${odHm(o.startedAt)}`) : "", L2("다시 시작하면 적용", "restart to apply")].filter(Boolean).join(" · ");
