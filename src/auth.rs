@@ -104,6 +104,34 @@ pub fn interrupted(kind: &str, screen: &[String]) -> bool {
     stopped && empty_prompt
 }
 
+/// omp's confirmation box for a config change the agent asked for ("💾 Your agent wants to save
+/// `x` to your config." / "⚙️ Your agent wants to change `x`…", from the binary): {question,
+/// detail, options: [{n, label, selected}]}. Options are the rows between the detail and the
+/// "↑/↓ navigate" hint.
+pub fn approval(kind: &str, screen: &[String]) -> Option<Value> {
+    if kind != "omp" {
+        return None;
+    }
+    let top = screen.iter().rposition(|l| l.starts_with('╭') && l.contains("Your agent wants to "))?;
+    let q = screen[top].trim_start_matches(['╭', '─', ' ']).trim_end_matches(['─', '╮', ' ']).trim().to_string();
+    let body: Vec<&str> = screen[top + 1..].iter().take_while(|l| !l.starts_with('╰')).filter_map(|l| l.strip_prefix('│')).map(|l| l.trim_end().trim_end_matches('│')).collect();
+    let hint = body.iter().position(|l| l.contains("navigate"))?;
+    let rows: Vec<&str> = body[..hint].iter().copied().filter(|l| !l.trim().is_empty()).collect();
+    let detail = rows.first()?.trim().to_string();
+    let opts: Vec<Value> = rows[1..]
+        .iter()
+        .enumerate()
+        .map(|(n, l)| {
+            let t = l.trim_start();
+            let first = t.chars().next().unwrap_or(' ');
+            let selected = first == '>' || first == '❯' || ('\u{e000}'..='\u{f8ff}').contains(&first);
+            let label = if selected { t.chars().skip(1).collect::<String>().trim().to_string() } else { t.trim().to_string() };
+            json!({"n": n, "label": label, "selected": selected})
+        })
+        .collect();
+    (!opts.is_empty()).then(|| json!({"question": q, "detail": detail, "options": opts}))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -182,5 +210,29 @@ mod tests {
         let typed = s(&["  ⎿  Interrupted · What should Antigravity CLI do instead?", "> next instruction"]);
         assert!(!interrupted("antigravity", &typed), "something typed: a new turn is coming");
         assert!(!interrupted("omp", &scr));
+    }
+
+    #[test]
+    fn omp_config_change_approval() {
+        let scr = s(&[
+            "  \u{f12b7} Persisting browser.enabled=false",
+            "╭─ 💾 Your agent wants to save `browser.enabled` to your config. ─────",
+            "│",
+            "│ false → false                    │",
+            "│",
+            "│    Always for this session",
+            "│  \u{f054} Allow once",
+            "│    Deny",
+            "│",
+            "│ ↑/↓ navigate  \u{f0311} select  \u{f12b7} cancel",
+            "╰──────",
+            " ⠇ 13h · Opus 5.5",
+        ]);
+        let v = approval("omp", &scr).unwrap();
+        assert_eq!(v["detail"], "false → false");
+        let labels: Vec<&str> = v["options"].as_array().unwrap().iter().map(|o| o["label"].as_str().unwrap()).collect();
+        assert_eq!(labels, vec!["Always for this session", "Allow once", "Deny"]);
+        assert_eq!(moves(&v, 2), Some(("Down", 1)));
+        assert!(approval("claude", &scr).is_none());
     }
 }

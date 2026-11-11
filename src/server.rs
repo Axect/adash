@@ -160,8 +160,8 @@ pub struct Shared {
     pub outdated: Mutex<HashMap<String, Value>>,
     /// handle → when the user stopped its turn (kept while the screen shows it stopped)
     pub interrupted: Mutex<HashMap<String, i64>>,
-    /// handle → (screen hash, session mtime, CPU ticks of its process tree, unchanged since)
-    pub stall: Mutex<HashMap<String, (u64, i64, u64, i64)>>,
+    /// handle → (screen hash, session mtime, CPU ticks of its process tree, unchanged since, checked at)
+    pub stall: Mutex<HashMap<String, (u64, i64, u64, i64, i64)>>,
     /// handle → title of an omp Ask box on the screen (omp 18.18 records the call late)
     pub screen_ask: Mutex<HashMap<String, String>>,
     pub catalog: Mutex<crate::launch::Cached>,
@@ -1425,7 +1425,12 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
         // a login prompt on the screen: the agent waits for the user whatever its transcript says
         if let Some(v) = a.handle.as_ref().and_then(|h| au.get(h)) {
             a.auth = Some(v.clone());
-            a.state = if v["kind"] == "trust" { "trust" } else { "auth" }.into();
+            a.state = match v["kind"].as_str() {
+                Some("trust") => "trust",
+                Some("approval") => "approval",
+                _ => "auth",
+            }
+            .into();
             a.state_since = v["since"].as_i64().unwrap_or(a.state_since);
             a.needs_human = a.snoozed_until.is_none();
         }
@@ -1484,12 +1489,14 @@ fn scan_stalls(sh: &Shared, agents: &[crate::collect::Agent]) {
         let hash = hs.finish();
         let mt = a.session_path.as_deref().map(crate::util::mtime_ms).unwrap_or(0);
         let ticks = procs.get(h).and_then(|v| v.iter().find(|p| p.kind == a.agent_type)).map(|p| tree_ticks(p.pid)).unwrap_or(0);
+        // busy = above 20% of one core since the last look (a tool running); a TUI redrawing its
+        // spinner and timer uses a few percent (2026-11-12: a 13 h wait at a prompt measured ~5%,
+        // and the old fixed "1 s per look" missed it once rounds took longer than 10 s)
         let since = match st.get(h) {
-            // more than ~1 s of CPU since the last look: a tool or the harness is busy
-            Some(&(ph, pm, pt, s)) if ph == hash && pm == mt && ticks.saturating_sub(pt) < 100 => s,
+            Some(&(ph, pm, pt, s, at)) if ph == hash && pm == mt && ticks.saturating_sub(pt) * 1000 < 20 * (now - at).max(1) as u64 => s,
             _ => now,
         };
-        keep.insert(h.clone(), (hash, mt, ticks, since));
+        keep.insert(h.clone(), (hash, mt, ticks, since, now));
     }
     *st = keep;
 }
@@ -1693,7 +1700,11 @@ fn scan_auth(sh: &Arc<Shared>) {
             v["since"] = prev_q.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             queued.insert(h.clone(), v);
         }
-        if let Some(mut v) = crate::auth::trust(&a.agent_type, &lines) {
+        if let Some(mut v) = crate::auth::approval(&a.agent_type, &lines) {
+            v["kind"] = json!("approval");
+            v["since"] = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
+            found.insert(h.clone(), v);
+        } else if let Some(mut v) = crate::auth::trust(&a.agent_type, &lines) {
             // a terminal the dashboard started in a folder the user chose: accept at once
             if v["yes"].is_u64()
                 && crate::config::get().launch.auto_trust
@@ -2597,6 +2608,45 @@ fn handle(sh: &Shared, mut req: Request) {
                     reply_json(req, 200, &v)
                 }
                 Err(e) => reply_json(req, 502, &json!({"error": e})),
+            }
+        }
+        (Method::Post, ["api", "agents", name, "approve"]) => {
+            // omp confirmation box: {option: n} picks that row (as read off the screen)
+            let a = match agent_for(sh, name, None) {
+                Ok(a) => a,
+                Err(e) => return reply_json(req, e.0, &json!({"error": e.1})),
+            };
+            let Some(h) = a.handle.clone() else { return reply_json(req, 409, &json!({"error": "this agent has no terminal"})) };
+            let j: Value = serde_json::from_str(&body).unwrap_or(Value::Null);
+            let lk = term::send_lock(&h);
+            let _g = lk.plock();
+            let r = (|| -> Res<Value> {
+                let v = crate::auth::approval(&a.agent_type, &term::screen(&h)?).ok_or("no confirmation box on the screen")?;
+                let n = j["option"].as_u64().ok_or("option required")? as usize;
+                let label = v["options"][n]["label"].as_str().ok_or("no such option")?.to_string();
+                let (key, k) = crate::auth::moves(&v, n).ok_or("no option is selected on the screen")?;
+                for _ in 0..k {
+                    term::send_keys(&h, &[key])?;
+                    std::thread::sleep(Duration::from_millis(150));
+                }
+                term::send_keys(&h, &["Enter"])?;
+                for _ in 0..20 {
+                    std::thread::sleep(Duration::from_millis(300));
+                    if term::screen(&h).is_ok_and(|l| crate::auth::approval(&a.agent_type, &l).is_none()) {
+                        return Ok(json!({"ok": true, "chose": label}));
+                    }
+                }
+                Err("the box is still on the screen after Enter".into())
+            })();
+            sh.auth.plock().remove(&h);
+            drop(_g);
+            refresh(sh);
+            match r {
+                Ok(v) => {
+                    log_action(sh, &method, &segs, &body);
+                    reply_json(req, 200, &v)
+                }
+                Err(e) => reply_json(req, 409, &json!({"error": e})),
             }
         }
         (Method::Post, ["api", "agents", name, "trust"]) => {

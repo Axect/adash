@@ -9,7 +9,7 @@
   // Chat overlay state
   const ov = { open: false, name: null, tab: "info", tx: null, pending: [], held: null, openGroups: new Set(), lastInfoHtml: "", lastLogHtml: "", polling: false };
 
-  const STATE_KO = { asking: "질문 대기", working: "작업 중", done: "완료", waiting: "승인 대기", blocked: "막힘", idle: "유휴", error: "오류로 멈춤", auth: "로그인 필요", trust: "폴더 신뢰 필요" };
+  const STATE_KO = { asking: "질문 대기", working: "작업 중", done: "완료", waiting: "승인 대기", blocked: "막힘", idle: "유휴", error: "오류로 멈춤", auth: "로그인 필요", trust: "폴더 신뢰 필요", approval: "승인 필요" };
   const STATUS_KO = { queued: "대기열", held_possible_draft: "보류(초안 의심)", delivered: "전달됨", delivery_unconfirmed: "전달 미확인", answered: "답변됨", relay_held: "답변 보류", relayed: "회신 완료", escalated: "에스컬레이션", failed: "실패" };
   const HELD_KO = { trust: "폴더 신뢰 필요", draft: "입력창 초안", working: "작업 중", asking: "질문 대기", unreadable: "입력창 확인 불가", network: "네트워크 대기" };
   // Message/answer channels recorded per interaction.
@@ -30,7 +30,7 @@
   const stateKo = (s) => STATE_KO[s] || (s ? `${s} (승인 대기)` : "?");
   // `asking` (an open ask/permission prompt) blocks on me even while the session record still shows `working`.
   // `error` = stopped on a provider/API error (lastError); it blocks on me like an open question.
-  const kindOf = (a) => (a.state === "asking" || a.state === "trust" || a.ask ? "asking" : a.state === "error" || a.state === "auth" ? "error" : a.needsHuman && !a.snoozedUntil ? "waiting" : a.state === "working" ? "working" : "idle");
+  const kindOf = (a) => (a.state === "asking" || a.state === "trust" || a.state === "approval" || a.ask ? "asking" : a.state === "error" || a.state === "auth" ? "error" : a.needsHuman && !a.snoozedUntil ? "waiting" : a.state === "working" ? "working" : "idle");
   const errLabel = (e) => (e ? `오류${e.status ? ` ${e.status}` : ""}` : "오류");
   const errTip = (e) => (e ? [`${errLabel(e)}${e.provider || e.model ? ` · ${[e.provider, e.model].filter(Boolean).join(" / ")}` : ""}`, e.message || "", e.at ? new Date(e.at).toLocaleString("ko-KR") : ""].filter(Boolean).join("\n") : "제공자 API 오류로 멈춤");
   // Retry (v19): the label comes from the backend (`agent.retry.label`, e.g. how that harness retries);
@@ -3468,6 +3468,14 @@
   // ---------- login prompt on the agent's screen (state "auth") ----------
   function renderAuthCard() {
     const card = $("#auth-card"), a = ov.open && ov.name ? agentBy(ov.name) : null;
+    if (a?.state === "approval" && a.auth) {
+      const t = a.auth;
+      const html = `<div class="ask-head"><span class="relay-tag">${t_("승인 필요")}</span><span class="muted small">${esc(t.question || "")}</span><span class="spacer"></span><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button></div>
+        <div class="auth-row"><code class="path">${esc(t.detail || "")}</code></div>
+        <div class="auth-row"><span class="spacer"></span>${(t.options || []).map((o) => `<button data-approve="${o.n}"${o.selected ? ' class="primary"' : ""}>${esc(o.label)}</button>`).join("")}</div>`;
+      if (card._h !== html) { card.innerHTML = html; card._h = html; }
+      card.hidden = false; return;
+    }
     if (a?.state === "trust" && a.auth) {
       const t = a.auth, ok = Number.isInteger(t.yes);
       const html = `<div class="ask-head"><span class="relay-tag">${t_("폴더 신뢰 필요")}</span><span class="muted small">${esc(t.question || "")}</span><span class="spacer"></span><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button></div>
@@ -3492,6 +3500,13 @@
     card.hidden = false;
   }
   $("#auth-card").addEventListener("click", async (e) => {
+    const ap = e.target.closest("[data-approve]");
+    if (ap && ov.name) {
+      const name = ov.name; ap.disabled = true;
+      try { const r = await api("POST", `/api/agents/${enc(name)}/approve`, { option: +ap.dataset.approve }, { quiet: true }); toast(`${name}: ${r?.chose || ""}`, 4000); }
+      catch (err) { toast(`${t_("처리하지 못함:")} ${err.message}`, 6000); ap.disabled = false; }
+      return;
+    }
     const b = e.target.closest("[data-trust]"); if (!b || !ov.name) return;
     const name = ov.name, accept = b.dataset.trust === "1";
     b.disabled = true;
