@@ -114,7 +114,8 @@ pub fn approval(kind: &str, screen: &[String]) -> Option<Value> {
     }
     let top = screen.iter().rposition(|l| l.starts_with('╭') && l.contains("Your agent wants to "))?;
     let q = screen[top].trim_start_matches(['╭', '─', ' ']).trim_end_matches(['─', '╮', ' ']).trim().to_string();
-    let body: Vec<&str> = screen[top + 1..].iter().take_while(|l| !l.starts_with('╰')).filter_map(|l| l.strip_prefix('│')).map(|l| l.trim_end().trim_end_matches('│')).collect();
+    let body: Vec<&str> =
+        screen[top + 1..].iter().take_while(|l| !l.starts_with('╰')).filter_map(|l| l.strip_prefix('│')).map(|l| l.trim_end().trim_end_matches('│')).collect();
     let hint = body.iter().position(|l| l.contains("navigate"))?;
     let rows: Vec<&str> = body[..hint].iter().copied().filter(|l| !l.trim().is_empty()).collect();
     let detail = rows.first()?.trim().to_string();
