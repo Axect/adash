@@ -287,6 +287,8 @@ code.path { font: var(--fs-xs) var(--mono); color: var(--muted); user-select: al
 /* Terminal snapshots wrap instead of scrolling sideways; monospace + no ligatures keep box-drawing (│ ╭ ─) aligned. */
 .m.thinking { align-self: flex-start; max-width: 100%; color: var(--muted); font-size: .92em; }
 .m.thinking > summary { cursor: pointer; }
+.open-menu { position: fixed; z-index: 50; display: flex; flex-direction: column; min-width: 180px; }
+.open-menu button { text-align: left; }
 .term-keys { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 10px; border-top: 1px solid var(--border); background: var(--card); }
 .term-keys input { flex: 1 1 200px; min-width: 120px; font-family: var(--mono); }
 .term-keys button { min-width: 2.4em; }

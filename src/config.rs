@@ -98,6 +98,11 @@ pub struct Open {
     /// App for Markdown files opened from chat (e.g. `typora`; macOS: an app name such as
     /// `Typora`). Unset: the system default (`xdg-open` / `open`).
     pub markdown_app: Option<String>,
+    /// Editor for code and text files opened from chat (e.g. `nvim`). Unset: `$VISUAL`, then
+    /// `$EDITOR` when they name a real program; else the system opener.
+    pub editor: Option<String>,
+    /// Run the editor inside a terminal window; unset: yes for terminal editors (nvim, vim, hx…)
+    pub editor_in_terminal: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -289,6 +294,8 @@ pub fn config_text(c: &Config) -> String {
          [open]\n\
          # app for Markdown files opened from chat; unset = system default\n\
          {md}\
+         # editor for code and text files opened from chat; unset = $VISUAL / $EDITOR, else system default\n\
+         {editor}\
          \n\
          [reports]\n\
          # Chromium-family browser for PDF reports; unset = search PATH\n\
@@ -327,6 +334,7 @@ pub fn config_text(c: &Config) -> String {
         silence = c.notifications.silence_harness,
         stall = c.notifications.stall_minutes,
         md = opt("markdownApp", &c.open.markdown_app, "typora"),
+        editor = opt("editor", &c.open.editor, "nvim"),
         chrome = opt("chrome", &c.reports.chrome, "/usr/bin/chromium"),
         skill = opt("skill", &c.magi.skill, "~/skills/magi-research/SKILL.md"),
         net = c.network.enabled,
@@ -408,7 +416,7 @@ pub fn schema() -> serde_json::Value {
             "harnesses": {"type": "object", "additionalProperties": false, "properties": {"omp": {"type": "boolean"}, "claude": {"type": "boolean"}, "codex": {"type": "boolean"}, "antigravity": {"type": "boolean"}}},
             "terminal": {"type": "object", "additionalProperties": false, "properties": {"emulator": s("auto, or an emulator command such as ghostty / \"kitty --single-instance\""), "tmux": s("tmux binary")}},
             "notifications": {"type": "object", "additionalProperties": false, "properties": {"backend": {"enum": ["auto", "notify-send", "terminal-notifier", "osascript", "none"]}, "silenceHarness": {"type": "boolean"}, "stallMinutes": {"type": "integer", "minimum": 0}}},
-            "open": {"type": "object", "additionalProperties": false, "properties": {"markdownApp": s("app for Markdown files opened from chat")}},
+            "open": {"type": "object", "additionalProperties": false, "properties": {"markdownApp": s("app for Markdown files opened from chat"), "editor": s("editor for code and text files opened from chat"), "editorInTerminal": {"type": "boolean"}}},
             "reports": {"type": "object", "additionalProperties": false, "properties": {"chrome": s("Chromium-family browser for PDF reports")}},
             "magi": {"type": "object", "additionalProperties": false, "properties": {"skill": s("SKILL.md of a multi-agent review skill; unset = magi off")}},
             "network": {"type": "object", "additionalProperties": false, "properties": {"enabled": {"type": "boolean"}, "probes": {"type": "object", "additionalProperties": {"type": "string", "format": "uri"}}}},

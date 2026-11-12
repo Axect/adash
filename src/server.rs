@@ -2800,6 +2800,10 @@ fn handle(sh: &Shared, mut req: Request) {
                 None => reply_json(req, 404, &json!({"error": format!("no file /{path}")})),
             }
         }
+        // a phone never opens apps on the desktop (the chat shows files in its own viewer)
+        (_, ["api", "agents", _, "open"]) if device.is_some() => {
+            reply_json(req, 403, &json!({"error": "files open on the desktop only; view it in the dashboard"}));
+        }
         _ => {
             let r = api(sh, &method, &segs, &body, &query);
             if r.as_ref().is_ok_and(|(c, _)| *c < 400) {
@@ -3064,7 +3068,7 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
                 let bases = bases_of(&j["base"]);
                 if segs[3] == "open" {
                     let raw = with_base(ctx, j["path"].as_str().unwrap_or(""), &bases);
-                    op_open(ctx, &raw).map(|v| (200, v))
+                    op_open(ctx, &raw, j["with"].as_str()).map(|v| (200, v))
                 } else {
                     op_stat(ctx, j["paths"].as_array().map(Vec::as_slice).unwrap_or(&[]), &bases).map(|v| (200, v))
                 }
@@ -3764,9 +3768,21 @@ fn with_ctx<R>(sh: &Shared, a: &crate::collect::Agent, f: impl FnOnce(&Ctx) -> R
 
 /// Open a resolved path on the desktop: Markdown with `open.markdownApp` when configured,
 /// anything else with the system opener; detached so the app outlives the request.
-pub fn op_open(ctx: &Ctx, raw: &str) -> Result<Value, (u16, String)> {
-    let r = ctx.resolve(raw)?;
+/// `with`: "editor" | "default" | None (code files go to the editor when one is configured).
+pub fn op_open(ctx: &Ctx, raw: &str, with: Option<&str>) -> Result<Value, (u16, String)> {
+    // `path:12` (or `path:12:3`) from chat: the line to open at
+    static LINE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| regex::Regex::new(r"^(.+?):(\d+)(?::\d+)?$").unwrap());
+    let (raw, line) = match LINE.captures(raw) {
+        Some(c) if ctx.resolve(raw).is_err() => (c[1].to_string(), c[2].parse::<u32>().ok()),
+        _ => (raw.to_string(), None),
+    };
+    let r = ctx.resolve(&raw)?;
     let canon = r.path;
+    let editor = crate::platform::editor();
+    if with != Some("default") && canon.is_file() && crate::platform::is_code_file(&canon) && (editor.is_some() || with == Some("editor")) {
+        let cmd = crate::platform::open_in_editor(&canon, line).map_err(|e| (500, e))?;
+        return Ok(json!({"ok": true, "app": cmd, "editor": true, "path": canon.to_string_lossy(), "line": line}));
+    }
     let md_app = crate::config::get().open.markdown_app.clone();
     crate::platform::open_path(&canon, md_app.as_deref()).map_err(|e| (500, e))?;
     let is_md = canon.extension().is_some_and(|e| e.eq_ignore_ascii_case("md") || e.eq_ignore_ascii_case("markdown"));

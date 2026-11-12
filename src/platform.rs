@@ -317,6 +317,11 @@ pub fn opener() -> &'static str {
 /// leave the cgroup; elsewhere, or without systemd-run, a new session. The child is reaped in
 /// the background.
 pub fn spawn_app(prog: &str, args: &[std::ffi::OsString]) -> std::io::Result<()> {
+    spawn_app_in(prog, args, None)
+}
+
+/// `spawn_app` with a working directory.
+pub fn spawn_app_in(prog: &str, args: &[std::ffi::OsString], dir: Option<&Path>) -> std::io::Result<()> {
     static N: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let detached = |mut c: Command| -> std::io::Result<std::process::Child> {
         c.stdin(std::process::Stdio::null()).stdout(std::process::Stdio::null()).stderr(std::process::Stdio::null());
@@ -336,19 +341,107 @@ pub fn spawn_app(prog: &str, args: &[std::ffi::OsString]) -> std::io::Result<()>
         let unit = format!("adash-open-{}-{}", crate::util::now_ms(), N.fetch_add(1, std::sync::atomic::Ordering::Relaxed));
         let mut c = Command::new("systemd-run");
         c.args(["--user", "--scope", "--collect", "--quiet", "--unit", &unit, "--"]).arg(prog).args(args);
+        if let Some(d) = dir {
+            c.current_dir(d);
+        }
         detached(c).or_else(|_| {
             let mut d = Command::new(prog);
             d.args(args);
+            if let Some(x) = dir {
+                d.current_dir(x);
+            }
             detached(d)
         })?
     } else {
         let mut d = Command::new(prog);
         d.args(args);
+        if let Some(x) = dir {
+            d.current_dir(x);
+        }
         detached(d)?
     };
     let mut child = child;
     std::thread::spawn(move || child.wait());
     Ok(())
+}
+
+/// Code and plain-text files (opened with the editor). Markdown, PDF, images and HTML are not.
+pub fn is_code_file(path: &Path) -> bool {
+    const EXT: &[&str] = &[
+        "py", "rs", "toml", "json", "jsonl", "yaml", "yml", "js", "mjs", "cjs", "ts", "tsx", "jsx", "sh", "bash", "fish", "zsh", "c", "h", "cc", "cpp", "hpp",
+        "cxx", "go", "java", "kt", "jl", "r", "lua", "typ", "tex", "bib", "cls", "sty", "cfg", "ini", "conf", "txt", "log", "csv", "tsv", "sql", "nix", "css",
+        "scss", "vue", "svelte", "rb", "pl", "swift", "zig", "hs", "ml", "ex", "exs", "erl", "dart", "scala", "m", "f90", "cu", "proto", "graphql", "env",
+        "lock", "diff", "patch", "xml", "rst", "org", "vim", "el",
+    ];
+    const NAMES: &[&str] = &["Makefile", "Dockerfile", "Justfile", "CMakeLists.txt", "Cargo.lock", ".gitignore", ".env"];
+    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    NAMES.contains(&name.as_str()) || path.extension().is_some_and(|e| EXT.contains(&e.to_string_lossy().to_ascii_lowercase().as_str()))
+}
+
+const TERMINAL_EDITORS: &[&str] = &["nvim", "vim", "vi", "hx", "helix", "micro", "nano", "emacs", "kak", "nvi", "joe", "ne"];
+
+/// The editor command: `open.editor`, else `$VISUAL` / `$EDITOR` when they name a real program
+/// (`true`, `false`, `:` and `cat`, which shells set to stop editors, are not).
+pub fn editor() -> Option<String> {
+    let real = |v: Option<String>| -> Option<String> {
+        let v = v?.trim().to_string();
+        let prog = v.split_whitespace().next()?.to_string();
+        if ["true", "false", ":", "cat", "less", "more"].contains(&Path::new(&prog).file_name()?.to_str()?) {
+            return None;
+        }
+        (Path::new(&prog).is_absolute() && Path::new(&prog).is_file() || which(&prog)).then_some(v)
+    };
+    real(crate::config::get().open.editor.clone()).or_else(|| real(std::env::var("VISUAL").ok())).or_else(|| real(std::env::var("EDITOR").ok()))
+}
+
+/// argv for an editor on `path`, at `line` when given (`+N file` for vi-likes and nano, `file:N` for
+/// helix / micro / kak).
+pub fn editor_argv(editor: &str, path: &Path, line: Option<u32>) -> Vec<String> {
+    let mut v: Vec<String> = editor.split_whitespace().map(String::from).collect();
+    let base = Path::new(&v[0]).file_name().map(|f| f.to_string_lossy().into_owned()).unwrap_or_default();
+    let p = path.to_string_lossy().into_owned();
+    match (line, base.as_str()) {
+        (Some(n), "hx" | "helix" | "micro" | "kak") => v.push(format!("{p}:{n}")),
+        (Some(n), "code" | "codium" | "zed") => v.extend(["--goto".into(), format!("{p}:{n}")]),
+        (Some(n), _) => v.extend([format!("+{n}"), p]),
+        (None, _) => v.push(p),
+    }
+    v
+}
+
+/// Whether the editor needs a terminal window (`open.editorInTerminal`, else by name).
+pub fn editor_in_terminal(editor: &str) -> bool {
+    crate::config::get().open.editor_in_terminal.unwrap_or_else(|| {
+        let first = editor.split_whitespace().next().unwrap_or("");
+        TERMINAL_EDITORS.contains(&Path::new(first).file_name().and_then(|f| f.to_str()).unwrap_or(""))
+    })
+}
+
+/// Open a code file in the editor (in a terminal window when it is a terminal editor), working
+/// in the file's git root or its folder. Returns the command that ran.
+pub fn open_in_editor(path: &Path, line: Option<u32>) -> Res<String> {
+    let ed = editor().ok_or("no editor configured (open.editor, $VISUAL or $EDITOR)")?;
+    let argv = editor_argv(&ed, path, line);
+    let dir = path.parent().map(|d| {
+        let mut x = d.to_path_buf();
+        loop {
+            if x.join(".git").exists() {
+                return x;
+            }
+            if !x.pop() {
+                return d.to_path_buf();
+            }
+        }
+    });
+    let (prog, args) = if editor_in_terminal(&ed) {
+        let emu = crate::term::pick_emulator().ok_or("no terminal emulator found (terminal.emulator)")?;
+        crate::term::emulator_command(&emu, &argv)
+    } else {
+        (argv[0].clone(), argv[1..].to_vec())
+    };
+    let os: Vec<std::ffi::OsString> = args.iter().map(Into::into).collect();
+    spawn_app_in(&prog, &os, dir.as_deref()).map_err(|e| format!("{prog}: {e}"))?;
+    Ok(argv.join(" "))
 }
 
 /// Open `path` on the desktop, detached; Markdown with the configured app when set.
@@ -560,5 +653,25 @@ mod tests {
         assert_eq!(super::elapsed_ms("02:05:07"), Some(7_507_000));
         assert_eq!(super::elapsed_ms("3-02:05:07"), Some((3 * 86_400 + 7_507) * 1000));
         assert_eq!(super::elapsed_ms("x"), None);
+    }
+}
+
+#[cfg(test)]
+mod editor_tests {
+    use std::path::Path;
+
+    #[test]
+    fn code_files_and_editor_lines() {
+        for f in ["a.py", "src/main.rs", "Cargo.toml", "x.JSON", "Makefile", "run.fish", "paper.tex"] {
+            assert!(super::is_code_file(Path::new(f)), "{f}");
+        }
+        for f in ["notes.md", "a.pdf", "fig.png", "index.html", "noext"] {
+            assert!(!super::is_code_file(Path::new(f)), "{f}");
+        }
+        let p = Path::new("/w/a.rs");
+        assert_eq!(super::editor_argv("nvim", p, Some(12)), vec!["nvim", "+12", "/w/a.rs"]);
+        assert_eq!(super::editor_argv("hx", p, Some(12)), vec!["hx", "/w/a.rs:12"]);
+        assert_eq!(super::editor_argv("code --wait", p, Some(3)), vec!["code", "--wait", "--goto", "/w/a.rs:3"]);
+        assert_eq!(super::editor_argv("nvim", p, None), vec!["nvim", "/w/a.rs"]);
     }
 }

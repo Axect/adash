@@ -1223,15 +1223,28 @@
     ta.value = pre + add + v.slice(ta.selectionEnd ?? s);
     ta.focus(); ta.setSelectionRange(s + add.length, s + add.length);
   }
-  async function openPath(link, alt) {
+  // with: undefined (code → editor, else system app) | "editor" | "default" | "view" (dashboard viewer)
+  // Right-click on a file link: how to open it.
+  const openMenu = { el: null, link: null };
+  function closeOpenMenu() { openMenu.el?.remove(); openMenu.el = null; }
+  document.addEventListener("contextmenu", (e) => {
+    const l = e.target.closest("a.pathlink[data-open-path]"); if (!l || l.dataset.dir || isMobile()) return;
+    e.preventDefault(); closeOpenMenu();
+    const m = document.createElement("div"); m.className = "pop open-menu";
+    m.innerHTML = `<button data-open-with="editor">${esc(L2("편집기로 열기", "Open in editor"))}</button><button data-open-with="default">${esc(L2("기본 앱으로 열기", "Open with default app"))}</button><button data-open-with="view">${esc(L2("대시보드에서 보기", "View in dashboard"))}</button>`;
+    (l.closest("#overlay") || document.body).appendChild(m); openMenu.el = m; openMenu.link = l; placePop(m, l);
+  });
+  document.addEventListener("pointerdown", (e) => { if (openMenu.el && !openMenu.el.contains(e.target)) closeOpenMenu(); }, true);
+  async function openPath(link, alt, withApp) {
     const p = link.dataset.openPath, agent = link.dataset.agent;
-    if (alt && !link.dataset.dir) {
+    // phones view files here (nothing opens on the desktop from a phone)
+    if (((alt || withApp === "view") || isMobile()) && !link.dataset.dir) {
       const a = document.createElement("a");
       a.dataset.local = p; a.dataset.agent = agent; a.setAttribute("href", fileUrl(agent, p, Date.now()));
       return openLocal(a);
     }
     try {
-      const r = await api("POST", `/api/agents/${enc(agent)}/open`, { path: p });
+      const r = await api("POST", `/api/agents/${enc(agent)}/open`, { path: p, ...(withApp ? { with: withApp } : {}) });
       if (!FIXTURE) toast(`열기: ${p}${r?.app || r?.opener ? ` (${r.app || r.opener})` : ""}`, 2500);
     } catch { /* api() already toasted the error */ }
   }
@@ -4719,6 +4732,8 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     if (ga) return openLaunch(ga.dataset.launchProj);
     const pl = e.target.closest("a.pathlink");
     if (pl) { e.preventDefault(); return openPath(pl, e.altKey); }
+    const om = e.target.closest("[data-open-with]");
+    if (om) { const l = openMenu.link; closeOpenMenu(); return openPath(l, false, om.dataset.openWith); }
     const ro = e.target.closest("[data-agent-open]");
     if (ro) return openChat(ro.dataset.agentOpen);
     const hb = e.target.closest("[data-hours]");

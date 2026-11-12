@@ -89,6 +89,13 @@
     "open": {
       "additionalProperties": false,
       "properties": {
+        "editor": {
+          "description": "editor for code and text files opened from chat",
+          "type": "string"
+        },
+        "editorInTerminal": {
+          "type": "boolean"
+        },
         "markdownApp": {
           "description": "app for Markdown files opened from chat",
           "type": "string"
