@@ -23,8 +23,13 @@ fn local_ms(d: NaiveDate) -> i64 {
 
 /// (period, label, from, to). week: last full ISO week; month: `prev` → last full month,
 /// else the current month so far; custom: explicit dates (to exclusive, next midnight).
+/// Period of a report: `from`/`to` when given; else this week (Monday to now) / this month so
+/// far, or with `prev` the last whole week / month.
 pub fn bounds(period: &str, from: Option<&str>, to: Option<&str>, prev: bool) -> Res<(String, String, i64, i64)> {
-    let today = Local::now().date_naive();
+    bounds_on(Local::now().date_naive(), now_ms(), period, from, to, prev)
+}
+
+fn bounds_on(today: NaiveDate, now: i64, period: &str, from: Option<&str>, to: Option<&str>, prev: bool) -> Res<(String, String, i64, i64)> {
     let parse = |s: &str| NaiveDate::parse_from_str(s, "%Y-%m-%d").map_err(|_| format!("bad date {s} (YYYY-MM-DD)"));
     match (period, from) {
         (_, Some(f)) => {
@@ -47,8 +52,12 @@ pub fn bounds(period: &str, from: Option<&str>, to: Option<&str>, prev: bool) ->
         }
         ("week", None) => {
             let this_monday = today - chrono::Duration::days(today.weekday().num_days_from_monday() as i64);
-            let start = this_monday - chrono::Duration::days(7);
-            Ok(("week".into(), format!("{}-W{:02}", start.iso_week().year(), start.iso_week().week()), local_ms(start), local_ms(this_monday)))
+            let (start, end) = if prev {
+                (this_monday - chrono::Duration::days(7), local_ms(this_monday))
+            } else {
+                (this_monday, local_ms(today.succ_opt().unwrap()).min(now))
+            };
+            Ok(("week".into(), format!("{}-W{:02}", start.iso_week().year(), start.iso_week().week()), local_ms(start), end))
         }
         ("month", None) => {
             let first = today.with_day(1).unwrap();
@@ -56,7 +65,7 @@ pub fn bounds(period: &str, from: Option<&str>, to: Option<&str>, prev: bool) ->
                 let pf = (first - chrono::Duration::days(1)).with_day(1).unwrap();
                 Ok(("month".into(), format!("{}-{:02}", pf.year(), pf.month()), local_ms(pf), local_ms(first)))
             } else {
-                Ok(("month".into(), format!("{}-{:02}", first.year(), first.month()), local_ms(first), local_ms(today.succ_opt().unwrap()).min(now_ms())))
+                Ok(("month".into(), format!("{}-{:02}", first.year(), first.month()), local_ms(first), local_ms(today.succ_opt().unwrap()).min(now)))
             }
         }
         _ => Err("period must be week|month|custom (custom needs --from)".into()),
@@ -634,7 +643,7 @@ pub fn due() -> Vec<(String, String, i64, i64)> {
         return vec![];
     }
     let mut out = vec![];
-    for (period, prev) in [("week", false), ("month", true)] {
+    for (period, prev) in [("week", true), ("month", true)] {
         if let Ok(b) = bounds(period, None, None, prev) {
             if path_of(&format!("{}-{}", b.0, b.1), "json").is_none() {
                 out.push(b);
@@ -659,9 +668,18 @@ mod tests {
         assert_eq!(t - f, 7 * 86_400_000);
         let (_, l, f, t) = bounds("custom", Some("2026-10-01"), Some("2026-10-01"), false).unwrap();
         assert_eq!((l.as_str(), t - f), ("20261001_20261001", 86_400_000));
-        let (_, _, f, t) = bounds("week", None, None, false).unwrap();
+        let (_, _, f, t) = bounds("week", None, None, true).unwrap();
         assert_eq!(t - f, 7 * 86_400_000);
         assert!(t <= now_ms());
+        // this week: Monday to now, every day of the week (2026-11-09 is a Monday, W46)
+        for d in 9..=15 {
+            let today = NaiveDate::from_ymd_opt(2026, 11, d).unwrap();
+            let now = local_ms(today) + 17 * 3_600_000;
+            let (_, l, f, t) = bounds_on(today, now, "week", None, None, false).unwrap();
+            assert_eq!((l.as_str(), f, t), ("2026-W46", local_ms(NaiveDate::from_ymd_opt(2026, 11, 9).unwrap()), now), "day {d}");
+            let (_, l, f, _) = bounds_on(today, now, "week", None, None, true).unwrap();
+            assert_eq!((l.as_str(), f), ("2026-W45", local_ms(NaiveDate::from_ymd_opt(2026, 11, 2).unwrap())));
+        }
         let (_, _, f, t) = bounds("month", None, None, true).unwrap();
         assert!((28..=31).contains(&((t - f) / 86_400_000)));
         assert!(bounds("custom", None, None, false).is_err());

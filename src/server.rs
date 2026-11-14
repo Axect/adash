@@ -2472,6 +2472,10 @@ fn handle(sh: &Shared, mut req: Request) {
                 Err(e) => return reply_json(req, 400, &json!({"error": e})),
             };
             let id = format!("{}-{}", b.0, b.1);
+            // the same week / month / range again replaces its report: only when asked
+            if j["overwrite"] != true && crate::report::path_of(&id, "json").is_some() {
+                return reply_json(req, 409, &json!({"error": "exists", "reason": "exists", "id": id, "from": b.2, "to": b.3}));
+            }
             // built in the background (PDF takes a few seconds); the UI polls the list for the id
             std::thread::spawn(move || {
                 let r = crate::analytics::open().and_then(|db| {

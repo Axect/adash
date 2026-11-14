@@ -5224,6 +5224,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     renderReportList();
   }
   function openReports() {
+    fillRpPeriods();
     if (ov.open) closeChat();
     $("#reports").hidden = false; document.body.classList.add("rp-lock");
     // Back button closes it (one history entry while open).
@@ -5245,9 +5246,30 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     const gen = g && !Number.isNaN(+g) ? `${L2("생성", "made")} ${g.getMonth() + 1}/${g.getDate()} ${String(g.getHours()).padStart(2, "0")}:${String(g.getMinutes()).padStart(2, "0")}` : "";
     return [a || b ? (a === b ? a : `${a}–${b}`) : "", gen].filter(Boolean).join(" · ");
   }
-  async function makeReport() {
-    const period = $("#rp-period").value;
-    const body = { period };
+  // Period choices with their dates (local): this week / last week / this month / last month / custom.
+  function rpPeriods() {
+    const d0 = new Date(); d0.setHours(0, 0, 0, 0);
+    const md = (d) => `${d.getMonth() + 1}/${d.getDate()}`;
+    const mon = new Date(d0); mon.setDate(d0.getDate() - ((d0.getDay() + 6) % 7));
+    const pmon = new Date(mon); pmon.setDate(mon.getDate() - 7);
+    const psun = new Date(mon); psun.setDate(mon.getDate() - 1);
+    const m1 = new Date(d0.getFullYear(), d0.getMonth(), 1), pm = new Date(d0.getFullYear(), d0.getMonth() - 1, 1);
+    return [
+      ["week", L2(`이번 주 (${md(mon)}–오늘)`, `This week (${md(mon)}–today)`)],
+      ["week-prev", L2(`지난 주 (${md(pmon)}–${md(psun)})`, `Last week (${md(pmon)}–${md(psun)})`)],
+      ["month", L2(`이번 달 (${md(m1)}–오늘)`, `This month (${md(m1)}–today)`)],
+      ["month-prev", L2(`지난 달 (${pm.getMonth() + 1}월)`, `Last month (${pm.toLocaleString("en", { month: "short" })})`)],
+      ["custom", L2("직접 지정", "Custom")],
+    ];
+  }
+  function fillRpPeriods() {
+    const sel = $("#rp-period"), keep = sel.value || "week";
+    sel.innerHTML = rpPeriods().map(([v, l]) => `<option value="${v}"${v === keep ? " selected" : ""}>${esc(l)}</option>`).join("");
+  }
+  async function makeReport(overwrite) {
+    const choice = $("#rp-period").value || "week";
+    const period = choice.replace("-prev", "");
+    const body = { period, ...(choice.endsWith("-prev") ? { prev: true } : {}), ...(overwrite === true ? { overwrite: true } : {}) };
     if (period === "custom") {
       body.from = $("#rp-from").value; body.to = $("#rp-to").value;
       if (!body.from || !body.to) return toast("기간을 고르세요");
@@ -5256,7 +5278,14 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     btn.disabled = true; btn.textContent = "만드는 중…";
     const done = () => { clearInterval(rp.timer); btn.disabled = false; btn.textContent = "지금 만들기"; };
     try {
-      const r = await api("POST", "/api/reports", body);
+      let r;
+      try { r = await api("POST", "/api/reports", body, { quiet: true }); }
+      catch (e) {
+        done();
+        // the same week / month exists: replace it only when confirmed
+        if (e.status === 409 && e.data?.reason === "exists") return dialog(`<h3>${esc(L2("이미 있는 보고서", "Report exists"))}</h3><p>${esc(L2(`${e.data.id} 보고서가 이미 있습니다. 새로 만들어 덮어쓸까요?`, `${e.data.id} already exists. Replace it?`))}</p>`, L2("덮어쓰기", "Replace"), () => makeReport(true));
+        return toast(e.message);
+      }
       toast("보고서를 만들고 있습니다", 2500);
       // Generation runs in the background: poll the list until the new report appears.
       const want = r?.id;
@@ -5271,7 +5300,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
   }
   $("#open-reports").addEventListener("click", openReports);
   $("#rp-close").addEventListener("click", () => closeReports());
-  $("#rp-make").addEventListener("click", makeReport);
+  $("#rp-make").addEventListener("click", () => makeReport());
   $("#rp-period").addEventListener("change", (e) => { const c = e.target.value === "custom"; $("#rp-from").hidden = !c; $("#rp-to").hidden = !c; });
   $("#reports").addEventListener("click", (e) => {
     if (e.target.closest("a")) return;
