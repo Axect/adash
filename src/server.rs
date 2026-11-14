@@ -737,7 +737,14 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     for (k, q) in ask.questions.iter().enumerate() {
         progress("keys", json!({"k": k + 1, "n": n}));
         let goto = |w: &str| tag(k, goto(w));
-        let ans = get(&q.id).ok_or((400u16, format!("missing answer for '{}'", q.id)))?;
+        // left empty: skipped (an optional field, or a choice keeping its preselected value);
+        // the cursor moves by label, so the next field or Submit is reached past it
+        let Some(ans) = get(&q.id) else {
+            if q.optional || q.recommended.is_some() {
+                continue;
+            }
+            return Err((400, format!("missing answer for '{}'", q.id)));
+        };
         if q.options.is_empty() {
             // a text field: its label row is the cursor stop
             let label = if q.question.is_empty() { q.id.clone() } else { q.question.clone() };

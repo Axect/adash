@@ -22,6 +22,9 @@ pub struct AskQuestion {
     /// omp `header`: the tab / review-page label (falls back to the id)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub header: Option<String>,
+    /// may be left empty (an HTML-form field without `required`; checkbox groups)
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub optional: bool,
 }
 
 impl AskQuestion {
@@ -100,7 +103,15 @@ pub fn from_html(html: &str, call_id: &str, at: i64) -> Option<Ask> {
         text.clear();
     };
     let free = |name: &str, label: &str, qs: &mut Vec<AskQuestion>| {
-        qs.push(AskQuestion { id: name.to_string(), question: label.to_string(), options: vec![], multi: false, recommended: None, header: None });
+        qs.push(AskQuestion {
+            id: name.to_string(),
+            question: label.to_string(),
+            options: vec![],
+            multi: false,
+            recommended: None,
+            header: None,
+            optional: false,
+        });
     };
     for c in TAG.captures_iter(html) {
         let m = c.get(0).unwrap();
@@ -156,6 +167,7 @@ pub fn from_html(html: &str, call_id: &str, at: i64) -> Option<Ask> {
                         multi,
                         recommended: group.iter().position(|g| g.3),
                         header: None,
+                        optional: false,
                     });
                 }
                 group.clear();
@@ -182,6 +194,7 @@ pub fn from_html(html: &str, call_id: &str, at: i64) -> Option<Ask> {
                                 multi: false,
                                 recommended: sel,
                                 header: None,
+                                optional: false,
                             });
                         }
                     }
@@ -231,6 +244,7 @@ pub fn from_html(html: &str, call_id: &str, at: i64) -> Option<Ask> {
                         multi: false,
                         recommended: sel,
                         header: None,
+                        optional: false,
                     });
                 }
             }
@@ -240,6 +254,16 @@ pub fn from_html(html: &str, call_id: &str, at: i64) -> Option<Ask> {
     flush_text(&mut text, &mut intro);
     if qs.is_empty() {
         return None;
+    }
+    // HTML submits empty fields: only `required` ones must be answered; a checkbox group may be
+    // empty; a radio / select with a preselected value is answered already (the card shows it)
+    let required: std::collections::HashSet<String> = TAG
+        .captures_iter(html)
+        .filter(|c| c[1].is_empty() && matches!(c[2].to_lowercase().as_str(), "input" | "textarea" | "select") && has(&c[3], "required"))
+        .filter_map(|c| attrs(&c[3]).get("name").cloned())
+        .collect();
+    for q in &mut qs {
+        q.optional = q.multi || !required.contains(&q.id);
     }
     // the mirror fields older UI code reads: the first question with options
     let first = qs.iter().find(|q| !q.options.is_empty()).or(qs.first()).cloned().unwrap();
@@ -284,6 +308,7 @@ fn from_questions(qs: &[Value], call_id: &str, at: i64, multi_key: &str) -> Opti
             multi: q[multi_key].as_bool().unwrap_or(false),
             recommended: q["recommended"].as_u64().map(|n| n as usize),
             header: q["header"].as_str().map(String::from),
+            optional: false,
         })
         .collect();
     let first = questions.first()?.clone();
@@ -441,6 +466,7 @@ pub fn dialog_ask(tail: &[String]) -> Option<Vec<AskQuestion>> {
                     options: vec![],
                     multi: false,
                     recommended: None,
+                    optional: false,
                 });
             } else if let Some(q) = qs.last_mut() {
                 if let Some(label) = option(&l) {
@@ -461,7 +487,7 @@ pub fn dialog_ask(tail: &[String]) -> Option<Vec<AskQuestion>> {
     }
     if qs.iter().all(|q| q.options.is_empty()) {
         let Screen::Dialog { title, lines, .. } = screen(tail) else { return None };
-        let mut q = AskQuestion { header: None, id: "q1".into(), question: title, options: vec![], multi: false, recommended: None };
+        let mut q = AskQuestion { header: None, id: "q1".into(), question: title, options: vec![], multi: false, recommended: None, optional: false };
         for l in &lines {
             if let Some(label) = option(l) {
                 q.options.push(AskOption { label, description: None });
@@ -808,6 +834,7 @@ mod tests {
             options: (0..n).map(|i| AskOption { label: format!("{id}-{i}"), description: None }).collect(),
             multi,
             recommended: None,
+            optional: false,
         };
         vec![
             q("n1", "신규 1/2", "10-28 전수 조사 이후 새로 찾은 공고입니다(AJO·INSPIRE 전수 + 독일·한국 기관 직접 조사). 지원할 것을 고르세요(미선택 = 안 함). 최우선은 다음 질문에서.", 6, true),
@@ -861,7 +888,15 @@ mod tests {
     /// A long multi-select answer wraps and omp cuts it with "…".
     #[test]
     fn review_page_long_answers_are_joined_and_cut_answers_match_by_prefix() {
-        let mk = |id: &str| AskQuestion { id: id.into(), header: None, question: format!("{id}?"), options: vec![], multi: true, recommended: None };
+        let mk = |id: &str| AskQuestion {
+            id: id.into(),
+            header: None,
+            question: format!("{id}?"),
+            options: vec![],
+            multi: true,
+            recommended: None,
+            optional: false,
+        };
         let qs = vec![mk("fixes"), mk("note")];
         let lines: Vec<String> = [
             "fixes    note    Submit",
@@ -962,6 +997,16 @@ mod tests {
             ]
         );
         assert_eq!(a.questions[0].options[1].label, "2. B");
+        // no `required` anywhere: every field may stay empty
+        assert!(a.questions.iter().all(|q| q.optional));
+        let r = from_html(
+            r#"<form><label>Name <input type="text" name="who" required></label><label>Notes <textarea name="notes"></textarea></label>
+<fieldset><legend>Pick</legend><label><input type="radio" name="p" value="a" required> A</label></fieldset></form>"#,
+            "c2",
+            1,
+        )
+        .unwrap();
+        assert_eq!(r.questions.iter().map(|q| (q.id.as_str(), q.optional)).collect::<Vec<_>>(), [("who", false), ("notes", true), ("p", false)]);
         let imgs: Vec<&str> = a.intro.iter().filter_map(|b| b["src"].as_str()).collect();
         assert_eq!(imgs, vec!["../a/A.png", "b.png"]);
         assert!(a.intro.iter().all(|b| !b.to_string().contains("x()")), "scripts dropped");

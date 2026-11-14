@@ -3582,6 +3582,21 @@
   const askQuestions = (q) => (Array.isArray(q.questions) && q.questions.length ? q.questions : [{ id: "q0", question: q.question, options: q.options, multi: q.multi, recommended: q.recommended }])
     .map((x, i) => ({ ...x, id: x.id ?? `q${i}`, options: x.options || [] }));
   const isAnswered = (v) => v && (v.optionIndex != null || (v.optionIndices && v.optionIndices.length) || (v.text && v.text.trim()));
+  // Which questions must be answered: HTML-form fields say so (`optional`); other harnesses need every answer
+  // (a required one can be skipped with SKIP_TEXT through its "Other" row).
+  const SKIP_TEXT = "(답하지 않음)";
+  function askGate(qs, sel) {
+    const done = qs.filter((x) => isAnswered(sel.get(x.id))).length;
+    const missing = qs.filter((x) => !x.optional && !isAnswered(sel.get(x.id)));
+    const label = `${qs.length > 1 ? L2("모두 보내기", "Send") : L2("보내기", "Send")} (${done}/${qs.length} ${L2("답함", "answered")}${qs.length - done ? ` · ${qs.length - done}${L2("개 비움", " empty")}` : ""})`;
+    return { done, missing, label };
+  }
+  function askGateApply(qs, sel) {
+    const g = askGate(qs, sel);
+    const btn = $('#ask-card [data-act="ask-submit"]'); if (btn) { btn.disabled = g.missing.length > 0; btn.textContent = g.label; }
+    $("#ask-progress") && ($("#ask-progress").textContent = g.missing.length ? L2(`필수 ${g.missing.length}개 남음`, `${g.missing.length} required left`) : "");
+    $$("#ask-card .ask-qs").forEach((s) => { const on = isAnswered(sel.get(s.dataset.qid)); s.classList.toggle("done", on); s.classList.toggle("missing", !on && g.missing.some((x) => x.id === s.dataset.qid)); });
+  }
   // While the harness shows a question (omp ask, Claude AskUserQuestion) the terminal input belongs to that picker:
   // a normal message would not arrive or would pick something. So the composer is hidden and the ask card (with its
   // 직접 답하기 field) takes its place; the unsent draft stays in the hidden textarea and comes back afterwards.
@@ -3621,11 +3636,15 @@
     if (!q) { card.hidden = true; H("#ask-card").innerHTML = ""; return; }
     card.hidden = false;
     const key = `${a.name}\u0000${q.askedAt || ""}`;
-    if (ov.askSel.key !== key) ov.askSel = { key, answers: new Map() };
+    const qs = askQuestions(q);
+    if (ov.askSel.key !== key) {
+      ov.askSel = { key, answers: new Map() };
+      // a form's checked radio / selected option is its answer already: shown picked
+      if (q.askKind === "form") for (const x of qs) if (!x.multi && typeof x.recommended === "number") ov.askSel.answers.set(x.id, { optionIndex: x.recommended });
+    }
     const sel = ov.askSel.answers;
     const n = esc(a.name);
     const unsupported = ov.answerUnsupported.has(a.name);
-    const qs = askQuestions(q);
     const recIdx = (x) => (typeof x.recommended === "number" ? x.recommended : x.options.findIndex((o) => o.recommended || /\(추천\)|\(recommended\)/i.test(o.label || "")));
     const sections = qs.map((x, qi) => {
       const v = sel.get(x.id) || {};
@@ -3638,18 +3657,18 @@
           <b>${x.multi ? `<span class="ck">${on ? "☑" : "☐"}</span>` : ""}${esc(o.label)}${i === rec ? `<span class="rec-tag">${t_("추천")}</span>` : ""}</b>${o.description ? `<div class="md ask-md muted">${md(o.description, a.name, `${q.askedAt || ""}:${x.id}:${i}`)}</div>` : ""}</div>`;
       };
       return `<section class="ask-qs${isAnswered(v) ? " done" : ""}" data-qid="${esc(x.id)}">
-        <div class="ask-q">${qs.length > 1 ? `<span class="ask-num">${qi + 1}/${qs.length}</span>` : ""}<div class="md ask-md">${md(x.question || "", a.name, `${q.askedAt || ""}:${x.id}`)}</div>${x.multi ? '<span class="muted small"> · 여러 개 선택</span>' : ""}</div>
+        <div class="ask-q">${qs.length > 1 ? `<span class="ask-num">${qi + 1}/${qs.length}</span>` : ""}${x.optional ? `<span class="muted small ask-opt-tag">${esc(L2("선택", "optional"))}</span>` : q.askKind === "form" ? `<span class="ask-req-tag">${esc(L2("필수", "required"))}</span>` : ""}<div class="md ask-md">${md(x.question || "", a.name, `${q.askedAt || ""}:${x.id}`)}</div>${x.multi ? '<span class="muted small"> · 여러 개 선택</span>' : ""}</div>
         <div class="ask-opts">${x.options.map(opt).join("")}</div>
-        ${unsupported ? "" : `<input class="ask-text" data-q="${esc(x.id)}" placeholder="직접 답하기 (기타)" enterkeyhint="${enterSends() ? "send" : "done"}" value="${esc(v.text || "")}">`}</section>`;
+        ${unsupported ? "" : `<input class="ask-text" data-q="${esc(x.id)}" placeholder="직접 답하기 (기타)" enterkeyhint="${enterSends() ? "send" : "done"}" value="${esc(v.text || "")}">${!x.optional && q.askKind !== "form" && x.options.length ? `<button type="button" class="linkish small" data-act="ask-skip-q" data-q="${esc(x.id)}">${esc(L2("건너뛰기", "Skip"))}</button>` : ""}`}</section>`;
     }).join("");
-    const doneCount = qs.filter((x) => isAnswered(sel.get(x.id))).length;
+    const gate = askGate(qs, sel);
     // No parsed options: never label it 권한 요청 (that needs choices); say the choices were not read and point to the terminal.
     const noOpts = qs.every((x) => !x.options.length);
     const title = (q.askKind === "permission" || a.askKind === "permission") && !noOpts ? "권한 요청" : "질문";
     H("#ask-card").innerHTML = `<div class="ask-head"><span class="ask-tag">${title}${qs.length > 1 ? ` ${qs.length}개` : ""}</span><span class="muted small">${q.askedAt ? `${ago(q.askedAt)}부터` : ""}</span><span class="spacer"></span><button data-act="focus" data-name="${n}">터미널 열기</button></div>
       ${sections}
       ${noOpts ? `<div class="ask-noopts">선택지를 읽지 못했습니다. 선택지가 있는 질문이면 <button data-act="focus" data-name="${n}">터미널 열기</button>로 확인해 답하세요. 직접 입력으로 답할 수도 있습니다.</div>` : ""}
-      ${unsupported ? `<div class="muted small">이 질문은 대시보드에서 답할 수 없습니다. 터미널을 열어 답하세요.</div>` : `<div class="ask-submit"><span class="muted small" id="ask-progress">${doneCount}/${qs.length} 답함</span><button class="primary" data-act="ask-submit" ${doneCount === qs.length ? "" : "disabled"}>${qs.length > 1 ? "모두 답하기" : "답하기"}</button></div>`}`;
+      ${unsupported ? `<div class="muted small">이 질문은 대시보드에서 답할 수 없습니다. 터미널을 열어 답하세요.</div>` : `<div class="ask-submit"><span class="muted small" id="ask-progress">${gate.missing.length ? esc(L2(`필수 ${gate.missing.length}개 남음`, `${gate.missing.length} required left`)) : ""}</span><button class="primary" data-act="ask-submit" ${gate.missing.length ? "disabled" : ""}>${esc(gate.label)}</button></div>`}`;
     enhanceAskCard(a.name);
   }
   // Same renderer as chat messages: path links (inline code + plain text), skill chips, rich blocks;
@@ -3683,10 +3702,7 @@
     const sel = ov.askSel.answers, id = input.dataset.q, t = input.value;
     if (t.trim()) sel.set(id, { text: t }); else if (sel.get(id)?.text != null) sel.delete(id);
     const a = agentBy(ov.name), qs = a?.ask ? askQuestions(a.ask) : [];
-    const done = qs.filter((x) => isAnswered(sel.get(x.id))).length;
-    $("#ask-progress") && ($("#ask-progress").textContent = `${done}/${qs.length} 답함`);
-    const btn = $('#ask-card [data-act="ask-submit"]'); if (btn) btn.disabled = done !== qs.length;
-    $$("#ask-card .ask-qs").forEach((s) => s.classList.toggle("done", isAnswered(sel.get(s.dataset.qid))));
+    askGateApply(qs, sel);
     $$(`#ask-card .ask-qs[data-qid="${CSS.escape(id)}"] .ask-opt.on`).forEach((b) => t.trim() && b.classList.remove("on"));
   }
   function askPick(qid, i) {
@@ -3704,8 +3720,10 @@
     const a = agentBy(ov.name);
     if (!a?.ask) return;
     const qs = askQuestions(a.ask), sel = ov.askSel.answers;
-    if (!qs.every((x) => isAnswered(sel.get(x.id)))) return toast("모든 질문에 답하세요");
-    const answers = qs.map((x) => { const v = sel.get(x.id); return v.text?.trim() ? { id: x.id, text: v.text.trim() } : { id: x.id, ...v }; });
+    const g = askGate(qs, sel);
+    if (g.missing.length) { askGateApply(qs, sel); return toast(L2("필수 질문에 답하세요", "Answer the required questions")); }
+    // empty optional fields are left out: the form skips them (a preselected choice stays)
+    const answers = qs.filter((x) => isAnswered(sel.get(x.id))).map((x) => { const v = sel.get(x.id); return v.text?.trim() ? { id: x.id, text: v.text.trim() } : { id: x.id, ...v }; });
     await answerAsk({ answers });
   }
   // ---------- answer jobs: POST /answer → 202 {jobId}; GET /api/answers/{jobId} until done/failed ----------
@@ -4817,6 +4835,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     else if (a === "held-cancel") { ov.held = null; renderHeld(); $("#composer-text").focus(); }
     else if (a === "ask-pick") askPick(b.dataset.q, +b.dataset.i);
     else if (a === "ask-submit") submitAsk();
+    else if (a === "ask-skip-q") { const inp = $(`#ask-card .ask-text[data-q="${CSS.escape(b.dataset.q)}"]`); if (inp) { inp.value = SKIP_TEXT; askTextChanged(inp); } }
     else if (a === "dec-opt") setComposerItem(+b.dataset.n, b.dataset.o);
     else if (a === "dec-item") setComposerItem(+b.dataset.n, composerItem(+b.dataset.n) || "");
     else if (a === "dec-all") answerAllDecisions();
