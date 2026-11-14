@@ -3659,7 +3659,7 @@
       return `<section class="ask-qs${isAnswered(v) ? " done" : ""}" data-qid="${esc(x.id)}">
         <div class="ask-q">${qs.length > 1 ? `<span class="ask-num">${qi + 1}/${qs.length}</span>` : ""}${x.optional ? `<span class="muted small ask-opt-tag">${esc(L2("선택", "optional"))}</span>` : q.askKind === "form" ? `<span class="ask-req-tag">${esc(L2("필수", "required"))}</span>` : ""}<div class="md ask-md">${md(x.question || "", a.name, `${q.askedAt || ""}:${x.id}`)}</div>${x.multi ? '<span class="muted small"> · 여러 개 선택</span>' : ""}</div>
         <div class="ask-opts">${x.options.map(opt).join("")}</div>
-        ${unsupported ? "" : `<input class="ask-text" data-q="${esc(x.id)}" placeholder="직접 답하기 (기타)" enterkeyhint="${enterSends() ? "send" : "done"}" value="${esc(v.text || "")}">${!x.optional && q.askKind !== "form" && x.options.length ? `<button type="button" class="linkish small" data-act="ask-skip-q" data-q="${esc(x.id)}">${esc(L2("건너뛰기", "Skip"))}</button>` : ""}`}</section>`;
+        ${unsupported ? "" : `<input class="ask-text" data-q="${esc(x.id)}" placeholder="직접 답하기 (기타)" enterkeyhint="${enterSends() ? "send" : "done"}" value="${esc(v.text || "")}">${!x.optional && q.askKind !== "form" && a.agentType === "omp" && x.options.length ? `<button type="button" class="linkish small" data-act="ask-skip-q" data-q="${esc(x.id)}">${esc(L2("건너뛰기", "Skip"))}</button>` : ""}`}</section>`;
     }).join("");
     const gate = askGate(qs, sel);
     // No parsed options: never label it 권한 요청 (that needs choices); say the choices were not read and point to the terminal.
