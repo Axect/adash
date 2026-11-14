@@ -236,7 +236,7 @@ pub fn dispatch(event: &str, title: &str, body: &str, agent: Option<&str>) {
 }
 
 fn send_one(sub: &Value, payload: &str, key: &std::path::Path) -> Res<()> {
-    use web_push::{ContentEncoding, IsahcWebPushClient, SubscriptionInfo, VapidSignatureBuilder, WebPushClient, WebPushMessageBuilder};
+    use web_push::{ContentEncoding, SubscriptionInfo, VapidSignatureBuilder, WebPushMessageBuilder};
     let info =
         SubscriptionInfo::new(sub["endpoint"].as_str().unwrap_or(""), sub["keys"]["p256dh"].as_str().unwrap_or(""), sub["keys"]["auth"].as_str().unwrap_or(""));
     let pem = std::fs::File::open(key).map_err(|e| e.to_string())?;
@@ -248,8 +248,27 @@ fn send_one(sub: &Value, payload: &str, key: &std::path::Path) -> Res<()> {
     b.set_vapid_signature(sig);
     b.set_ttl(3600);
     let msg = b.build().map_err(|e| e.to_string())?;
-    let client = IsahcWebPushClient::new().map_err(|e| e.to_string())?;
-    futures_lite::future::block_on(client.send(msg)).map_err(|e| format!("{e:?}"))
+    // sent with the `curl` program: linking libcurl tied the build to the system OpenSSL
+    // (OpenSSL 4 dropped the ENGINE API libcurl's bindings still call)
+    let req = web_push::request_builder::build_request::<Vec<u8>>(msg);
+    let mut cmd = crate::platform::timeout(30);
+    cmd.args(["curl", "-sS", "-o", "/dev/null", "-w", "%{http_code}", "-X", "POST", "--data-binary", "@-"]);
+    for (k, v) in req.headers() {
+        cmd.arg("-H").arg(format!("{}: {}", k, v.to_str().unwrap_or("")));
+    }
+    cmd.arg(req.uri().to_string()).stdin(std::process::Stdio::piped()).stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
+    let mut child = cmd.spawn().map_err(|e| format!("curl: {e}"))?;
+    {
+        use std::io::Write;
+        child.stdin.take().ok_or("curl stdin")?.write_all(req.body()).map_err(|e| e.to_string())?;
+    }
+    let out = child.wait_with_output().map_err(|e| e.to_string())?;
+    let code = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    match code.as_str() {
+        c if c.starts_with('2') => Ok(()),
+        "404" | "410" => Err(format!("EndpointNotValid ({code})")),
+        _ => Err(format!("push service answered {code}: {}", String::from_utf8_lossy(&out.stderr).trim())),
+    }
 }
 
 #[cfg(test)]

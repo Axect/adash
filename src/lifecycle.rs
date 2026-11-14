@@ -177,7 +177,7 @@ pub fn restart(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
     let mut rest = snap.clone();
     rest.agents.retain(|x| x.identity != a.identity);
     let opened = if a.session_path.is_some() {
-        reopen(&rest, &a.identity)?
+        reopen_with(&rest, &a.identity, j["model"].as_str())?
     } else {
         let p = main.ok_or_else(|| err(409, "no_command", json!({"error": "no session file and no command to start again"})))?;
         let cmd = p.args.iter().map(|x| crate::harness::shell_quote(x)).collect::<Vec<_>>().join(" ");
@@ -208,6 +208,21 @@ pub fn restart(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
             notified = true;
         }
     }
+    // "다시 보내기": the last message again, once the harness is up
+    if let (Some(t), Some(h)) = (j["resend"].as_str().filter(|t| !t.trim().is_empty()), opened["handle"].as_str()) {
+        let (h, t) = (h.to_string(), t.to_string());
+        std::thread::spawn(move || {
+            for _ in 0..30 {
+                std::thread::sleep(Duration::from_secs(3));
+                let Ok(l) = term::screen(&h) else { continue };
+                if l.iter().any(|x| x.trim() == ">" || x.starts_with("> ") || x.contains("? for shortcuts")) {
+                    std::thread::sleep(Duration::from_secs(2));
+                    let _ = if t.contains('\n') { term::send_paste(&h, &t) } else { term::send_line(&h, &t) };
+                    return;
+                }
+            }
+        });
+    }
     Ok(json!({"ok": true, "name": a.name, "restarted": true, "close": closed, "open": opened, "askRenotify": notified}))
 }
 
@@ -234,6 +249,11 @@ fn closed_entry(key: &str) -> Option<Value> {
 
 /// `POST /api/agents/{name}/reopen` (name or session identity of an offline agent).
 pub fn reopen(snap: &Snapshot, key: &str) -> Result<Value, ApiErr> {
+    reopen_with(snap, key, None)
+}
+
+/// `reopen` with another `--model` (an agent whose model is not available any more).
+pub fn reopen_with(snap: &Snapshot, key: &str, model: Option<&str>) -> Result<Value, ApiErr> {
     let e = closed_entry(key).ok_or_else(|| err(404, "unknown", json!({"error": format!("no closed or offline agent {key}")})))?;
     let file = PathBuf::from(e["sessionPath"].as_str().unwrap_or(""));
     let kind = e["agentType"].as_str().unwrap_or("omp").to_string();
@@ -245,7 +265,25 @@ pub fn reopen(snap: &Snapshot, key: &str) -> Result<Value, ApiErr> {
     if snap.agents.iter().any(|a| a.session_path.as_deref() == Some(file.as_path())) || crate::session::procs_using_session(&file, &session_id(&kind, &file)) {
         return Err(err(409, "already_open", json!({"error": "a live agent already uses this session"})));
     }
-    let args: Vec<String> = e["args"].as_array().into_iter().flatten().filter_map(|x| x.as_str().map(String::from)).collect();
+    let mut args: Vec<String> = e["args"].as_array().into_iter().flatten().filter_map(|x| x.as_str().map(String::from)).collect();
+    if let Some(m) = model.filter(|m| !m.is_empty()) {
+        // drop the old --model (both spellings), then the chosen one
+        let mut out: Vec<String> = vec![];
+        let mut it = args.into_iter();
+        while let Some(a) = it.next() {
+            if a == "--model" {
+                it.next();
+            } else if !a.starts_with("--model=") {
+                out.push(a);
+            }
+        }
+        if out.is_empty() {
+            out.push(kind.clone());
+        }
+        out.insert(1, "--model".into());
+        out.insert(2, m.to_string());
+        args = out;
+    }
     let cmd = resume_command(&kind, &file, &args).ok_or_else(|| err(501, "harness", json!({"error": format!("cannot reopen {kind}")})))?;
     let cwd = e["cwd"].as_str().filter(|c| !c.is_empty()).ok_or_else(|| err(409, "no_cwd", json!({"error": "working directory unknown"})))?;
     let name = e["name"].as_str().unwrap_or(key).to_string();

@@ -133,6 +133,26 @@ pub fn approval(kind: &str, screen: &[String]) -> Option<Value> {
     (!opts.is_empty()).then(|| json!({"question": q, "detail": detail, "options": opts}))
 }
 
+/// agy's failed turn left at its prompt: a "⚠ …" line followed by "Error ID: …", then the empty
+/// input box. {message, modelMissing, model?}.
+pub fn agy_error(kind: &str, screen: &[String]) -> Option<Value> {
+    if kind != "antigravity" {
+        return None;
+    }
+    let rows: Vec<&str> = screen.iter().map(|l| l.as_str()).filter(|l| !l.trim().is_empty()).collect();
+    let tail = &rows[rows.len().saturating_sub(ROWS)..];
+    let id = tail.iter().rposition(|l| l.trim_start().starts_with("Error ID:"))?;
+    let warn = tail[..id].iter().rposition(|l| l.trim_start().starts_with('⚠'))?;
+    // only while it waits: the prompt after the error, nothing typed
+    if !tail[id..].iter().any(|l| l.trim() == ">") {
+        return None;
+    }
+    let msg = tail[warn].trim_start().trim_start_matches('⚠').trim().to_string();
+    // "model not found" also means "not available on this plan" (Antigravity Ultra-only models)
+    let missing = msg.contains("model not found") || msg.contains("unknown model");
+    Some(json!({"message": msg, "modelMissing": missing}))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,5 +255,24 @@ mod tests {
         assert_eq!(labels, vec!["Always for this session", "Allow once", "Deny"]);
         assert_eq!(moves(&v, 2), Some(("Down", 1)));
         assert!(approval("claude", &scr).is_none());
+    }
+
+    #[test]
+    fn agy_error_left_at_the_prompt() {
+        let scr = s(&[
+            "  write it to …",
+            "⚠ failed to construct executor: unknown model key MODEL_PLACEHOLDER_M437: model not found",
+            "Error ID: c6d43e52-87",
+            "────",
+            ">",
+            "────",
+            "? for shortcuts",
+        ]);
+        let v = agy_error("antigravity", &scr).unwrap();
+        assert_eq!(v["modelMissing"], true);
+        assert!(v["message"].as_str().unwrap().starts_with("failed to construct executor"));
+        let typed = s(&["⚠ failed", "Error ID: x", "> next try"]);
+        assert!(agy_error("antigravity", &typed).is_none());
+        assert!(agy_error("omp", &scr).is_none());
     }
 }

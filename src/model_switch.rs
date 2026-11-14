@@ -105,9 +105,16 @@ fn claude_models() -> Vec<ModelOpt> {
 /// The harness's model list, cached an hour (it runs the harness binary). Shared by the model
 /// switch and the new-session dialog.
 pub fn models_of(kind: &str) -> Vec<ModelOpt> {
-    static CACHE: LazyLock<Mutex<std::collections::HashMap<String, (i64, Vec<ModelOpt>)>>> = LazyLock::new(Default::default);
-    if let Some((at, v)) = CACHE.plock().get(kind) {
-        if now_ms() - at < 3_600_000 && !v.is_empty() {
+    // cached an hour, and until the harness binary changes (an update drops or adds models)
+    static CACHE: LazyLock<Mutex<std::collections::HashMap<String, (i64, i64, Vec<ModelOpt>)>>> = LazyLock::new(Default::default);
+    let bin = match kind {
+        "antigravity" => "agy",
+        k => k,
+    };
+    let bin_mt = crate::launch::find_bin(bin).and_then(|b| std::fs::canonicalize(b).ok()).map(|b| crate::util::mtime_ms(&b)).unwrap_or(0);
+    if let Some((at, mt, v)) = CACHE.plock().get(kind) {
+        // 10 min: a plan change (Antigravity Ultra models) changes the list with the same binary
+        if now_ms() - at < 600_000 && *mt == bin_mt && !v.is_empty() {
             return v.clone();
         }
     }
@@ -127,7 +134,7 @@ pub fn models_of(kind: &str) -> Vec<ModelOpt> {
         _ => vec![],
     };
     if !v.is_empty() {
-        CACHE.plock().insert(kind.to_string(), (now_ms(), v.clone()));
+        CACHE.plock().insert(kind.to_string(), (now_ms(), bin_mt, v.clone()));
     }
     v
 }

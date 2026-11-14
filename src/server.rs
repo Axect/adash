@@ -1423,7 +1423,20 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
         a.queued = a.handle.as_ref().and_then(|h| qd.get(h)).cloned();
         a.draft = a.handle.as_ref().and_then(|h| d.get(h)).filter(|v| !v.is_null()).cloned();
         // a login prompt on the screen: the agent waits for the user whatever its transcript says
-        if let Some(v) = a.handle.as_ref().and_then(|h| au.get(h)) {
+        if let Some(v) = a.handle.as_ref().and_then(|h| au.get(h)).filter(|v| v["kind"] == "error") {
+            // a failed turn agy left on screen ("⚠ … / Error ID"): a provider-style error
+            a.last_error = Some(crate::session::ErrInfo {
+                status: None,
+                message: v["message"].as_str().unwrap_or("").to_string(),
+                provider: Some("google".into()),
+                model: v["model"].as_str().map(String::from).or(a.model.clone()),
+                at: v["since"].as_i64().unwrap_or(a.state_since),
+            });
+            a.retry = Some(retry_info(&a.agent_type));
+            a.state = "error".into();
+            a.state_since = v["since"].as_i64().unwrap_or(a.state_since);
+            a.needs_human = a.snoozed_until.is_none();
+        } else if let Some(v) = a.handle.as_ref().and_then(|h| au.get(h)) {
             a.auth = Some(v.clone());
             a.state = match v["kind"].as_str() {
                 Some("trust") => "trust",
@@ -1700,7 +1713,11 @@ fn scan_auth(sh: &Arc<Shared>) {
             v["since"] = prev_q.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             queued.insert(h.clone(), v);
         }
-        if let Some(mut v) = crate::auth::approval(&a.agent_type, &lines) {
+        if let Some(mut v) = crate::auth::agy_error(&a.agent_type, &lines) {
+            v["kind"] = json!("error");
+            v["since"] = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
+            found.insert(h.clone(), v);
+        } else if let Some(mut v) = crate::auth::approval(&a.agent_type, &lines) {
             v["kind"] = json!("approval");
             v["since"] = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             found.insert(h.clone(), v);
@@ -3238,6 +3255,14 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
                     .map(|a| {
                         let (s, j) = (&s, &j);
                         sc.spawn(move || {
+                            // agy cannot use its model now: retrying sends the same failing turn;
+                            // a restart re-reads the catalog (a changed plan) with the same model
+                            if a.state == "error" && a.agent_type == "antigravity" && a.last_error.as_ref().is_some_and(|e| e.message.contains("model not found") || e.message.contains("unknown model")) {
+                                return match crate::lifecycle::restart(s, a, &json!({"confirmWorking": true})) {
+                                    Ok(_) => json!({"name": a.name, "action": "restart", "ok": true}),
+                                    Err((code, v)) => json!({"name": a.name, "action": "restart", "ok": false, "code": code, "reason": v["reason"].as_str().or(v["error"].as_str()).unwrap_or("failed")}),
+                                };
+                            }
                             if a.state == "error" {
                                 return match op_retry(sh, a) {
                                     Ok(mut v) => {
@@ -3773,7 +3798,8 @@ pub fn op_open(ctx: &Ctx, raw: &str, with: Option<&str>) -> Result<Value, (u16, 
     // `path:12` (or `path:12:3`) from chat: the line to open at
     static LINE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| regex::Regex::new(r"^(.+?):(\d+)(?::\d+)?$").unwrap());
     let (raw, line) = match LINE.captures(raw) {
-        Some(c) if ctx.resolve(raw).is_err() => (c[1].to_string(), c[2].parse::<u32>().ok()),
+        // path resolution also strips ":N", so check the stripped path, not the whole one
+        Some(c) if ctx.resolve(&c[1]).is_ok() => (c[1].to_string(), c[2].parse::<u32>().ok()),
         _ => (raw.to_string(), None),
     };
     let r = ctx.resolve(&raw)?;

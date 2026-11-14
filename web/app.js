@@ -31,7 +31,9 @@
   // `asking` (an open ask/permission prompt) blocks on me even while the session record still shows `working`.
   // `error` = stopped on a provider/API error (lastError); it blocks on me like an open question.
   const kindOf = (a) => (a.state === "asking" || a.state === "trust" || a.state === "approval" || a.ask ? "asking" : a.state === "error" || a.state === "auth" ? "error" : a.needsHuman && !a.snoozedUntil ? "waiting" : a.state === "working" ? "working" : "idle");
-  const errLabel = (e) => (e ? `오류${e.status ? ` ${e.status}` : ""}` : "오류");
+  // agy "model not found": the model is not usable now (plan or access), not necessarily gone
+  const modelUnavailable = (e) => !!e && /model not found|unknown model/.test(e.message || "");
+  const errLabel = (e) => (modelUnavailable(e) ? L2("모델 사용 불가", "model unavailable") : e ? `오류${e.status ? ` ${e.status}` : ""}` : "오류");
   const errTip = (e) => (e ? [`${errLabel(e)}${e.provider || e.model ? ` · ${[e.provider, e.model].filter(Boolean).join(" / ")}` : ""}`, e.message || "", e.at ? new Date(e.at).toLocaleString("ko-KR") : ""].filter(Boolean).join("\n") : "제공자 API 오류로 멈춤");
   // Retry (v19): the label comes from the backend (`agent.retry.label`, e.g. how that harness retries);
   // omp's default is its F5 retry.
@@ -3481,6 +3483,24 @@
   // ---------- login prompt on the agent's screen (state "auth") ----------
   function renderAuthCard() {
     const card = $("#auth-card"), a = ov.open && ov.name ? agentBy(ov.name) : null;
+    if (a?.state === "error" && a.agentType === "antigravity" && modelUnavailable(a.lastError)) {
+      const cur = a.model || "";
+      const html = `<div class="ask-head"><span class="relay-tag err-n">${esc(L2("이 모델을 지금 쓸 수 없음", "This model is not available now"))}</span><span class="muted small">${esc(cur)} · ${esc(L2("요금제·권한을 확인하세요", "check your plan or access"))}</span><span class="spacer"></span><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button></div>
+        <div class="auth-row muted small">${esc(a.lastError.message || "")}</div>
+        <div class="auth-row"><label class="ld-check"><input type="checkbox" id="mu-resend" checked> ${esc(L2("다시 시작 후 마지막 메시지 다시 보내기", "Resend the last message after the restart"))}</label></div>
+        <div class="auth-row"><button class="primary" data-mu="same">${esc(L2("같은 모델로 다시 시작", "Restart with the same model"))}</button><select id="mu-model"></select><button data-mu="other">${esc(L2("다른 모델로 다시 시작", "Restart with this model"))}</button></div>`;
+      if (card._h !== html) {
+        card.innerHTML = html; card._h = html;
+        api("GET", `/api/agents/${enc(a.name)}/models`, undefined, { quiet: true }).then((d) => {
+          const sel = $("#mu-model"); if (!sel) return;
+          const ids = (d?.models || []).flatMap((m) => (m.efforts?.length ? m.efforts.map((e) => `${m.id}-${e}`) : [m.id]));
+          const fam = cur.replace(/-(low|medium|high|xhigh)$/, "");
+          const pick = ids.find((x) => x !== cur && x.endsWith("-medium") && !x.startsWith(fam)) || ids.find((x) => x !== cur) || "";
+          sel.innerHTML = ids.map((x) => `<option${x === pick ? " selected" : ""}>${esc(x)}</option>`).join("");
+        }).catch(() => {});
+      }
+      card.hidden = false; return;
+    }
     if (a?.state === "approval" && a.auth) {
       const t = a.auth;
       const html = `<div class="ask-head"><span class="relay-tag">${t_("승인 필요")}</span><span class="muted small">${esc(t.question || "")}</span><span class="spacer"></span><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button></div>
@@ -3513,6 +3533,16 @@
     card.hidden = false;
   }
   $("#auth-card").addEventListener("click", async (e) => {
+    const mu = e.target.closest("[data-mu]");
+    if (mu && ov.name) {
+      const name = ov.name, a = agentBy(name);
+      const last = [...(ov.tx?.messages || [])].reverse().find((m) => m.role === "user")?.text || "";
+      const body = { confirmWorking: true, discardDraft: true, ...(mu.dataset.mu === "other" ? { model: $("#mu-model")?.value || "" } : {}), ...($("#mu-resend")?.checked && last ? { resend: last } : {}) };
+      mu.disabled = true; toast(`${name} ${t_("다시 시작하는 중…")}`, 15000);
+      try { await api("POST", `/api/agents/${enc(name)}/restart`, body, { quiet: true }); toast(`${name} ${t_("다시 시작함")}${body.model ? ` · ${body.model}` : ""}`, 4000); }
+      catch (err) { toast(`${t_("다시 시작하지 않음:")} ${err.message}`, 6000); mu.disabled = false; }
+      void a; return;
+    }
     const ap = e.target.closest("[data-approve]");
     if (ap && ov.name) {
       const name = ov.name; ap.disabled = true;
