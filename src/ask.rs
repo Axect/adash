@@ -372,6 +372,14 @@ pub fn feed(kind: &str, r: &Value, open: &mut Option<Ask>) {
                 if r["type"] == "assistant" && c["type"] == "tool_use" && c["name"] == "AskUserQuestion" {
                     let qs = c["input"]["questions"].as_array().cloned().unwrap_or_default();
                     *open = from_questions(&qs, c["id"].as_str().unwrap_or(""), ts_of(&r["timestamp"]), "multiSelect");
+                    // Claude's review page submits with questions left unanswered (it warns, the
+                    // agent reads "did not answer"); one plain question has no review page
+                    if let Some(a) = open.as_mut() {
+                        let review = a.questions.len() > 1 || a.questions.iter().any(|q| q.multi);
+                        for q in &mut a.questions {
+                            q.optional = review;
+                        }
+                    }
                 }
                 if r["type"] == "user" && c["type"] == "tool_result" && open.as_ref().is_some_and(|a| c["tool_use_id"].as_str() == Some(a.call_id.as_str())) {
                     *open = None;

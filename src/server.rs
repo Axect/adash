@@ -798,6 +798,116 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     Err((502, "the form was submitted but no answer was recorded; check the terminal".into()))
 }
 
+/// Claude Code `AskUserQuestion` (v2.1, test session 2026-11-16): a tab row "← ☐ Color ☐ Size ✔ Submit →"
+/// over one question at a time. A digit picks option N (single: picks and moves on) or toggles
+/// it (multi); the digit after the last option is "Type something": typed text, then Enter.
+/// Right moves to the next tab (a question left unanswered; Claude accepts that with a
+/// warning). The Submit tab's review page sends with "1". With one single-select question there
+/// is no review page: the pick sends. Success: the session records the tool_result.
+fn op_answer_claude(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, progress: &dyn Fn(&str, Value)) -> Result<Value, (u16, String)> {
+    use crate::ask::Answer;
+    let h = a.handle.clone().ok_or((409u16, "agent has no terminal".to_string()))?;
+    let path = a.session_path.clone().ok_or((409u16, "no session file".to_string()))?;
+    let list = j["answers"].as_array().cloned().unwrap_or_default();
+    let qs = &ask.questions;
+    let n = qs.len();
+    let review = n > 1 || qs.iter().any(|q| q.multi);
+    let get = |id: &str| {
+        if list.is_empty() && n == 1 {
+            parse_answer(j)
+        } else {
+            list.iter().find(|x| x["id"].as_str() == Some(id)).and_then(parse_answer)
+        }
+    };
+    let start = std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0);
+    let key = |k: &str| -> Result<(), (u16, String)> {
+        term::send_keys(&h, &[k]).map_err(|e| (502u16, e))?;
+        std::thread::sleep(Duration::from_millis(350));
+        Ok(())
+    };
+    // wait until the screen shows `want` (the question text, or the review page)
+    let shows = |want: &str| -> bool {
+        let want: String = want.chars().take(40).collect();
+        for _ in 0..20 {
+            if term::screen(&h).unwrap_or_default().iter().any(|l| l.contains(&want)) {
+                return true;
+            }
+            std::thread::sleep(Duration::from_millis(150));
+        }
+        false
+    };
+    let stuck = |what: String| {
+        term::snapshot(&h, "answer-stuck");
+        (409u16, format!("{what}; answer in the terminal"))
+    };
+    for (k, q) in qs.iter().enumerate() {
+        progress("keys", json!({"k": k + 1, "n": n}));
+        if !shows(&q.question) {
+            return Err(stuck(format!("question {} of {n} is not on the screen", k + 1)));
+        }
+        let digit = |i: usize| -> Result<(), (u16, String)> {
+            if i >= 9 {
+                return Err((409, format!("option {} has no digit key", i + 1)));
+            }
+            key(&(i + 1).to_string())
+        };
+        match get(&q.id) {
+            None if review => key("Right")?,
+            None => return Err((400, format!("missing answer for '{}'", q.id))),
+            Some(Answer::One(i)) => {
+                if i >= q.options.len() {
+                    return Err((400, format!("no option {i} in '{}'", q.id)));
+                }
+                digit(i)?;
+            }
+            Some(Answer::Many(ix)) => {
+                for i in ix {
+                    if i >= q.options.len() {
+                        return Err((400, format!("no option {i} in '{}'", q.id)));
+                    }
+                    digit(i)?;
+                }
+                key("Right")?;
+            }
+            Some(Answer::Text(t)) => {
+                digit(q.options.len())?;
+                term::send_text(&h, &t).map_err(|e| (502u16, e))?;
+                std::thread::sleep(Duration::from_millis(250));
+                key("Enter")?;
+                if q.multi {
+                    key("Right")?;
+                }
+            }
+        }
+    }
+    if review {
+        progress("verifying", json!({}));
+        if !shows("Submit answers") {
+            return Err(stuck("the review page did not appear".into()));
+        }
+        key("1")?;
+    }
+    let t0 = now_ms();
+    while now_ms() - t0 < 15_000 {
+        std::thread::sleep(Duration::from_millis(500));
+        let mut buf = String::new();
+        if let Ok(mut f) = std::fs::File::open(&path) {
+            use std::io::{Read, Seek};
+            let _ = f.seek(std::io::SeekFrom::Start(start));
+            let _ = f.read_to_string(&mut buf);
+        }
+        for v in buf.lines().filter_map(|l| serde_json::from_str::<Value>(l).ok()) {
+            for c in v["message"]["content"].as_array().into_iter().flatten() {
+                if c["type"] == "tool_result" && c["tool_use_id"].as_str() == Some(ask.call_id.as_str()) {
+                    return Ok(json!({"ok": true, "name": a.name, "recorded": c["content"]}));
+                }
+            }
+        }
+    }
+    term::snapshot(&h, "ask-claude-unconfirmed");
+    Err((502, "the answers were sent but no result was recorded; check the terminal".into()))
+}
+
 /// Answer an open omp `ask` (one or several questions) by driving its TUI.
 /// Per question: read the box (must show that question), move from the visible cursor
 /// (it starts on a recommended option), Enter selects (single) / Space toggles + Enter
@@ -816,6 +926,9 @@ pub fn op_answer(a: &crate::collect::Agent, j: &Value, progress: &dyn Fn(&str, V
     let ask = a.ask.clone().ok_or_else(|| conflict("no open question"))?;
     if ask.ask_kind == "form" && a.agent_type == "omp" && !ask.call_id.is_empty() {
         return op_answer_form(a, &ask, j, progress);
+    }
+    if ask.ask_kind == "question" && a.agent_type == "claude" && !ask.call_id.is_empty() {
+        return op_answer_claude(a, &ask, j, progress);
     }
     if ask.ask_kind != "question" || ask.call_id.is_empty() {
         return Err(conflict("question is not mapped to a session record (or is a permission prompt); answer in the terminal"));
