@@ -3234,7 +3234,7 @@
     if (name !== ov.name) {
       // Composer state is per agent: the text draft and attachments (chips, uploads, failures) stay with their agent.
       if (ov.name) composerTextBy.set(ov.name, $("#composer-text").value);
-      ov.name = name; ov.tx = null; ov.pending = []; ov.held = null; ov.openGroups.clear(); ov.lastLogHtml = ""; ov.lastInfoHtml = ""; ov.view = "chat";
+      ov.name = name; ov.tx = null; ov.pending = []; ov.cmdRuns = []; ov.held = null; ov.openGroups.clear(); ov.lastLogHtml = ""; ov.lastInfoHtml = ""; ov.view = "chat";
       $("#send-result").textContent = ""; $("#composer-text").value = composerTextBy.get(name) || ""; renderAtts();
       $("#chat-log").innerHTML = ""; $("#chat-log")._h = null;
       setView("chat");
@@ -4181,6 +4181,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       else if (m.role === "thinking") { if (m.text?.trim()) blocks.push([`${m.id}:${ov.openGroups.has(m.id)}`, `<details class="m thinking" data-gid="${esc(m.id)}"${ov.openGroups.has(m.id) ? " open" : ""} title="${esc(tsTitle(m.ts))}"><summary>${t_("생각")}</summary><div class="md">${md(m.text, ov.name, m.id)}</div></details>`]); }
       else blocks.push([m.id, `<div class="m system${tx?.source === "terminal" ? " term" : ""}" title="${esc(tsTitle(m.ts))}">${esc(m.text)}</div>`]);
     }
+    (ov.cmdRuns || []).filter((c) => c.at > Date.now() - 10 * 60_000).forEach((c, i) => blocks.push([`c:${i}:${c.at}`, `<div class="m system cmd-run"><code>${esc(c.cmd)}</code> ${esc(L2("실행", "ran"))}${c.out.length ? ` · ${esc(c.out.join(" · "))}` : ""}</div>`]));
     ov.pending.forEach((p, i) => blocks.push([`p:${i}:${p.stale ? 1 : 0}`, `<div class="m user pending md${p.stale ? " stale" : ""}">${p.text.trim() ? md(p.text, ov.name) : ""}${thumbs(p.urls.map((u, k) => [u, p.images[k]]))}${fileChips(p.files || [], p.sizes, false)}${p.stale ? `<div class="pend-st">${L2("전송 확인 안 됨", "Delivery not confirmed")} <button type="button" data-act="pending-resend" data-i="${i}">${L2("다시 보내기", "Send again")}</button> <button type="button" data-act="pending-drop" data-i="${i}">${L2("지우기", "Dismiss")}</button></div>` : ""}</div>`]));
     // Empty conversation (no messages yet, or a new session whose session file does not exist yet, source
     // "pending"): a friendly opener instead of a bare "메시지 없음". The pending launch prompt, if any, follows it;
@@ -4567,8 +4568,12 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       const btwText = r.kind === "btw" || /^\s*\/btw\b/.test(text) ? String(r.btwText ?? text.replace(/^\s*\/btw\s*/, "")) : null;
       // Object URLs move to the pending bubble; they are revoked when the transcript shows the real message.
       const seenBtw = (ov.tx?.messages || []).filter((m) => (m.kind === "btw" || m.btw) && m.role === "user").length;
-      if (ov.tx?.source !== "terminal") ov.pending.push({ text, images, urls: imgAtts.map((a) => a.url), files, sizes: new Map([...fileAtts.filter((a) => a.size != null).map((a) => [a.path, a.size]), ...fileAtts.map((a) => [`name:${a.path}`, a.name])]), seenUsers, seenBtw, btwText, at: Date.now() });
+      // a harness built-in ran in the harness (no user message to wait for): a small command line instead
+      if (r.command) { (ov.cmdRuns ||= []).push({ cmd: text.trim(), out: r.output || [], at: Date.now(), after: (ov.tx?.messages || []).length }); }
+      else if (ov.tx?.source !== "terminal") ov.pending.push({ text, images, urls: imgAtts.map((a) => a.url), files, sizes: new Map([...fileAtts.filter((a) => a.size != null).map((a) => [a.path, a.size]), ...fileAtts.map((a) => [`name:${a.path}`, a.name])]), seenUsers, seenBtw, btwText, at: Date.now() });
       else ready.forEach((a) => a.url && URL.revokeObjectURL(a.url));
+      // its own 30 s expiry (not only the render-time check): "sending" never outlives it
+      { const p = ov.pending[ov.pending.length - 1], who = name; if (p) setTimeout(() => { if (ov.name === who && ov.pending.includes(p) && !p.stale) { p.stale = true; renderChat(); } }, 30500); }
       ta.value = ""; composerTextBy.delete(name);
       ov.atts = ov.atts.filter((a) => !ready.includes(a)); renderAtts();
       // Delivered: close the chat and return home (phones: the 내 차례 list). Held sends stay open (below).

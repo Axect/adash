@@ -596,6 +596,19 @@ pub fn op_send_files(snap: &Snapshot, key: &str, text: &str, images: &[String], 
     let mut file = None;
     let sent_at = now_ms();
     let mut typed = text.to_string();
+    // a harness built-in ("/reload-plugins") runs in the harness and leaves no user message in
+    // the session: the reply names it and carries the lines it printed
+    let builtin = builtin_command(a, text);
+    // printed lines: the screen's text rows, borders and blank rows left out
+    let rows = |h: &str| -> Vec<String> {
+        term::screen(h)
+            .unwrap_or_default()
+            .iter()
+            .map(|l| l.trim().to_string())
+            .filter(|l| l.chars().next().is_some_and(|c| c.is_alphanumeric() || c == '/' || c == '✓' || c == '✔'))
+            .collect()
+    };
+    let before = if builtin.is_some() { rows(&h) } else { vec![] };
     let r = match mode {
         "line" => term::send_line(&h, text)?,
         "paste" => {
@@ -626,6 +639,24 @@ pub fn op_send_files(snap: &Snapshot, key: &str, text: &str, images: &[String], 
     // the client matches its pending bubble against the transcript: the time typing started and the
     // text the agent's session will record (the pointer line for a file-mode message). The session's
     // message id does not exist yet when this returns.
+    if let Some(cmd) = builtin {
+        let mut out: Vec<String> = vec![];
+        for _ in 0..12 {
+            std::thread::sleep(Duration::from_millis(250));
+            // what follows the old screen's text (it scrolled up by some rows)
+            let now = rows(&h);
+            let skip = (0..=before.len()).find(|&k| now.starts_with(&before[k..])).unwrap_or(before.len());
+            out = now[(before.len() - skip).min(now.len())..].iter().filter(|l| **l != cmd).cloned().collect();
+            // the result is the last line printed (earlier ones are reload noise); wait until it settles
+            if out.last().is_some_and(|l| l.ends_with('.') || l.ends_with('!')) {
+                break;
+            }
+        }
+        let out: Vec<String> = out.last().map(|l| crate::util::truncate(l, 160)).into_iter().collect();
+        return Ok(
+            json!({"ok": true, "delivered": true, "held": null, "mode": mode, "name": a.name, "receipt": r, "sentAt": sent_at, "command": cmd, "output": out}),
+        );
+    }
     Ok(json!({"ok": true, "delivered": true, "held": null, "mode": mode, "file": file, "name": a.name, "receipt": r, "sentAt": sent_at, "typedText": typed}))
 }
 
@@ -796,6 +827,17 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     }
     term::snapshot(&h, "ask-form-unconfirmed");
     Err((502, "the form was submitted but no answer was recorded; check the terminal".into()))
+}
+
+/// `/name …` naming one of the harness's built-in commands (not `/btw`, which the session records).
+fn builtin_command(a: &crate::collect::Agent, text: &str) -> Option<String> {
+    let t = text.trim();
+    let first = t.strip_prefix('/')?.split_whitespace().next()?;
+    if t.contains('\n') || first == "btw" {
+        return None;
+    }
+    let cat = crate::commands::catalog(a);
+    cat["items"].as_array()?.iter().any(|x| x["scope"] == "builtin" && x["kind"] == "command" && x["name"].as_str() == Some(first)).then(|| format!("/{first}"))
 }
 
 /// Claude Code `AskUserQuestion` (v2.1, test session 2026-11-16): a tab row "← ☐ Color ☐ Size ✔ Submit →"
