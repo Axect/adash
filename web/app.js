@@ -3634,6 +3634,12 @@
     if (job) { card.hidden = false; H("#ask-card").innerHTML = answerJobHtml(job); return; }
     const q = a && kindOf(a) === "asking" ? a.ask : null;
     if (!q) { card.hidden = true; H("#ask-card").innerHTML = ""; return; }
+    // the box is on screen, its record not read yet: no guessed content, nothing to answer
+    if (q.askKind === "pending") {
+      card.hidden = false;
+      H("#ask-card").innerHTML = `<div class="ask-head"><span class="ask-tag">${t_("질문")}</span><span class="muted small">${esc(L2("질문이 떴습니다 · 내용을 불러오는 중", "A question is up · loading it"))}</span><span class="spacer"></span><button data-act="focus" data-name="${esc(a.name)}">${t_("터미널 열기")}</button></div>`;
+      return;
+    }
     card.hidden = false;
     const key = `${a.name}\u0000${q.askedAt || ""}`;
     const qs = askQuestions(q);

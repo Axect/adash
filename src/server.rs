@@ -1512,18 +1512,18 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let sa = sh.screen_ask.plock();
     let stall_ms = crate::config::get().notifications.stall_minutes as i64 * 60_000;
     for a in snap.agents.iter_mut() {
-        if let Some(t) = a.handle.as_ref().and_then(|h| sa.get(h)).filter(|_| a.state == "working" && a.ask.is_none()) {
-            // omp's Ask box is up before its call is in the session: asking, answering waits for
-            // the record (no call id yet)
+        if a.handle.as_ref().is_some_and(|h| sa.contains_key(h)) && a.state == "working" && a.ask.is_none() {
+            // omp's Ask box is up before its call is in the session: asking, with no content yet
+            // ("pending"; the screen around the box is the agent's own text, never the question)
             a.state = "asking".into();
             a.needs_human = a.snoozed_until.is_none();
             a.ask = Some(crate::ask::Ask {
-                question: t.clone(),
+                question: String::new(),
                 options: vec![],
                 multi: false,
                 questions: vec![],
                 asked_at: now_ms(),
-                ask_kind: "form",
+                ask_kind: "pending",
                 call_id: String::new(),
                 intro: vec![],
             });
@@ -1872,15 +1872,8 @@ fn scan_auth(sh: &Arc<Shared>) {
     for a in agents.iter().filter(|a| a.agent_type == "omp" && a.state == "working" && a.ask.is_none()) {
         let Some(h) = &a.handle else { continue };
         let Ok(lines) = term::screen(h) else { continue };
-        if let Some(i) = lines.iter().rposition(|l| l.starts_with('╭') && l.contains("─ Ask")) {
-            let title = lines[..i]
-                .iter()
-                .rev()
-                .map(|l| l.trim())
-                .find(|l| !l.is_empty())
-                .map(|l| l.trim_start_matches(|c: char| !c.is_alphanumeric()).to_string())
-                .unwrap_or_default();
-            sa.insert(h.clone(), title);
+        if lines.iter().any(|l| l.starts_with('╭') && l.contains("─ Ask")) {
+            sa.insert(h.clone(), String::new());
         }
     }
     *sh.screen_ask.plock() = sa;
