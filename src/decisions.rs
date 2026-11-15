@@ -91,13 +91,49 @@ fn split_top(s: &str, sep: &str) -> Option<Vec<String>> {
     Some(parts)
 }
 
+/// " / " between two numbers is a ratio or range inside one option ("44 / 26 / 30"): those
+/// pieces join again. When that happened, a piece left as only digits or ≤ 2 characters joins
+/// its neighbour too (plain "A / B / C" keeps its short options).
+fn join_ratios(parts: Vec<String>) -> Vec<String> {
+    let mut out: Vec<String> = vec![];
+    let mut joined = false;
+    for p in parts {
+        let starts = p.trim_start().chars().next().is_some_and(|c| c.is_ascii_digit());
+        match out.last_mut() {
+            Some(prev) if starts && prev.trim_end().chars().last().is_some_and(|c| c.is_ascii_digit()) => {
+                prev.push_str(" / ");
+                prev.push_str(&p);
+                joined = true;
+            }
+            _ => out.push(p),
+        }
+    }
+    if joined {
+        let tiny = |s: &str| {
+            let t = s.trim();
+            t.chars().count() <= 2 || t.chars().all(|c| c.is_ascii_digit() || c == '.' || c == '%')
+        };
+        let mut merged: Vec<String> = vec![];
+        for p in out {
+            match merged.last_mut() {
+                Some(prev) if tiny(&p) || tiny(prev) => {
+                    prev.push_str(" / ");
+                    prev.push_str(&p);
+                }
+                _ => merged.push(p),
+            }
+        }
+        return merged;
+    }
+    out
+}
+
 /// `label: A / B / C` → (label, [A, B, C]); anything else → (text, []). Only top-level " / "
 /// separates options.
 pub fn options_of(item: &str) -> (String, Vec<String>) {
     let split = item.find(": ").map(|i| (i, 2)).or_else(|| item.find('：').map(|i| (i, '：'.len_utf8())));
     if let Some((i, n)) = split {
-        let opts: Vec<String> = split_top(&item[i + n..], " / ")
-            .unwrap_or_default()
+        let opts: Vec<String> = join_ratios(split_top(&item[i + n..], " / ").unwrap_or_default())
             .into_iter()
             .map(|o| o.trim().trim_end_matches(['.', '。']).trim().to_string())
             .filter(|o| !o.is_empty())
@@ -243,5 +279,13 @@ mod tests {
         d.last_human_at = Some(2_000);
         settle(&mut d, None);
         assert_eq!((count(&d), d.decisions_answered), (2, false));
+    }
+
+    #[test]
+    fn ratios_stay_inside_one_option() {
+        let (_, o) = options_of("구성 비율: 실제 학습 자료와 같은 44 / 26 / 30 (추출 방식만 바뀜, 권고) / 정하신 40 / 40 / 20 (구성도 함께 바뀜)");
+        assert_eq!(o, ["실제 학습 자료와 같은 44 / 26 / 30 (추출 방식만 바뀜, 권고)", "정하신 40 / 40 / 20 (구성도 함께 바뀜)"]);
+        assert_eq!(options_of("메일 발송일: 10-31(토) / 11-02(월)").1.len(), 2);
+        assert_eq!(options_of("고를 것: A / B / C").1, ["A", "B", "C"]);
     }
 }
