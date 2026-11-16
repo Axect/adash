@@ -4194,12 +4194,13 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
         }
       } else if (m.kind === "btw" || m.btw) { const open = !!agentBy(ov.name)?.btw?.open; blocks.push([`${m.id}:${m.status || ""}:${open}`, btwBubble(m, msgs, open)]); }
       else if (m.role === "user") blocks.push([m.id, userBubble(m)]);
-      else if (m.role === "assistant") blocks.push([m.id, `<div class="m assistant md" title="${esc(tsTitle(m.ts))}">${msgCopyBtn(m.text)}${md(m.text, ov.name, m.id ?? m.ts)}</div>`]);
+      // keyed by length and status too: a message re-sent longer (agy writes a step in place) is drawn again
+      else if (m.role === "assistant") blocks.push([`${m.id}:${(m.text || "").length}:${m.status || ""}`, `<div class="m assistant md${m.status === "streaming" ? " streaming" : ""}" title="${esc(tsTitle(m.ts))}">${msgCopyBtn(m.text)}${md(m.text, ov.name, m.id ?? m.ts)}${m.status === "streaming" ? `<div class="muted small writing">${esc(L2("작성 중…", "writing…"))}</div>` : ""}</div>`]);
       else if (m.role === "error") blocks.push([m.id, errorBubble(m)]);
       else if (m.role === "shell") blocks.push([m.id, shellBubble(m)]);
       else if (m.role === "media") blocks.push([m.id, mediaRow(m)]);
       // open state survives re-renders (same as tool groups); no text: no block
-      else if (m.role === "thinking") { if (m.text?.trim()) blocks.push([`${m.id}:${ov.openGroups.has(m.id)}`, `<details class="m thinking" data-gid="${esc(m.id)}"${ov.openGroups.has(m.id) ? " open" : ""} title="${esc(tsTitle(m.ts))}"><summary>${t_("생각")}</summary><div class="md">${md(m.text, ov.name, m.id)}</div></details>`]); }
+      else if (m.role === "thinking") { if (m.text?.trim()) blocks.push([`${m.id}:${ov.openGroups.has(m.id)}:${m.text.length}`, `<details class="m thinking" data-gid="${esc(m.id)}"${ov.openGroups.has(m.id) ? " open" : ""} title="${esc(tsTitle(m.ts))}"><summary>${t_("생각")}</summary><div class="md">${md(m.text, ov.name, m.id)}</div></details>`]); }
       else blocks.push([m.id, `<div class="m system${tx?.source === "terminal" ? " term" : ""}" title="${esc(tsTitle(m.ts))}">${esc(m.text)}</div>`]);
     }
     (ov.cmdRuns || []).filter((c) => c.at > Date.now() - 10 * 60_000).forEach((c, i) => blocks.push([`c:${i}:${c.at}`, `<div class="m system cmd-run"><code>${esc(c.cmd)}</code> ${esc(L2("실행", "ran"))}${c.out.length ? ` · ${esc(c.out.join(" · "))}` : ""}</div>`]));

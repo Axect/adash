@@ -740,7 +740,13 @@ impl TranscriptCache {
                             None => tf.msgs.push(m),
                         }
                     }
-                    s.text.filter(|t| !t.trim().is_empty()).map(|t| msg(id.clone(), "assistant", t, ts, None))
+                    // still being written: the row grows in place; marked so the chat says so
+                    let partial = s.status != crate::agy::FINISHED;
+                    s.text.filter(|t| !t.trim().is_empty()).map(|t| {
+                        let mut m = msg(id.clone(), "assistant", t, ts, None);
+                        m.status = partial.then_some("streaming");
+                        m
+                    })
                 }
                 crate::agy::SYSTEM => s.text.filter(|t| !t.trim().is_empty()).map(|t| msg(id.clone(), "system", t, ts, None)),
                 crate::agy::TOOL => s.tool.map(|(_, name, args)| {
@@ -777,7 +783,9 @@ fn window(msgs: &[Msg], after: Option<usize>, around: Option<&str>, limit: usize
     let total = msgs.len();
     let start = match (around.and_then(|id| msgs.iter().position(|m| m.id == id || m.id.starts_with(&format!("{id}.")))), after) {
         (Some(pos), _) => pos.saturating_sub(limit / 2),
-        (None, Some(n)) => n.min(total),
+        // the last few seen messages again: a step written in place (agy) may have grown since;
+        // the client replaces them by id
+        (None, Some(n)) => n.min(total).saturating_sub(3),
         (None, None) => total.saturating_sub(limit),
     };
     (start, (start + limit).min(total))
