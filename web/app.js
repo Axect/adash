@@ -3326,6 +3326,9 @@
         : st === "error" ? L2("오류는 재시도해야 사라집니다", "An error stays until it is retried")
         : L2("이 화면은 처리해야 사라집니다", "This screen stays until it is handled");
       toast(`${name}: ${why} · ${L2("미루기 z", "snooze z")}`, 3500);
+      // it is still on my turn: stay on it unless another agent is waiting
+      if (triageOrder().some((n) => n !== name)) nextTriage(name);
+      return;
     }
     // Nothing left on my turn: from the chat, close it and go home (phones: the 내 차례 list).
     if (ov.open && !triageOrder().some((n) => n !== name)) {
