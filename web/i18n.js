@@ -91,7 +91,7 @@
     "대상 에이전트와 요청 내용을 직접 정해서 보냄": "Pick the target agent and write the request yourself", "제안 역할 에이전트에게 선택지·시안 제안을 맡김 (magi)": "Ask the proposer agent for options/drafts (magi)",
     "미루기 ▾": "Snooze ▾", "15분": "15 min", "1시간": "1 h", "오늘 끝까지": "Rest of today", "미루기 해제": "Unsnooze", "미룸": "snoozed",
     "이름 ▾": "Name ▾", "바꾸기": "Rename", "대시보드에서 쓸 이름을 직접 정함": "Set the name the dashboard uses", "묻기": "Ask", "에이전트에게 스스로 이름을 정해 달라고 요청": "Ask the agent to name itself",
-    "이전·다음 내 차례 · e 확인함 · r 입력 · Esc 닫기": "[ ] prev/next · e mark read · r reply · Esc close", "닫기 (Esc)": "Close (Esc)", "표시 설정 (글꼴·글자 크기)": "Display settings (font, size)",
+    "이전·다음 내 차례 · e 확인함 · z 미루기 · r 입력 · Esc 닫기": "[ ] prev/next · e mark read · z snooze · r reply · Esc close", "닫기 (Esc)": "Close (Esc)", "표시 설정 (글꼴·글자 크기)": "Display settings (font, size)",
     "대화": "Chat", "터미널": "Terminal", "대시보드": "Dashboard", "정보": "Info", "검토 요청 ": "Reviews ", "에이전트끼리 주고받은 검토·제안 요청": "Review/propose requests between agents", "나만 할 수 있는 일": "Things only I can do",
     "프로젝트별 목표·마감·우선순위 점수": "Per-project goal, deadline, priority", "이름": "Name", "역할": "Role", "프로젝트": "Project", "제목": "Title", "종류": "Type", "상태": "State", "캐시": "Cache",
     "도구": "Tool", "대화 출처": "Transcript source", "경로": "Path", "정확": "exact", "추정": "estimated", "불러올 수 없음": "unavailable", "선택된 에이전트 없음": "No agent selected",

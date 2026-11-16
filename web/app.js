@@ -3319,6 +3319,14 @@
     // Optimistic, mirroring the server: acknowledging also answers the open decisions (decisions → []).
     const s = agentBy(name); if (s) { s.unread = false; s.ackedAt = Date.now(); if (decisionsOf(s).length) { s.decisions = []; s.decisionsAnswered = true; } }
     render();
+    // Marking read does not end a question, an error or a sign-in/trust/approval screen: say why it stays.
+    const st = s?.state;
+    if (st === "asking" || st === "approval" || st === "trust" || st === "auth" || st === "error") {
+      const why = st === "asking" ? L2("질문은 답해야 사라집니다", "A question stays until it is answered")
+        : st === "error" ? L2("오류는 재시도해야 사라집니다", "An error stays until it is retried")
+        : L2("이 화면은 처리해야 사라집니다", "This screen stays until it is handled");
+      toast(`${name}: ${why} · ${L2("미루기 z", "snooze z")}`, 3500);
+    }
     // Nothing left on my turn: from the chat, close it and go home (phones: the 내 차례 list).
     if (ov.open && !triageOrder().some((n) => n !== name)) {
       closeChat();
@@ -3326,6 +3334,16 @@
       toast("모두 확인했습니다", 2500);
       return;
     }
+    nextTriage(name);
+  }
+  // z: snooze one hour and move on (questions and errors included; the snooze clears their highlight).
+  async function snoozeAndNext(name) {
+    if (!name) return;
+    try { await api("POST", `/api/agents/${enc(name)}/snooze`, { minutes: 60 }); } catch { return; }
+    const s = agentBy(name); if (s) s.snoozedUntil = Date.now() + 3600e3;
+    toast(`${name} · ${L2("1시간 미룸", "snoozed 1 h")}`, 2000);
+    render();
+    if (ov.open && !triageOrder().some((n) => n !== name)) { closeChat(); return; }
     nextTriage(name);
   }
 
@@ -5013,6 +5031,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       if (e.key === "[") { e.preventDefault(); switchWaiting(-1); }
       else if (e.key === "]") { e.preventDefault(); switchWaiting(1); }
       else if (e.key === "e") { e.preventDefault(); ackAndNext(ov.name); }
+      else if (e.key === "z") { e.preventDefault(); snoozeAndNext(ov.name); }
       else if (e.key === "r") { e.preventDefault(); $("#composer-text").focus(); }
       return;
     }
@@ -5030,6 +5049,8 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       if (n) { e.preventDefault(); openChat(n); }
     } else if (e.key === "e") {
       if (selName) { e.preventDefault(); ackAndNext(selName); }
+    } else if (e.key === "z") {
+      if (selName) { e.preventDefault(); snoozeAndNext(selName); }
     } else if (e.key === "o") {
       if (selName) openTerminal(selName);
     } else if (e.key === "n") {
