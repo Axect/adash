@@ -1834,7 +1834,9 @@
       const lims = (v.accounts || []).flatMap((a) => (a.limits || []).map((l) => ({ ...l, account: a.account })));
       const worst = lims.reduce((m, l) => (!m || (l.usedFraction || 0) > (m.usedFraction || 0) ? l : m), null);
       const tip = [`${VENDOR_KO[v.vendor] || v.vendor} (${v.provider})`, ...(v.accounts || []).flatMap((a) => [`${a.account}${a.plan ? ` · ${a.plan}` : ""}`, ...(a.limits || []).map((l) => `  ${l.label}${l.windowLabel && l.windowLabel !== l.label ? ` (${l.windowLabel})` : ""} ${pct(l.usedFraction)}${l.status && l.status !== "ok" ? ` · ${l.status}` : ""} · ${resetTxt(l.resetsAt)}`)])].join("\n");
-      return { name: VENDOR_KO[v.vendor] || v.provider || v.vendor, main: v.vendor in ORDER, worst, tip };
+      const hms = v.fetchedAt ? new Date(v.fetchedAt).toLocaleTimeString("ko-KR", { hour12: false }) : "";
+      const src = v.source ? `${L2("갱신", "updated")} ${hms} · ${L2("출처", "source")} ${v.source}` : "";
+      return { name: VENDOR_KO[v.vendor] || v.provider || v.vendor, main: v.vendor in ORDER, worst, tip: src ? `${tip}\n${src}` : tip };
     }).filter((v) => v.worst);
   }
   function renderCapacity() {
@@ -1848,7 +1850,7 @@
       (extra.length ? `<span class="cap-more" data-tip="${esc(extra.map((v) => v.tip).join("\n\n") + foot)}">+${extra.length}</span>` : "") + (capLoading ? `<span class="muted"> …</span>` : "");
   }
   // Phone 더보기: the same numbers, one line per vendor.
-  const capListHtml = () => (capacity ? `<div class="m-cap"><b>AI 용량</b>${capVendors().map((v) => `<div class="m-cap-r ${levelOf(v.worst.usedFraction)}" title="${esc(v.tip)}"><span>${esc(v.name)}</span><span class="muted">${esc(v.worst.label || "")}</span><b>${pct(v.worst.usedFraction)}</b></div>`).join("")}</div>` : "");
+  const capListHtml = () => (capacity ? `<div class="m-cap"><b>AI 용량</b>${capVendors().map((v) => `<div class="m-cap-r ${levelOf(v.worst.usedFraction)}" title="${esc(v.tip)}"><span>${esc(v.name)}</span><span class="muted">${esc(v.worst.label || "")}</span><b>${pct(v.worst.usedFraction)}</b></div>`).join("")}<button type="button" class="linkish small" data-act="cap-refresh">${capLoading ? esc(L2("새로고침 중…", "refreshing…")) : esc(L2("새로고침", "Refresh"))}</button></div>` : "");
   {
     const tip = $("#tip"), el = $("#capacity");
     el.addEventListener("mousemove", (e) => {
@@ -4895,6 +4897,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
     }
     else if (a === "m-new") openLaunch();
+    else if (a === "cap-refresh") refreshCapacity(true).then(() => typeof renderMobile === "function" && renderMobile());
     else if (a === "m-sessions") openSessions();
     else if (a === "m-reports") (typeof openReports === "function" ? openReports() : toast("보고서는 아직 없습니다"));
     else if (a === "m-push") openPushSettings();

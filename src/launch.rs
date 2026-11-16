@@ -409,6 +409,26 @@ pub struct Capacity {
     error: Option<String>,
     /// the last good usage per harness read from the harness itself (agy, claude, codex)
     own: std::collections::HashMap<String, Value>,
+    /// last time omp's Anthropic numbers were checked against `claude /usage`
+    cross_at: Option<Instant>,
+}
+
+/// Highest used fraction over a vendor's windows.
+fn worst_used(v: &Value) -> f64 {
+    v["accounts"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .flat_map(|a| a["limits"].as_array().into_iter().flatten())
+        .filter_map(|l| l["usedFraction"].as_f64())
+        .fold(0.0, f64::max)
+}
+
+/// `omp usage invalidate`: drop omp's own cached report (it may be older than a reset).
+fn invalidate_omp_usage() {
+    if let Some(b) = find_bin("omp") {
+        let _ = crate::platform::timeout(30).arg(b).args(["usage", "invalidate"]).output();
+    }
 }
 
 fn vendor_of(provider: &str) -> &'static str {
@@ -593,21 +613,47 @@ fn fetch_agy_usage() -> Res<Value> {
 }
 
 impl Capacity {
-    /// Refresh when due: periodic (5 min) or forced (`?refresh=1`, at most once per 60 s).
+    /// Refresh when due: periodic (5 min) or forced (`?refresh=1`, at most once per 10 s; omp's
+    /// cache is dropped first).
     pub fn refresh(&mut self, force: bool) -> Option<Value> {
         let due = match self.last_try {
             None => true,
-            Some(t) => t.elapsed() >= if force { Duration::from_secs(60) } else { Duration::from_secs(300) },
+            Some(t) => t.elapsed() >= if force { Duration::from_secs(10) } else { Duration::from_secs(300) },
         };
         if !due {
             return None;
         }
         self.last_try = Some(Instant::now());
+        if force {
+            invalidate_omp_usage();
+        }
         // omp's report first (when omp is there); each provider it lacks from its own harness
         let omp = fetch_usage();
         let omp_ok = omp.is_ok();
         let omp_err = omp.as_ref().err().cloned();
-        let mut vendors = omp.map(|r| shape_usage(&r)).unwrap_or_default();
+        let stamp = |mut v: Value, src: &str| {
+            v["source"] = json!(src);
+            v["fetchedAt"] = json!(now_ms());
+            v
+        };
+        let mut vendors: Vec<Value> = omp.map(|r| shape_usage(&r)).unwrap_or_default().into_iter().map(|v| stamp(v, "omp")).collect();
+        // omp can hand back an old report (a saved reset done since): check Anthropic against
+        // `claude /usage` when forced or every 30 min; 30 points apart → drop omp's cache and read
+        // again, still apart → Claude's own (newer) numbers
+        let cross_due = force || self.cross_at.is_none_or(|t| t.elapsed() >= Duration::from_secs(1800));
+        if let Some(i) = vendors.iter().position(|v| v["provider"] == "anthropic").filter(|_| cross_due && find_bin("claude").is_some()) {
+            self.cross_at = Some(Instant::now());
+            if let Ok(c) = fetch_claude_usage() {
+                if (worst_used(&vendors[i]) - worst_used(&c)).abs() > 0.3 {
+                    invalidate_omp_usage();
+                    let again = fetch_usage().ok().and_then(|r| shape_usage(&r).into_iter().find(|v| v["provider"] == "anthropic"));
+                    vendors[i] = match again {
+                        Some(o) if (worst_used(&o) - worst_used(&c)).abs() <= 0.3 => stamp(o, "omp"),
+                        _ => stamp(c, "claude"),
+                    };
+                }
+            }
+        }
         let has = |vs: &Vec<Value>, f: &dyn Fn(&str) -> bool| vs.iter().any(|v| v["provider"].as_str().is_some_and(f));
         let sources: [(&str, &str, fn() -> Res<Value>, &dyn Fn(&str) -> bool); 3] = [
             ("antigravity", "agy", fetch_agy_usage, &|p: &str| p.contains("antigravity")),
@@ -620,6 +666,7 @@ impl Capacity {
             }
             match fetch() {
                 Ok(v) => {
+                    let v = stamp(v, bin);
                     self.own.insert(key.to_string(), v.clone());
                     vendors.push(v);
                 }
