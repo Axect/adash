@@ -1796,8 +1796,16 @@ fn restart_outdated_with(sh: &Shared, names: &[String], when_idle: bool, now_ask
 
 /// agy announces news in a box ending "esc to dismiss" that holds the input: close it first.
 pub fn dismiss_agy_notice(h: &str) {
-    if term::screen(h).is_ok_and(|l| l.iter().rev().take(15).any(|x| x.trim_start_matches(['┃', ' ']).starts_with("esc to dismiss"))) {
+    let Ok(l) = term::screen(h) else { return };
+    let tail: Vec<&String> = l.iter().rev().take(15).collect();
+    if tail.iter().any(|x| x.trim_start_matches(['┃', ' ']).starts_with("esc to dismiss")) {
         let _ = term::send_keys(h, &["Escape"]);
+        std::thread::sleep(Duration::from_millis(400));
+    }
+    // "How's the CLI experience so far? … [1] Good [2] Fine [3] Bad [0] Skip": the next key
+    // would answer it; 0 skips
+    if tail.iter().any(|x| x.contains("[0] Skip") && x.contains("[1] Good")) {
+        let _ = term::send_keys(h, &["0"]);
         std::thread::sleep(Duration::from_millis(400));
     }
 }
@@ -1875,7 +1883,11 @@ fn scan_auth(sh: &Arc<Shared>) {
             v["since"] = prev_q.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             queued.insert(h.clone(), v);
         }
-        if let Some(mut v) = crate::auth::agy_error(&a.agent_type, &lines) {
+        if let Some(v) = crate::auth::agy_error(&a.agent_type, &lines).filter(|v| v["auth"] == true) {
+            // a rejected sign-in: the login card (restart first: another agy may have signed in)
+            let since = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
+            found.insert(h.clone(), json!({"reason": "expired", "phrase": v["message"], "url": null, "code": null, "since": since}));
+        } else if let Some(mut v) = crate::auth::agy_error(&a.agent_type, &lines) {
             v["kind"] = json!("error");
             v["since"] = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             found.insert(h.clone(), v);

@@ -143,14 +143,27 @@ pub fn agy_error(kind: &str, screen: &[String]) -> Option<Value> {
     let tail = &rows[rows.len().saturating_sub(ROWS)..];
     let id = tail.iter().rposition(|l| l.trim_start().starts_with("Error ID:"))?;
     let warn = tail[..id].iter().rposition(|l| l.trim_start().starts_with('⚠'))?;
-    // only while it waits: the prompt after the error, nothing typed
-    if !tail[id..].iter().any(|l| l.trim() == ">") {
+    // only while it waits: below the error just the input box, its footer, or agy's
+    // satisfaction survey; any other line is new output (agy went on)
+    let quiet = |l: &str| {
+        let t = l.trim_start_matches(['┃', '│', ' ']);
+        t.is_empty()
+            || t == ">"
+            || t.starts_with("> Auto mode")
+            || t.starts_with(['─', '?', '[', '╭', '╰', '━'])
+            || t.starts_with("How's")
+            || t.starts_with("Auto mode")
+            || t.contains("[0] Skip")
+    };
+    if !tail[id + 1..].iter().all(|l| quiet(l)) {
         return None;
     }
-    let msg = tail[warn].trim_start().trim_start_matches('⚠').trim().to_string();
+    // the message may wrap onto the lines before "Error ID"
+    let msg = tail[warn..id].iter().map(|l| l.trim()).collect::<Vec<_>>().join(" ").trim_start_matches('⚠').trim().to_string();
     // "model not found" also means "not available on this plan" (Antigravity Ultra-only models)
     let missing = msg.contains("model not found") || msg.contains("unknown model");
-    Some(json!({"message": msg, "modelMissing": missing}))
+    let auth = msg.contains("UNAUTHENTICATED") || msg.contains("code 401") || msg.contains("invalid authentication credentials");
+    Some(json!({"message": msg, "modelMissing": missing, "auth": auth}))
 }
 
 #[cfg(test)]
@@ -274,5 +287,26 @@ mod tests {
         let typed = s(&["⚠ failed", "Error ID: x", "> next try"]);
         assert!(agy_error("antigravity", &typed).is_none());
         assert!(agy_error("omp", &scr).is_none());
+    }
+
+    #[test]
+    fn agy_auth_error_under_a_survey() {
+        let scr = s(&[
+            "⚠ UNAUTHENTICATED (code 401): Request had invalid authentication credentials. Expected OAuth 2 access token,",
+            "login cookie or other valid authentication credential.",
+            "Error ID: 1b2c-33",
+            "────",
+            "How's the CLI experience so far? Your feedback helps us improve.",
+            "[1] Good  [2] Fine  [3] Bad  [0] Skip",
+            "────",
+            ">",
+            "? for shortcuts",
+        ]);
+        let v = agy_error("antigravity", &scr).unwrap();
+        assert_eq!(v["auth"], true);
+        assert!(v["message"].as_str().unwrap().ends_with("valid authentication credential."));
+        // agy went on after the error: not waiting
+        let moved = s(&["⚠ some error", "Error ID: x", "  Retrying the edit now", ">"]);
+        assert!(agy_error("antigravity", &moved).is_none());
     }
 }
