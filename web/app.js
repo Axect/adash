@@ -251,7 +251,8 @@
   // ---------- fixture stubs ----------
   function fixtureApi(method, path, body) {
     console.log("[fixture] would send", method, path, method === "GET" ? "" : "X-Adash: 1", body === undefined ? "" : JSON.stringify(body));
-    if (method !== "GET" && !path.endsWith("/stat")) toast(`[fixture] ${method} ${path}${body === undefined ? "" : " " + JSON.stringify(body)}`.slice(0, 300));
+    // The request toast is a developer aid (?debug=1); demo viewers see only the app's own toasts.
+    if (method !== "GET" && !path.endsWith("/stat") && /[?&]debug=1\b/.test(location.search)) toast(`[fixture] ${method} ${path}${body === undefined ? "" : " " + JSON.stringify(body)}`.slice(0, 300));
     if (method === "GET" && path === "/api/meta") return structuredClone(fixtureData.meta);
     if (path === "/api/request-names") {
       const amb = fixtureData.agents.filter((a) => a.ambiguous);
@@ -1519,10 +1520,13 @@
       const d = new Date(t);
       if (d.getHours() % step) continue;
       if (X(t) > W - 34) continue;
-      ticks.push({ x: X(t), label: d.getHours() === 0 ? `${d.getMonth() + 1}/${d.getDate()}` : `${d.getHours()}시` });
+      ticks.push({ x: X(t), label: d.getHours() === 0 ? `${d.getMonth() + 1}/${d.getDate()}` : L2(`${d.getHours()}시`, `${d.getHours()}:00`) });
     }
     H("#axis").innerHTML = ticks.map((k) => `<line x1="${k.x.toFixed(1)}" x2="${k.x.toFixed(1)}" y1="14" y2="22" stroke="var(--border)"></line><text x="${(k.x + 2).toFixed(1)}" y="12">${k.label}</text>`).join("") +
-      `<text class="now" x="${W - 2}" y="12" text-anchor="end">지금</text>`;
+      `<text class="now" x="${W - 2}" y="12" text-anchor="end">${L2("지금", "Now")}</text>`;
+    // A tick label that would run into the "Now" label (wider in English / larger fonts) is dropped, line kept.
+    { const ax = $("#axis"), nowT = ax.querySelector("text.now"), nb = nowT?.getBBox?.();
+      if (nb && nb.width) for (const t of ax.querySelectorAll("text:not(.now)")) { const b = t.getBBox(); if (b.x + b.width > nb.x - 6) t.remove(); } }
     const svg = [];
     svg.push(`<defs><pattern id="err-stripe" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(-45)"><rect width="5" height="5" fill="var(--err-bg)"></rect><line x1="0" y1="0" x2="0" y2="5" stroke="var(--cold)" stroke-width="2.4"></line></pattern><pattern id="hatch" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="5" stroke="var(--timeline-snoozed)" stroke-width="1.2" opacity=".6"></line></pattern>
       <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path class="arr" d="M0,0 L8,4 L0,8 z"></path></marker></defs>`);
