@@ -263,7 +263,11 @@ pub fn composer_text(agent_type: &str, source: &str, tail: &[String]) -> Option<
         for p in ['>', '›', '❯'] {
             if let Some(rest) = t.strip_prefix(p) {
                 let rest = rest.trim();
-                if rest.is_empty() || (agent_type == "claude" && rest.starts_with("Try \"")) {
+                // agy's empty box shows its mode in grey: "> Auto mode: … (shift+tab to cycle)"
+                if rest.is_empty()
+                    || (agent_type == "claude" && rest.starts_with("Try \""))
+                    || (agent_type == "antigravity" && rest.ends_with("(shift+tab to cycle)"))
+                {
                     return Some(None);
                 }
                 return if agent_type == "claude" { some(rest) } else { None };
@@ -766,5 +770,19 @@ mod composer_hint_tests {
         assert_eq!(super::composer_text("omp", "screen", &screen), Some(None));
         let typed: Vec<String> = ["──────────────────────", " 검토 부탁해요", "──────────────────────", " status"].iter().map(|s| s.to_string()).collect();
         assert_eq!(super::composer_text("omp", "screen", &typed), Some(Some("검토 부탁해요".into())));
+    }
+
+    #[test]
+    fn agy_empty_box_with_mode_hint() {
+        let t = |l: &[&str]| l.iter().map(|x| x.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            super::composer_text(
+                "antigravity",
+                "screen",
+                &t(&["────", "> Auto mode: edits & safe commands auto-approved (shift+tab to cycle)", "────", "? for shortcuts"])
+            ),
+            Some(None)
+        );
+        assert_eq!(super::composer_text("antigravity", "screen", &t(&["> half typed", "? for shortcuts"])), None);
     }
 }
