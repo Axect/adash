@@ -111,10 +111,13 @@ fn blocker(a: &Agent, now: i64, after_ms: i64, st: &Store, busy: &HashSet<String
     None
 }
 
-/// Names an open adash thread or magi run still has to reach.
+/// Names an open adash thread or magi run still has to reach. Detected exchanges (phase
+/// "external") stay "delivered" forever and threads older than the sleep window are history:
+/// neither keeps an agent awake.
 fn busy_names() -> HashSet<String> {
     let mut out = HashSet::new();
-    for t in crate::threads::load_all() {
+    let since = now_ms() - (crate::config::get().sleep.after_hours.max(1) as i64) * 3_600_000;
+    for t in crate::threads::load_all().into_iter().filter(|t| t.phase != "external" && t.created_at >= since) {
         if (!matches!(t.status.as_str(), "answered" | "done" | "failed" | "cancelled") || t.phase == "relay") && t.phase != "done" {
             out.insert(t.to.clone());
             out.insert(t.from.clone());
