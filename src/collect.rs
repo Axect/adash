@@ -43,6 +43,9 @@ pub struct Agent {
     pub acked_at: Option<i64>,
     /// an answer the human has not replied to or acknowledged yet
     pub unread: bool,
+    /// resident memory of the agent's process tree (MB), sampled every ~10 s
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rss_mb: Option<u64>,
     /// unsent text in the agent's own input box: {text, readable, source, seenAt} (scanned ~10 s)
     pub draft: Option<Value>,
     /// login prompt on the agent's screen (state "auth"): {reason, phrase, url?, code?, since}
@@ -328,6 +331,7 @@ impl Collector {
                     last_human_at: if mapped { sess.turn.last_human } else { None },
                     acked_at: None,
                     unread: false,
+                    rss_mb: None,
                     draft: None,
                     auth: None,
                     queued: None,

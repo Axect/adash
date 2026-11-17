@@ -704,7 +704,7 @@
   }
 
   // Row model: history agents joined with live /api/state agents; falls back to state alone when history is unavailable.
-  const KIND_ORDER = { asking: -1, error: -0.5, waiting: 0, working: 1, snoozed: 2, idle: 3, offline: 4 };
+  const KIND_ORDER = { asking: -1, error: -0.5, waiting: 0, working: 1, snoozed: 2, idle: 3, asleep: 3.5, offline: 4 };
   let sortMode = localStorage.getItem("adash.sort") === "missed" ? "missed" : "recent";
   const expandedOffline = new Set(); // groups whose quiet offline agents are shown
   let model = { rows: [], groups: [], from: 0, now: 0, agents: [] };
@@ -743,6 +743,17 @@
       taken.add(name);
       byKey.set(`h:${h.identity || h.name}`, { name, realName: h.name, identity: h.identity || null, h, s: null });
     }
+    // Sleeping agents (closed after a long idle, reopened by a message): their own rows, also without history
+    const asleepBy = new Map((state.sleep?.asleep || []).map((x) => [x.identity, x]));
+    for (const e of byKey.values()) if (e.identity && asleepBy.has(e.identity)) e.asleep = asleepBy.get(e.identity);
+    const seenIds = new Set([...byKey.values()].map((e) => e.identity));
+    for (const x of asleepBy.values()) {
+      if (seenIds.has(x.identity)) continue;
+      let name = x.name;
+      for (let k = 2; taken.has(name); k++) name = `${x.name} (${k})`;
+      taken.add(name);
+      byKey.set(`z:${x.identity}`, { name, realName: x.name, identity: x.identity, h: { identity: x.identity, name: x.name, project: x.project, segments: [] }, s: null, asleep: x });
+    }
     for (const s of state.agents || []) {
       const k = `s:${s.paneKey || s.name}`;
       const e = byKey.get(k) || { name: s.name, realName: s.name, identity: s.identity || s.paneKey || null, h: null, s: null };
@@ -753,7 +764,7 @@
     const hasInteractions = (history?.agents || []).some((a) => Array.isArray(a.interactions));
     for (const e of byName.values()) {
       const s = e.s, h = e.h;
-      const k0 = s ? kindOf(s) : "offline";
+      const k0 = s ? kindOf(s) : e.asleep ? "asleep" : "offline";
       // Snoozed (until a future time): every highlight is off: question, error, unread, waiting all read as
       // "snoozed"; `held` keeps what it would have been so the Now column can say it in gray. Working stays working.
       const snz = !!(s?.snoozedUntil && s.snoozedUntil > now);
@@ -784,7 +795,7 @@
         segs = segs.filter((g) => g.start < at).map((g) => (g.end > at ? { ...g, end: at } : g)).concat([{ state: "snoozed", start: at, end: now, src: "recorded" }]);
       }
       // Live = present in /api/state now; history's live flag lags behind a close from this dashboard.
-      agents.push({ name: e.name, realName: e.realName, identity: e.identity, s, h, kind, held, snoozedUntil: snz ? s.snoozedUntil : null, segs, waitedMin, inter, lastHuman, lastHumanAt, unread, live: !!s, project: s?.project || h?.project || "?", role: s?.role ?? h?.role ?? null });
+      agents.push({ name: e.name, realName: e.realName, identity: e.identity, s, h, kind, asleep: e.asleep || null, held, snoozedUntil: snz ? s.snoozedUntil : null, segs, waitedMin, inter, lastHuman, lastHumanAt, unread, live: !!s, project: s?.project || h?.project || "?", role: s?.role ?? h?.role ?? null });
     }
     // Threads name their ends; with fromIdentity/toIdentity they attach to that session's row (an ended same-name
     // agent's row key differs from its name). Threads without identities (older ones) keep the name link.
@@ -807,7 +818,7 @@
     // Ended (offline) agents, including an ended same-name "RS (종료됨 …)", fold into the group's "오프라인 N개
     // 숨김" row even if I talked to them in the window; they show only when expanded, after the live members.
     // The 라이브만 / 대기만 filters drop them outright (`show` above).
-    const quietOffline = (a) => filter === "all" && !a.live;
+    const quietOffline = (a) => filter === "all" && !a.live && a.kind !== "asleep";
     const groups = [];
     for (const [name, p] of pinfo) {
       const inGroup = show.filter((a) => a.project === name);
@@ -985,7 +996,7 @@
     // Items carry a fold priority (data-f, higher folds first): when the top bar is short of room (English labels,
     // narrow windows) fitSummary() hides 작업 중 → 기타 → 곧 식음 → 미확인; the tooltip keeps every count.
     const si = (f, html, first) => `<span class="si"${f ? ` data-f="${f}"` : ""}>${first ? "" : sep}${html}</span>`;
-    H("#summary").innerHTML = `<span title="${esc(tip)}">${si(0, `내 차례 <b class="${c.mine ? "alert" : ""}">${c.mine}</b>`, true)}${si(0, `<span class="lb">질문 </span><b class="${c.asking ? "ask-n" : ""}">${c.asking}</b>`)}${c.error ? si(0, `<span class="lb">오류 </span><b class="err-n">${c.error}</b>`) : ""}${si(1, `미확인 <b>${c.unread}</b>`)}${si(3, `기타 <b>${c.other}</b>`)}${soon ? si(2, `<span title="${esc(soonTip)}">곧 식음 <b class="held-n">${soon}</b></span>`) : ""}${si(4, `작업 중 <b>${c.working}</b>`)}</span>${retryAll}${odSummaryBtn()}` +
+    H("#summary").innerHTML = `<span title="${esc(tip)}">${si(0, `내 차례 <b class="${c.mine ? "alert" : ""}">${c.mine}</b>`, true)}${si(0, `<span class="lb">질문 </span><b class="${c.asking ? "ask-n" : ""}">${c.asking}</b>`)}${c.error ? si(0, `<span class="lb">오류 </span><b class="err-n">${c.error}</b>`) : ""}${si(1, `미확인 <b>${c.unread}</b>`)}${si(3, `기타 <b>${c.other}</b>`)}${soon ? si(2, `<span title="${esc(soonTip)}">곧 식음 <b class="held-n">${soon}</b></span>`) : ""}${si(4, `작업 중 <b>${c.working}</b>`)}${(state.sleep?.asleep || []).length ? si(5, `<button class="linkish" data-act="wake-all" title="${esc(L2("잠든 에이전트를 모두 같은 세션으로 다시 엶", "Reopen every sleeping agent on its session"))}">${esc(L2("잠듦", "asleep"))} <b>${state.sleep.asleep.length}</b> · ${esc(L2("모두 깨우기", "wake all"))}</button>`) : ""}</span>${retryAll}${odSummaryBtn()}` +
       "";
     // History unavailable: say so under the header instead of a hidden summary note.
     const hb = $("#hist-banner");
@@ -1254,7 +1265,7 @@
   const hhmm = (t) => new Date(t).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
   const durTxt = (ms) => fmtMin(ms / 60000) || "0분";
   const ago = (t) => `${fmtMin(Math.max(0, (now() - t) / 60000)) || "0분"} 전`;
-  const SEG_KO = { asking: "질문", working: "작업 중", waiting: "대기", snoozed: "미룸", idle: "유휴", offline: "오프라인", error: "오류" };
+  const SEG_KO = { asking: "질문", working: "작업 중", waiting: "대기", snoozed: "미룸", idle: "유휴", asleep: "잠듦", offline: "오프라인", error: "오류" };
   // Snooze choices (v46): presets + a custom amount (hours/days, 1 min … 30 days); the server takes minutes.
   const SNZ_MIN = [60, 360, 720, 1440], SNZ_MAX = 43200;
   const snzLabel = (m) => (m % 1440 === 0 && m > 1440 ? L2(`${m / 1440}일`, `${m / 1440} d`) : m % 60 === 0 ? L2(`${m / 60}시간`, `${m / 60} h`) : L2(`${m}분`, `${m} min`));
@@ -1675,8 +1686,13 @@
         const what = { asking: L2("질문", "Question"), error: s?.lastError ? errLabel(s.lastError) : L2("오류", "Error"), unread: L2("미확인", "Unread") }[a.held] || "";
         st = `<span class="st-txt snz" data-p="0" data-tip="${esc(L2(`${until}까지 미룸 · 강조 끔`, `Snoozed until ${until} · highlights off`))}"><span class="st-c">${what ? `${esc(what)} · ` : ""}${esc(L2(`미룸 ~${until}`, `Snoozed ~${until}`))}</span></span><button type="button" class="unsnz-btn" data-p="0" data-unsnooze="${esc(a.name)}">${esc(L2("해제", "Unsnooze"))}</button>`;
       }
+      else if (a.kind === "asleep") {
+        const z = a.asleep || {};
+        st = z.waking ? `<span class="st-txt idle" data-p="0" data-tip="${esc(L2("같은 세션으로 다시 여는 중", "reopening on the same session"))}"><span class="st-c">${esc(L2("깨우는 중…", "waking…"))}</span></span>`
+          : `<span class="st-txt idle asleep" data-p="0" data-tip="${esc(L2(`잠듦 · ${z.sleptAt ? new Date(z.sleptAt).toLocaleString() : ""} · 마지막 활동 ${z.idleSince ? ago(z.idleSince) : "?"}\n메시지를 보내거나 다시 열면 같은 세션으로 깨어남`, `asleep · a message or reopen wakes it on the same session`))}"><span class="st-c">${esc(L2("잠듦", "asleep"))}</span><span class="st-a"> · ${esc(z.idleSince ? ago(z.idleSince) : "")}</span></span>`;
+      }
       else if (a.kind === "working") st = `<span class="st-txt work" data-p="0" data-tip="${esc(`작업 중${s?.tool ? ` · ${s.tool}` : ""}`)}"><span class="st-c">작업 중</span>${s?.tool ? `<span class="st-a"> · <code>${esc(s.tool)}</code></span>` : ""}</span>`;
-      else { const t = a.lastHumanAt ? ago(a.lastHumanAt) : SEG_KO[a.kind] || a.kind; st = `<span class="st-txt idle" data-p="0" data-tip="${esc(a.lastHumanAt ? `내 마지막 메시지 ${t}` : t)}"><span class="st-a">${esc(t)}</span></span>`; }
+      else { const t = a.lastHumanAt ? ago(a.lastHumanAt) : SEG_KO[a.kind] || a.kind; st = `<span class="st-txt idle" data-p="0" data-tip="${esc((a.lastHumanAt ? `내 마지막 메시지 ${t}` : t) + (s?.rssMb != null ? ` · ${L2("메모리", "memory")} ${s.rssMb} MB` : ""))}"><span class="st-a">${esc(t)}</span></span>`; }
       const chips = [];
       const lastErr = a.kind === "error" ? s?.lastError || {} : null;
       // Status column keeps the retry button icon-only (↻) to fit next to "오류 403"; its tooltip names the harness method.
@@ -3293,6 +3309,11 @@
     // Live agent → 종료/강제 종료; ended (offline) agent → 다시 열기.
     $("#ov-close-agent").hidden = $("#ov-force-agent").hidden = $("#ov-restart-agent").hidden = !a;
     $("#ov-reopen-agent").hidden = !!a;
+    { const row = model.agents.find((x) => x.name === ov.name), pinned = (state.sleep?.pinned || []).includes(row?.identity);
+      $("#ov-sleep-agent").hidden = !a || !["idle", "waiting"].includes(row?.kind);
+      $("#ov-pin-agent").hidden = !a;
+      $("#ov-pin-agent").innerHTML = pinned ? `<b>${esc(L2("고정 해제", "Unpin"))}</b><span>${esc(L2("오래 쉬면 다시 자동으로 잠듦", "sleeps again after a long idle"))}</span>` : `<b>${esc(L2("잠들지 않게 고정", "Keep awake"))}</b><span>${esc(L2("오래 쉬어도 자동으로 잠들지 않음", "never sleeps automatically"))}</span>`;
+      $("#ov-pin-agent").dataset.pinned = pinned ? "1" : ""; }
     $$(".tabs [data-tab]").forEach((b) => b.classList.toggle("on", b.dataset.tab === ov.tab));
     $$(".side section").forEach((s) => s.classList.toggle("on", s.dataset.pane === ov.tab));
     const nThreads = (state.threads || []).filter((t) => ["held_possible_draft", "escalated", "delivery_unconfirmed", "failed"].includes(t.status)).length;
@@ -4075,6 +4096,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
           <dt>상태</dt><dd>${esc(stateKo(a.state))} · ${fmtMin(sinceMin(a))}${a.snoozedUntil ? ` · ${L2("미룸", "snoozed")} ~${fmtUntil(a.snoozedUntil)}` : ""}</dd>
           ${cacheState(a) ? `<dt>캐시</dt><dd${cacheBasis(a) ? ` title="${esc(cacheBasis(a))}"` : ""}><span class="badge ${esc(cacheState(a))}">${CACHE_KO[cacheState(a)] || esc(cacheState(a))}</span>${cacheExp(a) && cacheState(a) !== "cold" ? ` <span class="cd" data-exp="${cacheExp(a)}" data-basis="${esc(cacheBasis(a))}"></span>` : ""}</dd>` : ""}
           ${a.tool ? `<dt>도구</dt><dd>${esc(a.tool)}</dd>` : ""}
+          ${a.rssMb != null ? `<dt>${esc(L2("메모리", "Memory"))}</dt><dd>${a.rssMb >= 1024 ? `${(a.rssMb / 1024).toFixed(1)} GB` : `${a.rssMb} MB`}</dd>` : ""}
           ${pr ? `<dt>진행</dt><dd>${pr.done}/${pr.total}${pr.current ? " · " + esc(pr.current) : ""} <span class="muted small">(${esc(pr.source)})</span></dd>` : ""}
           <dt>대화 출처</dt><dd>${tx ? (tx.unavailable ? `<span class="muted">불러올 수 없음 (${esc(tx.unavailable)})</span>` : `${esc(tx.source || "?")} · ${tx.mappingConfidence === "exact" ? "정확" : tx.mappingConfidence === "heuristic" ? `<span style="color:var(--info-warn)">추정</span>` : esc(tx.mappingConfidence || "?")}`) : "…"}</dd>
           <dt>경로</dt><dd><code class="path">${esc(a.worktreePath || "")}</code></dd></dl>${usageHtml(a)}`;
@@ -4890,6 +4912,16 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     else if (a === "filter-all") { filter = "all"; localStorage.setItem("adash.filter", filter); render(); }
     else if (a === "close-agent") closeAgentsDlg([name], b.dataset.mode);
     else if (a === "reopen-agent") reopenAgent(name);
+    else if (a === "wake-all" && !b.dataset.ok) {
+      const n = (state.sleep?.asleep || []).length;
+      dialog(`<h3>${esc(L2("모두 깨우기", "Wake all"))}</h3><p>${esc(L2(`잠든 에이전트 ${n}개를 같은 세션으로 하나씩 다시 엽니다. 메모리를 다시 씁니다.`, `Reopens ${n} sleeping agents one by one.`))}</p>`, L2("깨우기", "Wake"), () => { b.dataset.ok = "1"; b.click(); delete b.dataset.ok; });
+    }
+    else if (a === "sleep-agent" || a === "pin-awake" || a === "wake-all") {
+      const path = a === "sleep-agent" ? "now" : a === "wake-all" ? "wake" : b.dataset.pinned ? "unpin" : "pin";
+      api("POST", `/api/sleep/${path}`, a === "wake-all" ? { all: true } : { name }, { quiet: true })
+        .then(() => toast(a === "sleep-agent" ? L2(`${name} 잠듦`, `${name} asleep`) : a === "wake-all" ? L2("모두 깨움", "All awake") : L2("바뀜", "Updated"), 2500))
+        .catch((e) => toast(e.message, 5000)).finally(() => !FIXTURE && refresh());
+    }
     else if (a === "restart-agent") restartAgent(b.dataset.name || name);
     else if (a === "resume") {
       const ta = $("#composer-text"), v = ta.value.replace(/\s+$/, "");

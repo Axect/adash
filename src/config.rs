@@ -26,7 +26,22 @@ pub struct Config {
     pub mobile: Mobile,
     pub launch: Launch,
     pub restart: Restart,
+    pub sleep: Sleep,
     pub theme: ThemeDefaults,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+#[serde(default, rename_all = "camelCase")]
+pub struct Sleep {
+    /// close agents that sat done/idle for `afterHours` (the session stays; a message reopens it)
+    pub enabled: bool,
+    pub after_hours: u32,
+}
+
+impl Default for Sleep {
+    fn default() -> Self {
+        Sleep { enabled: true, after_hours: 24 }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
@@ -150,6 +165,7 @@ impl Default for Config {
             mobile: Mobile::default(),
             launch: Launch::default(),
             restart: Restart::default(),
+            sleep: Sleep::default(),
             theme: ThemeDefaults::default(),
         }
     }
@@ -323,6 +339,11 @@ pub fn config_text(c: &Config) -> String {
          # restart idle agents (same session) as soon as their harness was updated\n\
          autoOutdated = {autoout}\n\
          \n\
+         [sleep]\n\
+         # close agents idle (done) longer than afterHours; a message, an answer or \"다시 열기\" reopens them\n\
+         enabled = {sleepon}\n\
+         afterHours = {sleeph}\n\
+         \n\
          [theme]\n\
          # themes a device uses until it picks its own (`adash theme list`)\n\
          {tdark}\
@@ -341,6 +362,8 @@ pub fn config_text(c: &Config) -> String {
         ts = c.mobile.tailscale,
         autotrust = c.launch.auto_trust,
         autoout = c.restart.auto_outdated,
+        sleepon = c.sleep.enabled,
+        sleeph = c.sleep.after_hours,
         tdark = opt("dark", &c.theme.dark, "dark"),
         tlight = opt("light", &c.theme.light, "catppuccin-latte"),
     )
@@ -423,6 +446,7 @@ pub fn schema() -> serde_json::Value {
             "mobile": {"type": "object", "additionalProperties": false, "properties": {"tailscale": {"type": "boolean"}}},
             "launch": {"type": "object", "additionalProperties": false, "properties": {"autoTrust": {"type": "boolean"}}},
             "restart": {"type": "object", "additionalProperties": false, "properties": {"autoOutdated": {"type": "boolean"}}},
+            "sleep": {"type": "object", "additionalProperties": false, "properties": {"enabled": {"type": "boolean"}, "afterHours": {"type": "integer", "minimum": 1}}},
             "theme": {"type": "object", "additionalProperties": false, "properties": {"dark": s("theme for dark mode (default dark, adash dark)"), "light": s("theme for light mode (default catppuccin-latte)")}}
         }
     })

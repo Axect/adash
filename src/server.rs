@@ -162,6 +162,8 @@ pub struct Shared {
     pub interrupted: Mutex<HashMap<String, i64>>,
     /// handle → (screen hash, session mtime, CPU ticks of its process tree, unchanged since, checked at)
     pub stall: Mutex<HashMap<String, (u64, i64, u64, i64, i64)>>,
+    /// handle → resident memory (MB) of its agent's process tree
+    pub rss: Mutex<HashMap<String, u64>>,
     /// handle → title of an omp Ask box on the screen (omp 18.18 records the call late)
     pub screen_ask: Mutex<HashMap<String, String>>,
     pub catalog: Mutex<crate::launch::Cached>,
@@ -1552,6 +1554,7 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let it = sh.interrupted.plock();
     let stall = sh.stall.plock();
     let sa = sh.screen_ask.plock();
+    let rss = sh.rss.plock();
     let stall_ms = crate::config::get().notifications.stall_minutes as i64 * 60_000;
     for a in snap.agents.iter_mut() {
         if a.handle.as_ref().is_some_and(|h| sa.contains_key(h)) && a.state == "working" && a.ask.is_none() {
@@ -1582,6 +1585,7 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
             }
         }
         a.outdated = a.handle.as_ref().and_then(|h| od.get(h)).cloned();
+        a.rss_mb = a.handle.as_ref().and_then(|h| rss.get(h)).copied();
         a.queued = a.handle.as_ref().and_then(|h| qd.get(h)).cloned();
         a.draft = a.handle.as_ref().and_then(|h| d.get(h)).filter(|v| !v.is_null()).cloned();
         // a login prompt on the screen: the agent waits for the user whatever its transcript says
@@ -1620,6 +1624,28 @@ fn signed_in_elsewhere(s: &Snapshot, a: &crate::collect::Agent, since: i64) -> b
     other || (a.agent_type == "antigravity" && crate::agy::signed_in_after(since))
 }
 
+/// Resident memory (kB) of a process and all its descendants.
+fn tree_rss_kb(pid: u32) -> u64 {
+    let mut total = 0u64;
+    let mut stack = vec![pid];
+    let mut n = 0;
+    while let Some(p) = stack.pop() {
+        n += 1;
+        if n > 400 {
+            break;
+        }
+        if let Ok(st) = std::fs::read_to_string(format!("/proc/{p}/status")) {
+            total += st.lines().find(|l| l.starts_with("VmRSS:")).and_then(|l| l.split_whitespace().nth(1)).and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+        }
+        for t in std::fs::read_dir(format!("/proc/{p}/task")).into_iter().flatten().flatten() {
+            if let Ok(c) = std::fs::read_to_string(t.path().join("children")) {
+                stack.extend(c.split_whitespace().filter_map(|x| x.parse::<u32>().ok()));
+            }
+        }
+    }
+    total
+}
+
 /// CPU ticks (user + system) of a process and all its descendants.
 fn tree_ticks(pid: u32) -> u64 {
     let mut total = 0u64;
@@ -1651,6 +1677,14 @@ fn tree_ticks(pid: u32) -> u64 {
 fn scan_stalls(sh: &Shared, agents: &[crate::collect::Agent]) {
     use std::hash::{Hash, Hasher};
     let procs = crate::session::scan_procs();
+    *sh.rss.plock() = agents
+        .iter()
+        .filter_map(|a| {
+            let h = a.handle.as_ref()?;
+            let p = procs.get(h)?.iter().find(|p| p.kind == a.agent_type)?;
+            Some((h.clone(), tree_rss_kb(p.pid) / 1024))
+        })
+        .collect();
     let mut st = sh.stall.plock();
     let now = now_ms();
     let mut keep = HashMap::new();
@@ -1946,7 +1980,15 @@ fn scan_external_threads(sh: &Shared) {
     let known: std::collections::HashSet<(String, String)> =
         threads::load_all().into_iter().filter_map(|t| t.marker.clone().map(|m| (m, t.to.clone()))).collect();
     let since = now_ms() - 7 * 86_400_000;
+    // only sessions written since the last look: an untouched file has no new pointer lines (and
+    // reading every live session each minute kept all of them parsed in memory)
+    static SEEN: std::sync::LazyLock<Mutex<HashMap<std::path::PathBuf, i64>>> = std::sync::LazyLock::new(Default::default);
     for a in agents.iter().filter(|a| a.mapping_exact && a.session_path.is_some()) {
+        let p = a.session_path.clone().unwrap();
+        let mt = crate::util::mtime_ms(&p);
+        if SEEN.plock().insert(p, mt) == Some(mt) {
+            continue;
+        }
         let v = match sh.transcripts.plock().transcript(a, None, 400, None, None) {
             Ok(v) => v,
             Err(_) => continue,
@@ -2230,6 +2272,7 @@ pub fn serve(port: u16) -> Res<()> {
         outdated: Mutex::new(HashMap::new()),
         interrupted: Mutex::new(HashMap::new()),
         stall: Mutex::new(HashMap::new()),
+        rss: Mutex::new(HashMap::new()),
         screen_ask: Mutex::new(HashMap::new()),
         catalog: Mutex::new(crate::launch::Cached::default()),
         devices: Mutex::new(crate::mobile::Devices::load()),
@@ -2421,6 +2464,41 @@ fn analytics_round(sh: &Arc<Shared>, db: &crate::analytics::Db) {
     }
 }
 
+/// Sleeping agents: drop the ones live again, wake the ones a thread or magi run must reach,
+/// and (every 30 min, in the background) put the next long-idle ones to sleep.
+fn scan_sleep(sh: &Arc<Shared>, snap: &Snapshot) {
+    crate::sleep::prune(snap);
+    static BUSY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if BUSY.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        return;
+    }
+    let sh = sh.clone();
+    std::thread::spawn(move || {
+        let st = crate::sleep::Store::load();
+        let mut need: Vec<String> = vec![];
+        for t in
+            crate::threads::load_all().into_iter().filter(|t| !matches!(t.status.as_str(), "answered" | "done" | "failed" | "cancelled") || t.phase == "relay")
+        {
+            let who = if t.phase == "relay" { &t.from } else { &t.to };
+            if t.phase != "done" && st.find(who).is_some() {
+                need.push(who.clone());
+            }
+        }
+        for r in crate::magi::RunState::load_all().into_iter().filter(|r| matches!(r.status.as_str(), "queued" | "held")) {
+            need.extend(r.targets.iter().chain([&r.source]).filter(|n| st.find(n).is_some()).cloned());
+        }
+        need.sort();
+        need.dedup();
+        for n in need {
+            if let Some(Err(e)) = crate::sleep::wake(&sh, &n, "thread") {
+                eprintln!("adash: wake {n}: {e}");
+            }
+        }
+        crate::sleep::round(&sh, false);
+        BUSY.store(false, std::sync::atomic::Ordering::SeqCst);
+    });
+}
+
 /// Drafts, magi delivery and synthesis prompts, external thread detection (every 10 s).
 fn background_round(sh: &Arc<Shared>, n: u32) {
     backend_watchdog();
@@ -2430,6 +2508,7 @@ fn background_round(sh: &Arc<Shared>, n: u32) {
     scan_auth(sh);
     scan_outdated(sh);
     scan_btw(&snap);
+    scan_sleep(sh, &snap);
     for mut st in crate::magi::RunState::load_all().into_iter().filter(|r| matches!(r.status.as_str(), "queued" | "held")) {
         // a run nobody delivered within a day is stale
         if now_ms() - st.created_at > 86_400_000 {
@@ -3031,7 +3110,85 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
     let j: Value = if body.trim().is_empty() { json!({}) } else { serde_json::from_str(body).map_err(|e| (400, format!("bad JSON: {e}")))? };
     let snap = || sh.snap.plock().clone();
     let q = |k: &str| query.split('&').filter_map(|kv| kv.split_once('=')).find(|(a, _)| *a == k).map(|(_, v)| percent_decode(v));
+    // a sleeping agent wakes for what has to reach it (reading its chat does not wake it)
+    if let (Method::Post, ["api", "agents", name, act @ ("send" | "answer" | "reopen")]) = (method, segs) {
+        let key = q("identity").or_else(|| j["identity"].as_str().map(String::from)).filter(|i| !i.is_empty()).unwrap_or_else(|| name.to_string());
+        if find(&sh.snap.plock().agents, name).is_none() {
+            if let Some(r) = crate::sleep::wake(sh, &key, act) {
+                let h = r.map_err(|e| (409, format!("could not wake {name}: {e}")))?;
+                refresh(sh);
+                if *act == "reopen" {
+                    return Ok((200, json!({"ok": true, "name": name, "handle": h, "woke": true})));
+                }
+            }
+        }
+    }
     match (method, segs) {
+        (Method::Get, ["api", "health"]) => {
+            // adash's own memory (VmRSS / VmHWM peak) and what its caches hold
+            let st = std::fs::read_to_string("/proc/self/status").unwrap_or_default();
+            let kb = |k: &str| st.lines().find(|l| l.starts_with(k)).and_then(|l| l.split_whitespace().nth(1)).and_then(|v| v.parse::<u64>().ok()).unwrap_or(0);
+            let s = snap();
+            Ok((
+                200,
+                json!({"rssMb": kb("VmRSS:") / 1024, "peakMb": kb("VmHWM:") / 1024, "transcripts": sh.transcripts.plock().stats(),
+                       "agents": s.agents.len(), "asleep": crate::sleep::Store::load().asleep.len(),
+                       "agentsRssMb": s.agents.iter().filter_map(|a| a.rss_mb).sum::<u64>()}),
+            ))
+        }
+        (Method::Post, ["api", "sleep"]) => {
+            if j["dryRun"] == true {
+                return Ok((200, json!({"plan": crate::sleep::plan(&snap())})));
+            }
+            Ok((200, json!({"slept": crate::sleep::round(sh, true)})))
+        }
+        (Method::Post, ["api", "sleep", "now"]) => {
+            let v = crate::sleep::sleep_now(sh, j["name"].as_str().unwrap_or("")).map_err(|e| (409, e))?;
+            refresh(sh);
+            Ok((200, v))
+        }
+        (Method::Post, ["api", "sleep", op @ ("wake" | "pin" | "unpin")]) => {
+            let name = j["name"].as_str().unwrap_or("");
+            if *op == "wake" {
+                if j["all"] == true {
+                    // one by one in the background (each waits for its input box)
+                    let keys: Vec<String> = crate::sleep::Store::load().asleep.keys().cloned().collect();
+                    let n = keys.len();
+                    let sh2 = SHARED.get().cloned();
+                    std::thread::spawn(move || {
+                        for k in keys {
+                            if let Some(sh) = &sh2 {
+                                if let Some(Err(e)) = crate::sleep::wake(sh, &k, "wake-all") {
+                                    eprintln!("adash: wake {k}: {e}");
+                                }
+                            }
+                        }
+                    });
+                    return Ok((202, json!({"waking": n})));
+                }
+                let keys: Vec<String> = { vec![j["identity"].as_str().filter(|i| !i.is_empty()).unwrap_or(name).to_string()] };
+                let out: Vec<Value> = keys
+                    .iter()
+                    .map(|k| match crate::sleep::wake(sh, k, "wake") {
+                        Some(Ok(h)) => json!({"key": k, "ok": true, "handle": h}),
+                        Some(Err(e)) => json!({"key": k, "ok": false, "error": e}),
+                        None => json!({"key": k, "ok": false, "error": "not asleep"}),
+                    })
+                    .collect();
+                refresh(sh);
+                return Ok((200, json!({"woke": out})));
+            }
+            let s = snap();
+            let id = j["identity"]
+                .as_str()
+                .filter(|i| !i.is_empty())
+                .map(String::from)
+                .or_else(|| find(&s.agents, name).map(|a| a.identity.clone()))
+                .or_else(|| crate::sleep::Store::load().find(name).map(|(id, _)| id))
+                .ok_or((404, format!("unknown agent {name}")))?;
+            crate::sleep::pin(&id, *op == "pin");
+            Ok((200, json!({"ok": true, "identity": id, "pinned": *op == "pin"})))
+        }
         (Method::Get, ["api", "agents", name, "commands"]) => {
             let a = find(&sh.snap.plock().agents, name).cloned().ok_or((404, format!("unknown agent {name}")))?;
             Ok((200, crate::commands::catalog(&a)))
@@ -3189,6 +3346,7 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
             let mut v = state::build(&snap(), &meta, &ts);
             v["restoreHeld"] = json!(crate::restore::held());
             v["restartPending"] = json!(crate::outdated::WHEN_IDLE.plock().iter().cloned().collect::<Vec<_>>());
+            v["sleep"] = crate::sleep::view();
             let cutoff = now_ms() - 7 * 86_400_000;
             {
                 let now = now_ms();

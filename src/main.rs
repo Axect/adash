@@ -32,6 +32,7 @@ mod report;
 mod restore;
 mod server;
 mod session;
+mod sleep;
 mod state;
 mod stats;
 mod term;
@@ -72,6 +73,7 @@ const USAGE: &str = "adash — agent dashboard (tmux backend)
   adash thread register --from H --to NAME --marker M --brief F --kind review|propose [--mode m]   (peer_review/magi hook)
   adash thread answered --marker M [--answer FILE | < stdin]
   adash answer <NAME|handle> --body '{\"answers\":[…]}'   answer an open ask (all questions)
+  adash sleep [--dry-run] | sleep wake|pin|unpin <agent>   agents idle 24 h close (the session stays)
   adash report [--period week|month|custom] [--from YYYY-MM-DD --to …] [--prev] [--pdf]
   adash analytics backfill           ingest all session files/history into the analytics store
   adash stats [--from YYYY-MM-DD] [--to …] [--by agent|project|model|type|day|hour|weekday|pair] [--agent-to-agent] [--top N] [--json]
@@ -727,6 +729,30 @@ fn run() -> Res<()> {
             println!("{} {} → {} [{}] {}", id, v["from"].as_str().unwrap_or(""), v["to"].as_str().unwrap_or(""), v["status"].as_str().unwrap_or(""), v["dir"].as_str().unwrap_or(""));
             if !server_up() {
                 eprintln!("adash: server not running; thread queued on disk and will be delivered when `adash serve` starts");
+            }
+            Ok(())
+        }
+        "sleep" => {
+            // adash sleep [--dry-run] | adash sleep wake <name> | adash sleep pin|unpin <name>
+            match a.pos.first().map(String::as_str) {
+                Some(op @ ("wake" | "pin" | "unpin" | "now")) => {
+                    let name = a.pos.get(1).ok_or("usage: adash sleep wake|pin|unpin|now <agent>")?;
+                    let (_, v) = http("POST", &format!("/api/sleep/{op}"), Some(&json!({"name": name})))?;
+                    println!("{}", serde_json::to_string_pretty(&v).unwrap());
+                }
+                _ => {
+                    let dry = a.has("dry-run");
+                    let (_, v) = http("POST", "/api/sleep", Some(&json!({"dryRun": dry})))?;
+                    if dry {
+                        for x in v["plan"].as_array().into_iter().flatten().filter(|x| x["sleep"] == true) {
+                            println!("{:<34} {:<12} {:>6.1} h  {}", x["name"].as_str().unwrap_or(""), x["harness"].as_str().unwrap_or(""), x["idleHours"].as_f64().unwrap_or(0.0), x["project"].as_str().unwrap_or(""));
+                        }
+                        let n = v["plan"].as_array().map_or(0, |p| p.iter().filter(|x| x["sleep"] == true).count());
+                        println!("{n} would sleep (3 per harness per round, every 30 min)");
+                    } else {
+                        println!("{}", serde_json::to_string_pretty(&v).unwrap());
+                    }
+                }
             }
             Ok(())
         }

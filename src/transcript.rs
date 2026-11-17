@@ -566,8 +566,18 @@ fn source_of(agent_type: &str) -> &'static str {
 }
 
 impl TranscriptCache {
-    /// Keep parsed transcripts of live agents and the 24 most recently used others.
+    /// {files, messages, textBytes} held now.
+    pub fn stats(&self) -> Value {
+        let msgs: usize = self.files.values().map(|t| t.msgs.len()).sum();
+        let bytes: usize = self.files.values().flat_map(|t| t.msgs.iter()).map(|m| m.text.len()).sum();
+        json!({"files": self.files.len(), "messages": msgs, "textBytes": bytes})
+    }
+
+    /// Keep parsed transcripts of live agents read in the last 30 minutes and the 24 most
+    /// recently used others (a live agent's file is parsed again when its chat opens).
     pub fn prune(&mut self, live: &std::collections::HashSet<PathBuf>) {
+        let stale = crate::util::now_ms() - 30 * 60_000;
+        self.files.retain(|p, t| !live.contains(p) || t.used >= stale);
         let mut others: Vec<(i64, PathBuf)> = self.files.iter().filter(|(p, _)| !live.contains(*p)).map(|(p, t)| (t.used, p.clone())).collect();
         others.sort_by_key(|x| std::cmp::Reverse(x.0));
         for (_, p) in others.into_iter().skip(24) {
