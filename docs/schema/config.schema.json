@@ -137,6 +137,10 @@
         },
         "enabled": {
           "type": "boolean"
+        },
+        "perRound": {
+          "minimum": 0,
+          "type": "integer"
         }
       },
       "type": "object"

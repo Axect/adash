@@ -36,11 +36,13 @@ pub struct Sleep {
     /// close agents that sat done/idle for `afterHours` (the session stays; a message reopens it)
     pub enabled: bool,
     pub after_hours: u32,
+    /// agents put to sleep per harness in one round (every 30 min); 0 = all that are due
+    pub per_round: u32,
 }
 
 impl Default for Sleep {
     fn default() -> Self {
-        Sleep { enabled: true, after_hours: 24 }
+        Sleep { enabled: true, after_hours: 24, per_round: 0 }
     }
 }
 
@@ -343,6 +345,8 @@ pub fn config_text(c: &Config) -> String {
          # close agents idle (done) longer than afterHours; a message, an answer or \"다시 열기\" reopens them\n\
          enabled = {sleepon}\n\
          afterHours = {sleeph}\n\
+         # per harness per round (every 30 min); 0 = every agent that is due\n\
+         perRound = {sleepn}\n\
          \n\
          [theme]\n\
          # themes a device uses until it picks its own (`adash theme list`)\n\
@@ -364,6 +368,7 @@ pub fn config_text(c: &Config) -> String {
         autoout = c.restart.auto_outdated,
         sleepon = c.sleep.enabled,
         sleeph = c.sleep.after_hours,
+        sleepn = c.sleep.per_round,
         tdark = opt("dark", &c.theme.dark, "dark"),
         tlight = opt("light", &c.theme.light, "catppuccin-latte"),
     )
@@ -446,7 +451,7 @@ pub fn schema() -> serde_json::Value {
             "mobile": {"type": "object", "additionalProperties": false, "properties": {"tailscale": {"type": "boolean"}}},
             "launch": {"type": "object", "additionalProperties": false, "properties": {"autoTrust": {"type": "boolean"}}},
             "restart": {"type": "object", "additionalProperties": false, "properties": {"autoOutdated": {"type": "boolean"}}},
-            "sleep": {"type": "object", "additionalProperties": false, "properties": {"enabled": {"type": "boolean"}, "afterHours": {"type": "integer", "minimum": 1}}},
+            "sleep": {"type": "object", "additionalProperties": false, "properties": {"enabled": {"type": "boolean"}, "afterHours": {"type": "integer", "minimum": 1}, "perRound": {"type": "integer", "minimum": 0}}},
             "theme": {"type": "object", "additionalProperties": false, "properties": {"dark": s("theme for dark mode (default dark, adash dark)"), "light": s("theme for light mode (default catppuccin-latte)")}}
         }
     })

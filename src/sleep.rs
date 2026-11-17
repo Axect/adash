@@ -10,8 +10,6 @@ use std::path::PathBuf;
 use std::sync::{LazyLock, Mutex};
 use std::time::Duration;
 
-/// Agents put to sleep per harness in one round.
-const PER_ROUND: usize = 3;
 /// Minutes between sleep rounds.
 const ROUND_MIN: i64 = 30;
 
@@ -148,7 +146,8 @@ pub fn plan(snap: &Snapshot) -> Vec<Value> {
         .collect()
 }
 
-/// One round (every 30 min): up to 3 agents per harness go to sleep. `force` skips the interval.
+/// One round (every 30 min): the due agents go to sleep, at most `[sleep] perRound` per harness
+/// (0 = no limit). `force` skips the interval.
 pub fn round(sh: &crate::server::Shared, force: bool) -> Vec<Value> {
     let cfg = crate::config::get().sleep.clone();
     if !cfg.enabled {
@@ -174,7 +173,7 @@ pub fn round(sh: &crate::server::Shared, force: bool) -> Vec<Value> {
         .filter(|a| {
             let n = per.entry(a.agent_type.clone()).or_default();
             *n += 1;
-            *n <= PER_ROUND
+            cfg.per_round == 0 || *n <= cfg.per_round as usize
         })
         .collect();
     let mut out = vec![];

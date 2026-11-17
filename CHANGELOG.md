@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+- Sleeping agents (`[sleep] enabled`, `afterHours = 24`, `perRound = 0`): agents done or idle that long are closed gracefully in rounds every 30 minutes (`perRound` caps each harness per round; 0 = no cap) and stay on the board as "잠듦 · N일 전". A message, an answer, "다시 열기", an adash thread or a magi run reopens them on the same session and waits for the input box first. Never slept: questions, errors, sign-in, drafts, unread answers, snoozed, open threads, pending restarts, a terminal a tmux client shows, pinned agents. Not restored after a reboot. `adash sleep --dry-run | now | wake | pin | unpin`; the agent menu has 잠재우기 and 잠들지 않게 고정, the top bar 잠듦 N · 모두 깨우기.
+- Memory: `GET /api/health` (adash RSS, peak, transcript cache, agents' total); each agent's memory in its info panel; unread live transcripts leave the cache after 30 minutes.
+- Questions: Claude `AskUserQuestion` is answered from the dashboard; HTML-form fields without `required` may stay empty and preselected choices show picked; the send button shows how many are empty; an omp question box seen before its record shows a loading card instead of a guessed question.
+- Antigravity: errors left at the prompt (also under the satisfaction survey) become errors, 401 becomes sign-in needed, "model not found" offers restart with the same or another model and can resend the last message; the survey and notices are closed before typing; "Interrupted" with the mode hint is stopped; an answer still being written shows "작성 중…" and redraws as it grows; provider-error retries turn into errors after 5 minutes.
+- Chat: harness built-in commands (`/reload-plugins`) show as a command line with their output; pending bubbles turn "not confirmed" after 30 s; code files open in an editor (`[open] editor`) at `path:line`, with a right-click menu; phones view files in the dashboard.
+- Decisions: ratios and ranges ("44 / 26 / 30") stay inside one option.
+- Reports: a weekly report covers this week by default (`prev` = last whole week; the scheduled one keeps the last whole week); the dialog lists dated periods and asks before replacing a report.
+- Capacity: refresh drops omp's usage cache first; Anthropic is checked against `claude /usage`; source and time in the tooltip; limits from Claude, Codex and Antigravity without omp.
+- omp config-change confirmations show as approval with a card; stalled working agents are flagged (`notifications.stallMinutes`), counting across adash restarts; model lists refresh every 10 minutes and when the harness changes.
+- Build: web push goes through the `curl` program (libcurl failed to link against OpenSSL 4).
+
 ## 0.3.0 — 2026-11-11
 
 - Questions: omp's HTML-form `ask` (omp 18.18) is shown as a question card with its text and images and answered from the dashboard, page by page, checked against the form's `k/N` progress; a failure says how many fields went in. While an agent asks, the question card replaces the message box and the draft returns afterwards. Claude Code sessions map exactly through their pid file, so their questions show too.

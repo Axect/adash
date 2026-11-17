@@ -748,7 +748,7 @@ fn run() -> Res<()> {
                             println!("{:<34} {:<12} {:>6.1} h  {}", x["name"].as_str().unwrap_or(""), x["harness"].as_str().unwrap_or(""), x["idleHours"].as_f64().unwrap_or(0.0), x["project"].as_str().unwrap_or(""));
                         }
                         let n = v["plan"].as_array().map_or(0, |p| p.iter().filter(|x| x["sleep"] == true).count());
-                        println!("{n} would sleep (3 per harness per round, every 30 min)");
+                        println!("{n} would sleep (rounds every 30 min)");
                     } else {
                         println!("{}", serde_json::to_string_pretty(&v).unwrap());
                     }
