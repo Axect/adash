@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- README rewritten: what adash is and its tmux-server scope up front, a 30-second try, the core loop, an accurate harness table, quick start with bringing existing sessions in and uninstalling, the defaults that act on their own, and an accurate privacy note. Settings moved to `docs/configuration.md`.
+- `adash uninstall-service [--tmux [--yes]]`: stops and removes the dashboard service; `--tmux` also the tmux service after a warning that it ends every agent terminal. Config and data are kept.
+- Retry message: `continue` with an English dashboard, `계속 진행해` with a Korean one; `[retry] message` sets your own.
+- Tested versions: omp 18.13–18.20, Antigravity 1.4–1.5; a test keeps the README table and `adash harnesses` in agreement.
+- English UI: "1 agent keeps working".
+
 ## 0.4.0 — 2026-11-17
 
 - Sleeping agents (`[sleep] enabled`, `afterHours = 24`, `perRound = 0`): agents done or idle that long are closed gracefully in rounds every 30 minutes (`perRound` caps each harness per round; 0 = no cap) and stay on the board as "잠듦 · N일 전". A message, an answer, "다시 열기", an adash thread or a magi run reopens them on the same session and waits for the input box first. Never slept: questions, errors, sign-in, drafts, unread answers, snoozed, open threads, pending restarts, a terminal a tmux client shows, pinned agents. Not restored after a reboot. `adash sleep --dry-run | now | wake | pin | unpin`; the agent menu has 잠재우기 and 잠들지 않게 고정, the top bar 잠듦 N · 모두 깨우기.

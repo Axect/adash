@@ -289,14 +289,29 @@ pub fn retry_mode(agent_type: &str) -> &'static str {
     }
 }
 
-pub const RETRY_MESSAGE: &str = crate::harness::CONTINUE;
+/// The dashboard's UI language seen last (`?lang=en` on `/api/state`): automatic retries (network
+/// recovery, fix-all) write their message in it.
+pub static UI_EN: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// The message sent to retry a harness without a retry key: `[retry] message` when set, else
+/// "continue" for an English UI and "계속 진행해" for a Korean one.
+pub fn retry_message() -> String {
+    if let Some(m) = crate::config::get().retry.message.clone().filter(|m| !m.trim().is_empty()) {
+        return m;
+    }
+    if UI_EN.load(std::sync::atomic::Ordering::Relaxed) {
+        crate::harness::CONTINUE_EN.to_string()
+    } else {
+        crate::harness::CONTINUE.to_string()
+    }
+}
 
 /// `agent.retry` for the UI: button label and what it does.
 pub fn retry_info(agent_type: &str) -> Value {
     if retry_mode(agent_type) == "key" {
         json!({"label": "F5 재시도", "how": "omp 의 F5(마지막 실패 턴 재시도)를 보냅니다"})
     } else {
-        json!({"label": format!("재시도 ({agent_type})"), "how": format!("{agent_type} 에는 재시도 키가 없어 '{RETRY_MESSAGE}' 메시지를 보냅니다")})
+        json!({"label": format!("재시도 ({agent_type})"), "how": format!("{agent_type} 에는 재시도 키가 없어 '{}' 메시지를 보냅니다", retry_message())})
     }
 }
 
@@ -316,7 +331,7 @@ fn op_retry(sh: &Shared, a: &crate::collect::Agent) -> Result<Value, (u16, Strin
         let _g = lk.plock();
         let r = match crate::harness::get(&a.agent_type).map(|x| x.retry()) {
             Some(crate::harness::Retry::Key(seq, _)) => term::send_text(&h, seq),
-            _ => term::send_line(&h, RETRY_MESSAGE),
+            _ => term::send_line(&h, &retry_message()),
         };
         r.map_err(|e| (502, format!("send failed: {e}")))?;
     }
@@ -337,7 +352,7 @@ fn op_retry(sh: &Shared, a: &crate::collect::Agent) -> Result<Value, (u16, Strin
     let resumed = state != "error";
     let error = (!resumed).then(|| json!({"status": err.as_ref().and_then(|e| e.status), "message": err.as_ref().map(|e| e.message.clone())}));
     Ok(
-        json!({"name": a.name, "resumed": resumed, "state": state, "error": error, "mode": mode, "sent": match crate::harness::get(&a.agent_type).map(|x| x.retry()) { Some(crate::harness::Retry::Key(_, name)) => name, _ => RETRY_MESSAGE }, "elapsedMs": now_ms() - t0}),
+        json!({"name": a.name, "resumed": resumed, "state": state, "error": error, "mode": mode, "sent": match crate::harness::get(&a.agent_type).map(|x| x.retry()) { Some(crate::harness::Retry::Key(_, name)) => name.to_string(), _ => retry_message() }, "elapsedMs": now_ms() - t0}),
     )
 }
 
@@ -3081,6 +3096,9 @@ fn handle(sh: &Shared, mut req: Request) {
             }
             // ?lang=en: English for the labels the server writes (agent message bodies stay as written)
             let en = query.split('&').any(|kv| kv == "lang=en");
+            if segs == ["api", "state"] {
+                UI_EN.store(en, std::sync::atomic::Ordering::Relaxed);
+            }
             match r {
                 Ok((code, mut v)) => {
                     if en {
@@ -4252,8 +4270,13 @@ mod retry_tests {
         assert_eq!(super::retry_info("omp")["label"], "F5 재시도");
         for t in ["claude", "codex", "antigravity"] {
             assert_eq!(super::retry_mode(t), "message");
-            assert!(super::retry_info(t)["how"].as_str().unwrap().contains(super::RETRY_MESSAGE));
+            assert!(super::retry_info(t)["how"].as_str().unwrap().contains(&super::retry_message()));
         }
+        // the message follows the dashboard's language (no `[retry] message` in tests)
+        super::UI_EN.store(true, std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(super::retry_message(), "continue");
+        super::UI_EN.store(false, std::sync::atomic::Ordering::Relaxed);
+        assert_eq!(super::retry_message(), "계속 진행해");
     }
 
     /// 2026-11-11: a long description filled the first page of a paged form; the box is there,

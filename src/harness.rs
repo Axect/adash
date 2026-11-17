@@ -21,6 +21,8 @@ pub enum Retry {
 }
 
 pub const CONTINUE: &str = "계속 진행해";
+/// The same message for an English UI.
+pub const CONTINUE_EN: &str = "continue";
 
 pub trait Harness: Sync {
     /// "omp" | "claude" | "codex" | "antigravity"
@@ -128,7 +130,7 @@ impl Harness for Omp {
         "omp"
     }
     fn tested_versions(&self) -> &'static str {
-        "18.13–18.15"
+        "18.13–18.20"
     }
     fn detect(&self, args: &[String]) -> bool {
         let a1 = args.get(1).map(String::as_str).unwrap_or("");
@@ -338,7 +340,7 @@ impl Harness for Antigravity {
         "antigravity"
     }
     fn tested_versions(&self) -> &'static str {
-        "1.4"
+        "1.4–1.5"
     }
     fn detect(&self, args: &[String]) -> bool {
         args.first().is_some_and(|a| matches!(base(a).as_str(), "agy" | "antigravity"))
@@ -561,5 +563,15 @@ mod tests {
             assert!(!h.tested_versions().is_empty(), "{}", h.kind());
             assert!(!h.transcript_source().is_empty());
         }
+    }
+
+    /// README's "Tested version" row is these strings (one source of truth).
+    #[test]
+    fn readme_tested_versions_match_the_adapters() {
+        let readme = include_str!("../README.md");
+        let row = readme.lines().find(|l| l.starts_with("| Tested version |")).expect("README has a Tested version row");
+        let cells: Vec<&str> = row.trim_matches('|').split('|').map(str::trim).skip(1).collect();
+        let want: Vec<&str> = ["omp", "claude", "codex", "antigravity"].iter().map(|k| super::get(k).unwrap().tested_versions()).collect();
+        assert_eq!(cells, want);
     }
 }

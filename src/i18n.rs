@@ -7,7 +7,7 @@ pub fn retry_en(agent_type: &str) -> Value {
     if crate::server::retry_mode(agent_type) == "key" {
         json!({"label": "Retry (F5)", "how": "Sends F5 to omp (retry the last failed turn)"})
     } else {
-        json!({"label": format!("Retry ({agent_type})"), "how": format!("{agent_type} has no retry key; sends the message '{}'", crate::server::RETRY_MESSAGE)})
+        json!({"label": format!("Retry ({agent_type})"), "how": format!("{agent_type} has no retry key; sends the message '{}'", crate::server::retry_message())})
     }
 }
 

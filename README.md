@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="docs/media/logo.svg" alt="adash" width="240">
+  <img src="docs/media/logo.svg" alt="adash" width="160">
 </h1>
 
 <h3 align="center">Your agents aren't the bottleneck. You are.</h3>
@@ -14,87 +14,34 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-Apache--2.0-blue.svg" alt="License: Apache-2.0"></a>
 </p>
 
-![adash demo](docs/media/demo.gif)
+<p align="center"><a href="#try-it-in-30-seconds">Try it</a> · <a href="#quick-start">Quick start</a> · <a href="#harness-support">Harness support</a> · <a href="#defaults-that-act-on-their-own">Defaults</a> · <a href="#documentation">Documentation</a></p>
 
-When you run ten agents at once, one finished twenty minutes ago and is waiting for your answer, another asked a question, a third stopped on a provider error, and its prompt cache is about to expire. adash watches every agent and puts the one that needs you next at the top.
+![adash core loop with demo data](docs/media/demo.gif)
 
-It is one Rust binary. It runs your agents in its own tmux server, reads their session files, and serves a web UI at `http://127.0.0.1:7878`. Everything stays on your machine.
+*Demo data: open the agent at the top of My turn, answer its question in the browser, press `]` for the next one.*
 
-![Agents waiting on you: questions, errors and unread answers at the top](docs/media/hero-needs-me-1600.png)
+adash puts every coding agent that needs you (an open question, a provider error, an answer you have not read) in one queue in your browser, where you can read the conversation and reply. It shows the agents running in its own tmux server (`tmux -L adash`, with its own `tmux.conf`; your `~/.tmux.conf` and your harness configs are not touched), and you can still attach to them from any terminal with `tmux -L adash attach`. Agents started in other terminals are not shown; [resume them inside adash](#bring-an-existing-session-in).
 
-## What it shows
+## Try it in 30 seconds
 
-- **My turn**: agents waiting on you, ranked: open questions first, then provider errors, answers you have not read (soonest cache expiry first), then everything else.
-- **Timeline**: what every agent did over the last 6 / 24 / 72 hours, with your messages and agent-to-agent review requests drawn as arrows.
-- **Chat**: the agent's conversation rendered from its session file (Markdown, math, Mermaid, images), a composer with slash commands, `@` file completion and attachments (paste, drop or pick any files — PDFs, text, archives, images; up to 100 MB each — and the agent gets their paths), answers to multiple-choice questions, and "decisions for you" pulled out of the agent's last answer.
-- **Usage**: context fill, session cost and tokens, compactions, and the account's 5-hour / weekly limits; an hourly graph of the session (tokens by kind as stacked bars, cost, tool calls and your messages) over 6 h / 24 h / 48 h / the whole session.
-- **Prompt cache countdown** per agent, with the TTL that harness actually uses.
-- **Errors and network**: provider errors (403, 429, connection resets) with a one-click retry; provider reachability probes that hold automatic sends while the network is down and retry errored agents once it is back.
-- **Agent-to-agent**: `adash ask` / `adash reply` threads between agents, with delivery gates (never type into an agent that is working, asking, or has unsent text in its input box).
-- **Analytics and reports**: a SQLite store of every session (messages, turns, tools, tokens, errors) with `adash stats`, full-text search, and weekly/monthly HTML/PDF reports.
-- **Projects**: hide a project for an hour, for today or until you show it again (its agents keep working but leave your queue and notifications); close all its agents at once (working agents and unsent drafts need confirmation); archive it and later restore it and reopen its sessions. Give a project a goal, deadline and impact / leverage / cost to rank it with a ★ score, and keep a list of your own tasks next to the agents waiting on you; see [docs/projects.md](docs/projects.md).
-- **Phone access** through `tailscale serve`, with per-device approval.
-- **Themes**: 42 built in (adash's own plus Dracula, Catppuccin, Tokyo Night, Nord, Gruvbox, Solarized, Rosé Pine, Kanagawa, Everforest, GitHub, Modus, One, Ayu, Flexoki, Nightfox, and an Okabe–Ito pair whose state colors stay apart under simulated color blindness; from their published palettes); your own as small TOML files, checked for contrast and reloaded on save; or `adash theme import` your terminal's or editor's colors:
-
-  | source | auto-detected | otherwise pass |
-  |---|---|---|
-  | Ghostty, kitty, Alacritty | the current config and its includes | a config file |
-  | VS Code (also VSCodium, Cursor) | the active `workbench.colorTheme` | a theme JSON |
-  | base16 / base24 | a scheme name in a tinted-theming checkout | a scheme YAML |
-  | WezTerm | a literal `color_scheme = "…"` line, schemes in `~/.config/wezterm/colors` | a scheme TOML |
-  | iTerm2 | — | an `.itermcolors` file |
-
-  See [docs/themes.md](docs/themes.md).
-- **English and Korean UI**.
-
-| | |
-|---|---|
-| ![board](docs/media/board-light-1600.png) | ![board, dark](docs/media/board-dark-1600.png) |
-| ![chat](docs/media/chat-usage-1600.png) | ![ask](docs/media/ask-card-1600.png) |
-| ![attaching files in the composer](docs/media/attach-composer-1600.png) | ![attached PDF in the chat](docs/media/attach-bubble-1600.png) |
-| ![theme picker](docs/media/theme-picker-1600.png) | ![imported terminal theme](docs/media/theme-import-1600.png) |
-| ![phone](docs/media/phone-mine-412.png) | |
-
-## Try it without agents
+Download a binary for Linux or macOS (x86_64, aarch64) from [Releases](https://github.com/Axect/adash/releases), or install with Cargo (Rust 1.87 or newer):
 
 ```sh
 cargo install adash
-adash demo            # http://127.0.0.1:7879 — built-in sample data with simulated activity
+adash demo            # http://127.0.0.1:7879, built-in sample data with simulated activity
 ```
 
-The demo serves the dashboard from sample data in your browser; it reads nothing from your machine and sends nothing anywhere.
+The demo reads nothing from your machine and sends nothing anywhere.
 
-## Quick start
+## The core loop
 
-Prerequisites:
+1. **Queue.** My turn ranks the agents waiting on you: open questions first, then provider errors, then answers you have not read, the one whose prompt cache is estimated to expire soonest first.
+2. **Answer or retry in the browser.** Pick an option on the question card or type a reply; a provider error has a one-click retry.
+3. **Next.** `]` and `[` move to the next and previous agent in the queue; `e` marks an answer read.
 
-- Linux or macOS (see [Platforms](#platforms))
-- tmux ≥ 3.0
-- at least one agent harness: [omp](https://github.com/can1357/oh-my-pi), Claude Code, Codex CLI, or Antigravity (`agy`)
-- optional: Chromium/Chrome (PDF reports), `notify-send` / `terminal-notifier` (desktop notifications), Tailscale (phone access), `zstd` (compressed backups)
+![The board with questions and errors at the top](docs/media/board-light-1600.png)
 
-```sh
-cargo install adash           # or a release binary, or from source (see Install)
-adash config init             # optional: writes a commented config.toml
-adash install-service         # starts the tmux server and `adash serve` as per-user services
-open http://127.0.0.1:7878    # xdg-open on Linux
-```
-
-Start agents from the dashboard ("New session"), or in a terminal:
-
-```sh
-adash term new --cwd ~/work/my-project --command "claude"
-tmux -L adash attach -t my-project      # look at a project's terminals directly
-```
-
-adash only manages agents running in its own tmux server (`tmux -L adash`); every terminal there gets a stable handle exported as `ADASH_HANDLE`. Agents started in your own terminals are not shown.
-
-### Install
-
-- **crates.io**: `cargo install adash` (Rust ≥ 1.87).
-- **binaries**: [GitHub Releases](https://github.com/Axect/adash/releases) has `adash-<version>-<target>.tar.gz` with a `.sha256` file for `x86_64-unknown-linux-gnu`, `aarch64-unknown-linux-gnu`, `x86_64-apple-darwin` and `aarch64-apple-darwin`; each archive holds the `adash` binary, `LICENSE`, `NOTICE` and `README.md`.
-- **from source**: `git clone https://github.com/Axect/adash && cargo install --path adash`.
-- **service**: `adash install-service` writes systemd user units on Linux (`~/.config/systemd/user/adash-tmux.service`, `adash.service`) and launchd agents on macOS (`~/Library/LaunchAgents/dev.adash.adash-tmux.plist`, `dev.adash.adash.plist`). The tmux server runs as its own service, so restarting or upgrading adash never kills your agents.
+*The board: the agents waiting on you at the top, what each agent did over the last 24 hours on the right.*
 
 ## Harness support
 
@@ -103,87 +50,107 @@ adash only manages agents running in its own tmux server (`tmux -L adash`); ever
 | State (working / waiting / done) | ✓ | ✓ | ✓ | ✓ |
 | Conversation view | ✓ | ✓ | ✓ | ✓ |
 | Questions (answer from the dashboard) | ✓ (`ask`) | ✓ (`AskUserQuestion`) | — | — |
-| Provider error detection | ✓ | ✓ | ✓ | — |
-| Retry after an error | F5 (retry key) | "continue" message | "continue" message | "continue" message |
-| Usage (context, cost, limits) | ✓ | context, tokens | context, tokens, limits | — |
-| Change model / effort from the dashboard | both (session-only model picker, `/effort`) | both (`/model`, `/effort`; also saved as Claude Code's default) | both (`/model … --reasoning=`, this session) | — |
+| Provider error detection | ✓ | ✓ | ✓ | ✓ |
+| Retry after an error | F5 (its retry key) | message `continue` | message `continue` | message `continue` |
+| Usage (context, cost, limits) | ✓ | context, tokens, limits | context, tokens, limits | limits |
+| Change model / effort from the dashboard | both | both | both | — |
 | Slash commands / skills menu | ✓ | ✓ | ✓ | ✓ |
-| `@` file references | `@path` (read by the harness) | `@path` | plain path | plain path |
+| `@` file references | `@path` | `@path` | plain path | plain path |
 | Side questions (`/btw`) | ✓ | — | — | — |
-| Close / reopen on the same session | ✓ | ✓ | ✓ | close ✓, reopen untested |
+| Close / reopen on the same session | ✓ | ✓ | ✓ | ✓ |
 | Analytics ingest | ✓ | ✓ | ✓ | ✓ |
-| Tested version | 18.15.0 | 2.1.316 | 0.164.0 | 1.4.12 |
+| Tested version | 18.13–18.20 | 2.1 | 0.16x | 1.4–1.5 |
 
-`adash harnesses` lists which harnesses are enabled and the versions each adapter was tested with. Session formats are not stable APIs. When a harness changes its format, the affected view degrades (for example, the chat falls back to the terminal screen) rather than failing.
+The retry message is `continue` while the dashboard is in English and `계속 진행해` while it is in Korean; `[retry] message` in `config.toml` sets your own. Limits are the provider's 5-hour and weekly windows in the top bar, read from `omp usage` when omp reports that provider, else from `claude -p /usage`, Codex's session files or `agy -p /usage` (none of these calls a model). `adash harnesses` lists the enabled harnesses and the tested versions. Session formats are not stable APIs: when a harness changes its format, the affected view falls back (for example, the chat shows the terminal screen) instead of failing.
 
-### Provider limits (top bar)
+## Quick start
 
-The top bar's Claude / OpenAI / Google percentages come from `omp usage` when omp is installed and reports that provider; otherwise from the harness itself. Each source is read every 5 minutes; when one fails, the last value stays, marked stale.
+You need tmux 3.0 or newer and at least one harness: [omp](https://github.com/can1357/oh-my-pi), Claude Code, Codex CLI or Antigravity (`agy`). Optional: Chromium or Chrome (PDF reports), `notify-send` / `terminal-notifier` (desktop notifications), Tailscale (phone access), `curl` (phone notifications), `zstd` (compressed backups).
 
-| Provider | Without omp | How |
+```sh
+adash config init             # optional: writes a commented config.toml
+adash install-service         # starts the tmux server and the dashboard as per-user services
+xdg-open http://127.0.0.1:7878   # macOS: open
+```
+
+`install-service` writes systemd user units on Linux (`~/.config/systemd/user/adash-tmux.service`, `adash.service`) and launchd agents on macOS (`~/Library/LaunchAgents/dev.adash.adash-tmux.plist`, `dev.adash.adash.plist`). The tmux server is its own service, so restarting or upgrading the dashboard never ends your agents.
+
+Start agents with **New session** in the dashboard, or from a terminal:
+
+```sh
+adash term new --cwd ~/work/my-project --command "claude"
+tmux -L adash attach -t my-project      # the project's terminals, directly
+```
+
+### Bring an existing session in
+
+Resume it inside adash, then close the old terminal:
+
+```sh
+adash term new --cwd ~/work/my-project --command "claude --resume"   # picker
+adash term new --cwd ~/work/my-project --command "codex resume"      # picker
+adash term new --cwd ~/work/my-project --command "omp --resume"      # picker
+```
+
+### Uninstall
+
+Stopping the dashboard and stopping its tmux server are different: the tmux server holds your agents.
+
+```sh
+adash uninstall-service           # stop and remove the dashboard service; agents keep running
+adash uninstall-service --tmux    # also the tmux server: ends every agent terminal (asks first)
+cargo uninstall adash             # or delete the binary
+```
+
+Your config (`~/.config/adash`) and data (`~/.local/share/adash`; on macOS both under `~/Library/Application Support/adash`) are kept; delete them by hand to remove everything.
+
+## Defaults that act on their own
+
+| What | Default | Key |
 |---|---|---|
-| Claude | `claude -p /usage --no-session-persistence --output-format json` | no model call; run in an empty folder of adash's data directory, no session file is kept |
-| OpenAI (Codex) | the newest `rate_limits` in `~/.codex/sessions` | nothing is run; stale after 6 h without a Codex session |
-| Google (Antigravity) | `agy -p /usage --output-format json` | no model call; run in an empty folder of adash's data directory |
+| Agents stopped by a network error are retried once their provider is reachable again | on | `autoRetryOnNetworkRecovery` in `meta.yaml` |
+| Agents started from the dashboard (or by an agent in its own folder) accept the harness's "trust this folder?" prompt | on | `launch.autoTrust` |
+| Agents done or idle for 24 hours are closed and shown as asleep; a message reopens the same session | on | `sleep.enabled`, `sleep.afterHours` |
+| adash sends the notifications; the agents' own desktop notifications are turned off in its terminals | on | `notifications.silenceHarness` |
 
-## Configuration
-
-Two files in the config directory (Linux `$XDG_CONFIG_HOME/adash` or `~/.config/adash`; macOS `~/Library/Application Support/adash` unless `XDG_CONFIG_HOME` is set):
-
-- `config.toml` — machine settings, written with comments by `adash config init` (JSON Schema: [docs/schema/config.schema.json](docs/schema/config.schema.json); editors with taplo validate it). `adash config show` prints the effective values. A `config.yaml` from an earlier build is converted once and kept as `config.yaml.migrated`.
-
-  | key | default | meaning |
-  |---|---|---|
-  | `port` | `7878` | HTTP port (`ADASH_PORT` wins) |
-  | `harnesses.<name>` | `true` | recognize omp / claude / codex / antigravity |
-  | `terminal.emulator` | `auto` | opened by "open terminal" when no tmux client is attached (`ADASH_TERMINAL` wins). `auto`: `$TERMINAL`, then the first installed of x-terminal-emulator, ghostty, kitty, wezterm, alacritty, foot, konsole, gnome-terminal, xfce4-terminal, xterm (macOS: Ghostty, iTerm, Terminal). When none is found the dashboard offers the `tmux -L adash attach -t <project>` command to copy |
-  | `terminal.tmux` | `tmux` | tmux binary |
-  | `notifications.backend` | `auto` | `notify-send`, `terminal-notifier`, `osascript` or `none` |
-  | `open.editor` | unset | editor for code and text files opened from chat (e.g. `nvim`), run in the terminal emulator for terminal editors, at the line when the link has `path:line`; unset uses `$VISUAL` / `$EDITOR` when they name a real program, else the system opener. Right-click a file link for editor / default app / dashboard view |
-  | `sleep.enabled` | `true` | put agents to sleep after a long idle: closed gracefully (the session stays), kept on the board as "잠듦", reopened on the same session by a message, an answer, "다시 열기", a review thread or a magi run. Rounds every 30 minutes (`sleep.perRound` caps each harness per round); never one with a question, error, draft, unread answer, snooze, open thread, pending restart, or a terminal someone is looking at. Not restored after a reboot. `adash sleep --dry-run` lists who would sleep; the agent menu has 잠재우기 and 잠들지 않게 고정 |
-  | `sleep.afterHours` | `24` | hours done/idle before an agent sleeps |
-  | `sleep.perRound` | `0` | agents per harness put to sleep in one round; `0` = every one that is due |
-  | `restart.autoOutdated` | `false` | restart idle agents on the same session as soon as their harness was updated (`adash restart --outdated` does it on demand) |
-  | `launch.autoTrust` | `true` | agents started from the dashboard accept their harness's "trust this folder?" screen (you chose the folder); see docs/security.md |
-  | `notifications.silenceHarness` | `true` | turn off the agents' own desktop notifications in adash terminals so each event notifies once, from adash: omp via `PI_NO_DESKTOP_NOTIFY=1` in the terminal environment, Claude Code via `--settings '{"preferredNotifChannel":"notifications_disabled"}'`, Codex via `-c tui.notifications=false`. Your config files are not changed and agents started outside adash keep their notifications. Antigravity has no documented switch. |
-  | `open.markdownApp` | unset | app for Markdown files opened from chat |
-  | `reports.chrome` | unset | Chromium for PDF reports (searched on PATH when unset) |
-  | `magi.skill` | unset | SKILL.md of a multi-agent review skill; the magi feature is off when unset |
-  | `network.enabled`, `network.probes` | on, one URL per provider | reachability probes |
-  | `mobile.tailscale` | `true` | accept phones through `tailscale serve` |
-
-- `meta.yaml` — edited from the dashboard: projects (goal, impact, leverage, cost, deadline, note; see [docs/projects.md](docs/projects.md)), your own tasks, prompt-cache TTLs per harness/provider, and the tailnet logins allowed on phones.
-
-Data lives in the data directory (Linux `~/.local/share/adash`, macOS `~/Library/Application Support/adash`): the analytics store, threads, uploads, reports, approved devices.
-
-## Phone access
-
-Run `tailscale serve --bg 7878` on the machine. Open the tailnet URL on your phone; the first visit shows a code that you approve on the desktop dashboard. Only logins listed in `meta.yaml` (default: the tailnet owner) can ask for approval. An approved phone can read the dashboard, chat with agents and answer questions; it cannot change the login allowlist, and it can open only images, PDFs and text files on the desktop. See [docs/security.md](docs/security.md).
+See [docs/configuration.md](docs/configuration.md) for every setting.
 
 ## Privacy
 
-adash runs locally and binds to `127.0.0.1`. It reads session files written by your agents and the tmux server it owns; it sends keystrokes only to agents in that tmux server, and only when you (or an agent-to-agent thread you started) ask it to. It makes outbound requests only for provider reachability probes (HEAD/GET to the provider API hosts, no credentials) and Web Push to your approved phones. Nothing else leaves the machine.
+adash binds to `127.0.0.1` and keeps its data on your machine. Its own network use is limited to provider reachability checks (HEAD/GET to provider API hosts, no credentials), usage queries run through your installed harnesses, and, if you set it up, phone access through `tailscale serve` with Web Push to approved phones. It types only into agents in its own tmux server: when you send something, when a thread between agents you started delivers, and through the defaults above. Your agents keep their own network behavior. See [docs/security.md](docs/security.md).
+
+## More
+
+- **Conversation**: Markdown, math, Mermaid and images from the session file; slash commands, `@` file completion and file attachments up to 100 MB.
+- **Decisions**: when an agent ends its answer with a `## Decisions` list, each `label: A / B / C` item becomes a row of buttons.
+- **Prompt cache**: an estimated countdown per agent (last activity plus a per-harness TTL; not a time the provider reports).
+- **Agent-to-agent**: `adash ask` / `adash reply` threads that never type into an agent that is working, asking, or has unsent text.
+- **Usage and analytics**: context, cost and tokens per session, a SQLite store of every session (`adash stats`, search), weekly and monthly HTML/PDF reports.
+- **Phone**: the dashboard through `tailscale serve`, with per-device approval.
+- **Projects and themes**: hide, close and archive projects ([docs/projects.md](docs/projects.md)); 42 themes or your terminal's colors ([docs/themes.md](docs/themes.md)); English and Korean UI.
 
 ## Platforms
 
 | Platform | Status |
 |---|---|
 | Linux x86_64 / aarch64 | supported (systemd user services, `/proc`, `notify-send`) |
-| macOS x86_64 / aarch64 | supported (launchd, `sysctl`/`lsof`, `osascript`/`terminal-notifier`, Terminal.app); built and unit-tested in CI on Intel and Apple Silicon. Bug reports from real Macs are welcome. |
+| macOS x86_64 / aarch64 | built and unit-tested in CI; not yet run on a real Mac (launchd, `sysctl`/`lsof`, `osascript`/`terminal-notifier`). Reports welcome |
+| Windows | not supported natively; WSL2 untested |
 
 ## Limitations
 
 - Agents must run inside adash's tmux server.
-- Session formats of the harnesses change without notice; see the tested versions above.
-- The UI is optimized for desktop browsers (≥ 1280 px) and phones (≥ 360 px).
+- Harness session formats change without notice; see the tested versions.
+- The UI is made for desktop browsers (1280 px and wider) and phones (360 px and wider).
 
 ## Documentation
 
-- [docs/architecture.md](docs/architecture.md) — data sources, poll loop, transcript mapping, analytics store, agent-to-agent protocol
-- [docs/security.md](docs/security.md) — threat model and guards
-- [docs/analytics.md](docs/analytics.md) — analytics schema and queries
-- [docs/themes.md](docs/themes.md) — theme files and tokens
-- [docs/projects.md](docs/projects.md) — project settings, ★ score, hide / close / archive, your tasks
+- [docs/configuration.md](docs/configuration.md): every setting, `meta.yaml`, data
+- [docs/architecture.md](docs/architecture.md): data sources, poll loop, transcript mapping, analytics store, agent-to-agent protocol
+- [docs/security.md](docs/security.md): threat model and guards
+- [docs/analytics.md](docs/analytics.md): analytics schema and queries
+- [docs/themes.md](docs/themes.md): theme files, tokens and importing your terminal's colors
+- [docs/projects.md](docs/projects.md): project settings, hide / close / archive, your tasks
 - [CONTRIBUTING.md](CONTRIBUTING.md), [SECURITY.md](SECURITY.md), [CHANGELOG.md](CHANGELOG.md)
 
 ## License

@@ -58,6 +58,7 @@ const USAGE: &str = "adash — agent dashboard (tmux backend)
   adash theme list | new <name> [--from dark] | check <file.toml> | export <name> | show <name> | import <source> [file|name] [--name N] [--light] [--dry-run] [--set-default] | schema   themes (TOML)
   adash harnesses                    supported harnesses, whether enabled, tested versions
   adash install-service              per-user services for the tmux server and `adash serve` (systemd / launchd)
+  adash uninstall-service [--tmux [--yes]]  stop and remove the dashboard service (--tmux: also the agents' tmux server); data is kept
   adash ls [--json] [--all]          내 차례 queue (or every agent)
   adash whoami                       caller's agent name (flags ambiguous names)
   adash iam \"<이름>\" [--role \"<역할>\"]  set your own dashboard name (2–20 chars, unique)
@@ -311,6 +312,40 @@ fn install_service() -> Res<()> {
     println!("wrote {}", p.display());
     platform::start_service("adash", true)?;
     println!("{} and adash services installed and started → http://127.0.0.1:{}", term::UNIT, util::port());
+    Ok(())
+}
+
+/// `adash uninstall-service [--tmux [--yes]]`: stop and remove the dashboard service; with
+/// `--tmux` also the tmux service, which ends every agent terminal (asks unless `--yes`). Data
+/// (config, analytics, sessions) is never deleted.
+fn uninstall_service(a: &Args) -> Res<()> {
+    if a.has("tmux") {
+        let n = term::panes().map(|p| p.len()).unwrap_or(0);
+        if n > 0 && !a.has("yes") {
+            use std::io::Write;
+            print!("Removing the {} service ends all {n} terminals in it (every agent running there). Continue? [y/N] ", term::UNIT);
+            let _ = std::io::stdout().flush();
+            let mut ans = String::new();
+            let _ = std::io::stdin().read_line(&mut ans);
+            if !matches!(ans.trim(), "y" | "Y" | "yes") {
+                return Err("not removed".into());
+            }
+        }
+    }
+    let mut names = vec!["adash"];
+    if a.has("tmux") {
+        names.push(term::UNIT);
+    }
+    for n in names {
+        match platform::uninstall_service(n)? {
+            Some(p) => println!("removed {} ({})", n, p.display()),
+            None => println!("{n}: not installed"),
+        }
+    }
+    if !a.has("tmux") {
+        println!("the {} service keeps running (agent terminals stay); `adash uninstall-service --tmux` removes it too", term::UNIT);
+    }
+    println!("data kept: {} and {}", platform::config_dir().display(), platform::data_dir().display());
     Ok(())
 }
 
@@ -843,6 +878,7 @@ fn run() -> Res<()> {
             Ok(())
         }
         "install-service" => install_service(),
+        "uninstall-service" => uninstall_service(&a),
         "theme" => cmd_theme(&a),
         "harnesses" => {
             println!("{:<12} {:<8} {:<14} binary", "HARNESS", "ENABLED", "TESTED");

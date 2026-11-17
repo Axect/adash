@@ -604,6 +604,36 @@ pub fn install_service(name: &str, description: &str, program: &[String], path_e
     }
 }
 
+/// Stop a user service, disable it and delete its unit file (systemd) or plist (launchd).
+/// Returns the removed file, None when it was not installed.
+pub fn uninstall_service(name: &str) -> Res<Option<PathBuf>> {
+    #[cfg(target_os = "macos")]
+    {
+        let label = format!("dev.adash.{name}");
+        let plist = home().join("Library/LaunchAgents").join(format!("{label}.plist"));
+        // not loaded is fine
+        let _ = Command::new("launchctl").args(["bootout", &format!("gui/{}/{label}", my_uid())]).status();
+        if !plist.exists() {
+            return Ok(None);
+        }
+        std::fs::remove_file(&plist).map_err(|e| format!("{}: {e}", plist.display()))?;
+        Ok(Some(plist))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let unit = format!("{name}.service");
+        let p = home().join(".config/systemd/user").join(&unit);
+        // not loaded / not enabled is fine
+        let _ = Command::new("systemctl").args(["--user", "disable", "--now", &unit]).status();
+        if !p.exists() {
+            return Ok(None);
+        }
+        std::fs::remove_file(&p).map_err(|e| format!("{}: {e}", p.display()))?;
+        let _ = Command::new("systemctl").args(["--user", "daemon-reload"]).status();
+        Ok(Some(p))
+    }
+}
+
 /// Start a user service (no-op when running). `restart`: restart it when it runs.
 pub fn start_service(name: &str, restart: bool) -> Res<()> {
     #[cfg(target_os = "macos")]
@@ -673,5 +703,19 @@ mod editor_tests {
         assert_eq!(super::editor_argv("hx", p, Some(12)), vec!["hx", "/w/a.rs:12"]);
         assert_eq!(super::editor_argv("code --wait", p, Some(3)), vec!["code", "--wait", "--goto", "/w/a.rs:3"]);
         assert_eq!(super::editor_argv("nvim", p, None), vec!["nvim", "/w/a.rs"]);
+    }
+
+    /// Installs a throwaway user service, then removes it. Touches the real service manager:
+    /// run by hand (`cargo test -- --ignored service_round_trip`).
+    #[test]
+    #[ignore]
+    fn service_round_trip() {
+        let name = format!("adash-svc-test-{}", std::process::id());
+        let p = super::install_service(&name, "adash test", &["/bin/sleep".into(), "600".into()], "/usr/bin:/bin", None).unwrap();
+        super::start_service(&name, false).unwrap();
+        assert!(p.exists());
+        assert_eq!(super::uninstall_service(&name).unwrap().as_deref(), Some(p.as_path()));
+        assert!(!p.exists());
+        assert_eq!(super::uninstall_service(&name).unwrap(), None, "a second run finds nothing");
     }
 }

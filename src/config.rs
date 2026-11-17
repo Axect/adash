@@ -26,8 +26,17 @@ pub struct Config {
     pub mobile: Mobile,
     pub launch: Launch,
     pub restart: Restart,
+    pub retry: RetryCfg,
     pub sleep: Sleep,
     pub theme: ThemeDefaults,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[serde(default, rename_all = "camelCase")]
+pub struct RetryCfg {
+    /// message sent to retry Claude Code, Codex and Antigravity after an error (they have no
+    /// retry key); unset = "continue" with an English UI, "계속 진행해" with a Korean one
+    pub message: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -167,6 +176,7 @@ impl Default for Config {
             mobile: Mobile::default(),
             launch: Launch::default(),
             restart: Restart::default(),
+            retry: RetryCfg::default(),
             sleep: Sleep::default(),
             theme: ThemeDefaults::default(),
         }
@@ -341,6 +351,11 @@ pub fn config_text(c: &Config) -> String {
          # restart idle agents (same session) as soon as their harness was updated\n\
          autoOutdated = {autoout}\n\
          \n\
+         [retry]\n\
+         # message that retries Claude Code, Codex and Antigravity after an error (no retry key);\n\
+         # unset: \"continue\" with an English UI, \"계속 진행해\" with a Korean one\n\
+         {retrymsg}\
+         \n\
          [sleep]\n\
          # close agents idle (done) longer than afterHours; a message, an answer or \"다시 열기\" reopens them\n\
          enabled = {sleepon}\n\
@@ -366,6 +381,7 @@ pub fn config_text(c: &Config) -> String {
         ts = c.mobile.tailscale,
         autotrust = c.launch.auto_trust,
         autoout = c.restart.auto_outdated,
+        retrymsg = opt("message", &c.retry.message, "continue"),
         sleepon = c.sleep.enabled,
         sleeph = c.sleep.after_hours,
         sleepn = c.sleep.per_round,
@@ -451,6 +467,7 @@ pub fn schema() -> serde_json::Value {
             "mobile": {"type": "object", "additionalProperties": false, "properties": {"tailscale": {"type": "boolean"}}},
             "launch": {"type": "object", "additionalProperties": false, "properties": {"autoTrust": {"type": "boolean"}}},
             "restart": {"type": "object", "additionalProperties": false, "properties": {"autoOutdated": {"type": "boolean"}}},
+            "retry": {"type": "object", "additionalProperties": false, "properties": {"message": s("message that retries harnesses without a retry key; unset = \"continue\" (English UI) / \"계속 진행해\" (Korean UI)")}},
             "sleep": {"type": "object", "additionalProperties": false, "properties": {"enabled": {"type": "boolean"}, "afterHours": {"type": "integer", "minimum": 1}, "perRound": {"type": "integer", "minimum": 0}}},
             "theme": {"type": "object", "additionalProperties": false, "properties": {"dark": s("theme for dark mode (default dark, adash dark)"), "light": s("theme for light mode (default catppuccin-latte)")}}
         }

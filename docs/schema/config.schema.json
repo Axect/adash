@@ -128,6 +128,16 @@
       },
       "type": "object"
     },
+    "retry": {
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "description": "message that retries harnesses without a retry key; unset = \"continue\" (English UI) / \"계속 진행해\" (Korean UI)",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "sleep": {
       "additionalProperties": false,
       "properties": {
