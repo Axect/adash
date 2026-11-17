@@ -100,7 +100,12 @@ pub fn interrupted(kind: &str, screen: &[String]) -> bool {
     let rows: Vec<&str> = screen.iter().map(|l| l.as_str()).filter(|l| !l.trim().is_empty()).collect();
     let tail = &rows[rows.len().saturating_sub(ROWS)..];
     let stopped = tail.iter().any(|l| l.contains("Interrupted · What should Antigravity CLI do instead?"));
-    let empty_prompt = tail.iter().any(|l| l.trim() == ">");
+    // an empty input box: ">" alone or with agy's grey mode hint ("> Accept-edits mode: …
+    // (shift+tab to cycle)", "> Auto mode: …", "> Plan mode: …")
+    let empty_prompt = tail.iter().any(|l| {
+        let t = l.trim();
+        t == ">" || (t.starts_with("> ") && t.ends_with("(shift+tab to cycle)"))
+    });
     stopped && empty_prompt
 }
 
@@ -308,5 +313,19 @@ mod tests {
         // agy went on after the error: not waiting
         let moved = s(&["⚠ some error", "Error ID: x", "  Retrying the edit now", ">"]);
         assert!(agy_error("antigravity", &moved).is_none());
+    }
+
+    #[test]
+    fn agy_interrupted_with_a_mode_hint() {
+        let scr = s(&[
+            "  ⎿  Interrupted · What should Antigravity CLI do instead?",
+            "────",
+            "> Accept-edits mode: file edits auto-approved (shift+tab to cycle)",
+            "────",
+            "? for shortcuts",
+        ]);
+        assert!(interrupted("antigravity", &scr));
+        let typed = s(&["  ⎿  Interrupted · What should Antigravity CLI do instead?", "> keep going please"]);
+        assert!(!interrupted("antigravity", &typed));
     }
 }

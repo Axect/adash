@@ -1669,7 +1669,10 @@ fn scan_stalls(sh: &Shared, agents: &[crate::collect::Agent]) {
         // and the old fixed "1 s per look" missed it once rounds took longer than 10 s)
         let since = match st.get(h) {
             Some(&(ph, pm, pt, s, at)) if ph == hash && pm == mt && ticks.saturating_sub(pt) * 1000 < 20 * (now - at).max(1) as u64 => s,
-            _ => now,
+            Some(_) => now,
+            // first look since adash started: quiet since the agent's last change, not since now
+            // (each restart used to start the count again)
+            None => a.state_since.max(mt).min(now),
         };
         keep.insert(h.clone(), (hash, mt, ticks, since, now));
     }
