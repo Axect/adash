@@ -730,6 +730,28 @@ fn form_rows(s: &[String]) -> Vec<(String, bool)> {
         .collect()
 }
 
+/// Typed answers the harness recorded differently from what was sent (whitespace aside):
+/// `[{id, label, sent, recorded}]`. omp 18.20 records `[{name, question, answer}]`, a typed
+/// choice as "Other: …".
+fn form_mismatch(qs: &[crate::ask::AskQuestion], sent: &dyn Fn(&str) -> Option<crate::ask::Answer>, rec: &Value) -> Vec<Value> {
+    let squash = |s: &str| s.chars().filter(|c| !c.is_whitespace()).collect::<String>();
+    let got = |id: &str| -> Option<String> {
+        let ans = match rec.as_array() {
+            Some(list) => list.iter().find(|e| e["name"] == id || e["id"] == id)?["answer"].as_str()?.to_string(),
+            None => rec[id].as_str()?.to_string(),
+        };
+        Some(ans.strip_prefix("Other: ").unwrap_or(&ans).to_string())
+    };
+    qs.iter()
+        .filter_map(|q| match sent(&q.id) {
+            Some(crate::ask::Answer::Text(t)) => {
+                got(&q.id).filter(|g| squash(g) != squash(&t)).map(|g| json!({"id": q.id, "label": q.question, "sent": t, "recorded": g}))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
 /// omp 18.18 HTML-form ask: one box with every field's rows (options, an automatic "Other"
 /// row per choice group, text fields) and a Submit row. Keys, as its footer and a test session
 /// show: ↑/↓ move the cursor; on an option Enter chooses (single) or Space toggles (multi);
@@ -782,6 +804,30 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     };
     let n = ask.questions.len();
     let tag = |k: usize, r: Result<(), (u16, String)>| r.map_err(|(c, e)| (c, format!("{e} (fields answered: {k} of {n})")));
+    // whitespace-free text, for comparing what the box shows (wrapped) with what was meant
+    let squash = |s: &str| s.chars().filter(|c| !c.is_whitespace() && *c != '│').collect::<String>();
+    // the value under a text field's label: its "│ …" rows
+    let field_value = |label: &str| -> String {
+        let want: String = label.chars().take(14).collect();
+        let r = rows();
+        let Some(i) = r.iter().position(|x| x.0.contains(&want)) else { return String::new() };
+        r[i + 1..].iter().take_while(|x| x.0.starts_with('│')).map(|x| x.0.trim_start_matches('│').trim().to_string()).collect::<Vec<_>>().join(" ")
+    };
+    // type `t` into the field under the cursor exactly once: clear it first (a field filled by an
+    // earlier attempt would otherwise get the text twice), type, read it back; one more clear and
+    // retype when it differs, then give up before submitting
+    let fill = |t: &str, check: &dyn Fn() -> bool| -> Result<(), (u16, String)> {
+        for _ in 0..2 {
+            key("C-u")?;
+            std::thread::sleep(Duration::from_millis(120));
+            term::send_text(&h, t).map_err(|e| (502u16, e))?;
+            std::thread::sleep(Duration::from_millis(350));
+            if check() {
+                return Ok(());
+            }
+        }
+        Err((409, "the text did not read back as typed in the question box; answer in the terminal".into()))
+    };
     for (k, q) in ask.questions.iter().enumerate() {
         progress("keys", json!({"k": k + 1, "n": n}));
         let goto = |w: &str| tag(k, goto(w));
@@ -798,7 +844,7 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
             let label = if q.question.is_empty() { q.id.clone() } else { q.question.clone() };
             goto(&label)?;
             if let crate::ask::Answer::Text(t) = &ans {
-                term::send_text(&h, t).map_err(|e| (502u16, e))?;
+                tag(k, fill(t, &|| squash(&field_value(&label)) == squash(t)))?;
             }
             key("Enter")?;
         } else {
@@ -816,7 +862,15 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
                 }
                 crate::ask::Answer::Text(t) => {
                     goto("Other")?;
-                    term::send_text(&h, t).map_err(|e| (502u16, e))?;
+                    // the typed text shows in the Other row (wrapped): it must appear once
+                    let want = squash(t);
+                    tag(
+                        k,
+                        fill(t, &|| {
+                            let all = squash(&rows().iter().map(|x| x.0.clone()).collect::<Vec<_>>().join(""));
+                            all.matches(&want).count() == 1
+                        }),
+                    )?;
                     key("Enter")?;
                 }
             }
@@ -826,24 +880,36 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     tag(n, goto("Submit"))?;
     progress("verifying", json!({}));
     key("Enter")?;
+    // omp may record the answer late (2026-11-18: 42 s after submitting a 6-field form): the form
+    // leaving the screen means it was taken; the record is awaited up to 120 s, and only a form
+    // still on the screen then is a failure
     let t0 = now_ms();
-    while now_ms() - t0 < 15_000 {
+    let mut gone = 0;
+    while now_ms() - t0 < 120_000 {
         std::thread::sleep(Duration::from_millis(500));
-        let mut f = std::fs::File::open(&path).map_err(|e| (502u16, e.to_string()))?;
         let mut buf = String::new();
-        use std::io::{Read, Seek};
-        let _ = f.seek(std::io::SeekFrom::Start(start));
-        let _ = f.read_to_string(&mut buf);
+        if let Ok(mut f) = std::fs::File::open(&path) {
+            use std::io::{Read, Seek};
+            let _ = f.seek(std::io::SeekFrom::Start(start));
+            let _ = f.read_to_string(&mut buf);
+        }
         if let Some(v) = buf
             .lines()
             .filter_map(|l| serde_json::from_str::<Value>(l).ok())
             .find(|v| v["message"]["role"] == "toolResult" && v["message"]["toolCallId"].as_str() == Some(ask.call_id.as_str()))
         {
-            return Ok(json!({"ok": true, "name": a.name, "recorded": v["message"]["details"]["answers"]}));
+            let rec = &v["message"]["details"]["answers"];
+            let mismatch = form_mismatch(&ask.questions, &|id: &str| get(id), rec);
+            return Ok(json!({"ok": true, "name": a.name, "recorded": rec, "mismatch": mismatch}));
+        }
+        let open = rows().iter().any(|x| x.0.trim() == "Submit");
+        gone = if open { 0 } else { gone + 1 };
+        if gone >= 4 {
+            return Ok(json!({"ok": true, "name": a.name, "recorded": null, "submitted": true}));
         }
     }
     term::snapshot(&h, "ask-form-unconfirmed");
-    Err((502, "the form was submitted but no answer was recorded; check the terminal".into()))
+    Err((502, "the form is still open after submitting; check the terminal".into()))
 }
 
 /// `/name …` naming one of the harness's built-in commands (not `/btw`, which the session records).
@@ -4298,5 +4364,32 @@ mod retry_tests {
         assert!(!r.iter().all(|x| x.0.is_empty()), "not a hidden (empty) box");
         let opts = vec!["╭─ Ask · 2/2 ─".to_string(), "│ \u{f054} \u{f192} 1. Carbon".into(), "│   \u{f10c} 2. Fable".into(), "├──".into()];
         assert_eq!(super::form_rows(&opts).iter().position(|x| x.1), Some(0));
+    }
+
+    #[test]
+    fn form_answers_recorded_twice_are_flagged() {
+        let q = |id: &str| crate::ask::AskQuestion {
+            id: id.into(),
+            question: id.into(),
+            options: vec![],
+            multi: false,
+            recommended: None,
+            header: None,
+            optional: false,
+        };
+        let qs = [q("occupation"), q("jp"), q("email")];
+        let sent = |id: &str| match id {
+            "occupation" => Some(crate::ask::Answer::Text("Unemployed (IT 프로젝트 매니저?)".into())),
+            "jp" => Some(crate::ask::Answer::Text("Twice".into())),
+            _ => Some(crate::ask::Answer::Text("a@b.c".into())),
+        };
+        let rec = serde_json::json!([
+            {"name": "occupation", "answer": "Unemployed (IT 프로젝트 매니저?)Unemployed (IT 프로젝트 매니저?)"},
+            {"name": "jp", "answer": "Other: Twice"},
+            {"name": "email", "answer": "a@b.c"}
+        ]);
+        let m = super::form_mismatch(&qs, &sent, &rec);
+        assert_eq!(m.len(), 1, "{m:?}");
+        assert_eq!(m[0]["id"], "occupation");
     }
 }

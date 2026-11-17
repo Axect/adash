@@ -3788,11 +3788,13 @@
     const prog = j.n ? `${Math.min(j.k || 0, j.n)}/${j.n}` : "";
     const bar = j.n ? `<div class="aj-bar"><span style="width:${Math.round(100 * Math.min(j.k || 0, j.n) / j.n)}%"></span></div>` : "";
     if (j.state === "running") return `<div class="aj running"><b>답 넣는 중 ${prog}…</b><span class="muted small">${esc(ANS_STEP_KO[j.step] || j.step || "")}</span>${bar}<div class="muted small">끝날 때까지 다른 조작은 잠시 막아 둡니다</div></div>`;
+    // the harness recorded a typed answer differently from what was sent: say which, offer a correction
+    if (j.state === "done" && j.mismatch?.length) return `<div class="aj warn"><b>${esc(L2("답이 다르게 들어갔습니다", "An answer was recorded differently"))}: ${esc(j.mismatch.map((m) => m.label || m.id).join(", "))}</b>${j.mismatch.map((m) => `<div class="muted small">${esc(m.label || m.id)} · ${esc(L2("보낸 값", "sent"))}: ${esc(m.sent)} · ${esc(L2("기록", "recorded"))}: ${esc(m.recorded)}</div>`).join("")}<div class="aj-act"><button data-act="aj-fix" data-name="${esc(j.name)}">${esc(L2("정정 메시지 초안", "Draft a correction"))}</button><button data-act="aj-dismiss" data-name="${esc(j.name)}">${esc(L2("닫기", "Dismiss"))}</button></div></div>`;
     if (j.state === "done") return `<div class="aj done"><b>${j.verified === false ? "답을 넣었습니다 · 반영은 확인하지 못함" : "답을 넣었습니다 ✓"}</b>${prog ? `<span class="muted small">${prog}</span>` : ""}${j.verified === false ? `<div class="muted small">터미널에서 한 번 확인해 주세요.</div><div class="aj-act"><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div>` : ""}</div>`;
     if (j.state === "unknown") return `<div class="aj warn"><b>진행 상태를 확인하지 못했습니다</b><div class="muted small">답이 들어갔을 수 있습니다. 다시 보내기 전에 터미널에서 확인하세요.${j.reason ? ` (${esc(j.reason)})` : ""}</div><div class="aj-act"><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div></div>`;
     return `<div class="aj failed"><b>답을 넣지 못했습니다${prog ? ` (${prog}에서 멈춤)` : ""}</b><div class="muted small">${esc(j.reason || "이유 없음")}</div><div class="aj-act"><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button><button class="primary" data-act="aj-retry">다시 시도</button><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div></div>`;
   }
-  const normJob = (r) => ({ state: r.state || r.status || "running", step: r.step || r.phase, k: r.k ?? r.done ?? r.progress?.done, n: r.n ?? r.total ?? r.progress?.total, verified: r.verified, reason: r.reason || r.error });
+  const normJob = (r) => ({ state: r.state || r.status || "running", step: r.step || r.phase, k: r.k ?? r.done ?? r.progress?.done, n: r.n ?? r.total ?? r.progress?.total, verified: r.verified, reason: r.reason || r.error, mismatch: r.result?.mismatch || [], submitted: !!r.result?.submitted });
   function setJob(name, j) { answerJobs.set(name, { ...answerJobs.get(name), ...j, name }); renderAskCard(); render(); }
   function endJob(name, ms) {
     setTimeout(() => { const j = answerJobs.get(name); if (j && j.state === "done") { answerJobs.delete(name); renderAskCard(); render(); } }, ms);
@@ -3828,7 +3830,7 @@
         return still ? null : endJob(name, 2500);
       }
       if (j.state === "running" || j.state === "queued") { setJob(name, { ...j, state: "running" }); continue; }
-      if (j.state === "done" || j.state === "ok" || j.state === "succeeded") { setJob(name, { ...j, state: "done" }); return endJob(name, j.verified === false ? 600000 : 2500); }
+      if (j.state === "done" || j.state === "ok" || j.state === "succeeded") { setJob(name, { ...j, state: "done" }); return endJob(name, j.verified === false || j.mismatch?.length ? 600000 : 2500); }
       setJob(name, { ...j, state: "failed" });
       if (!FIXTURE) refresh();
       return;
@@ -4896,6 +4898,13 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     else if (a === "held-cancel") { ov.held = null; renderHeld(); $("#composer-text").focus(); }
     else if (a === "ask-pick") askPick(b.dataset.q, +b.dataset.i);
     else if (a === "ask-submit") submitAsk();
+    else if (a === "aj-dismiss") { answerJobs.delete(b.dataset.name); renderAskCard(); }
+    else if (a === "aj-fix") {
+      const j = answerJobs.get(b.dataset.name); if (!j) return;
+      const lines = j.mismatch.map((m) => L2(`- ${m.label || m.id}: 기록된 값이 아니라 "${m.sent}" 입니다.`, `- ${m.label || m.id}: the answer is "${m.sent}", not what was recorded.`));
+      $("#composer-text").value = [L2("방금 폼 답 가운데 잘못 기록된 칸이 있습니다. 아래 값으로 고쳐서 진행해 주세요.", "Some form answers were recorded wrong. Please use these values:"), ...lines].join("\n");
+      answerJobs.delete(b.dataset.name); renderAskCard(); $("#composer-text").focus();
+    }
     else if (a === "ask-skip-q") { const inp = $(`#ask-card .ask-text[data-q="${CSS.escape(b.dataset.q)}"]`); if (inp) { inp.value = SKIP_TEXT; askTextChanged(inp); } }
     else if (a === "dec-opt") setComposerItem(+b.dataset.n, b.dataset.o);
     else if (a === "dec-item") setComposerItem(+b.dataset.n, composerItem(+b.dataset.n) || "");
