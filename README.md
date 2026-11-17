@@ -18,7 +18,7 @@
 
 ![adash core loop with demo data](docs/media/demo.gif)
 
-*Demo data: open the agent at the top of My turn, answer its question in the browser, press `]` for the next one.*
+*Demo data: open the agent at the top of My turn, answer its question in the browser, press `]` for the next one, then retry an error.*
 
 adash puts every coding agent that needs you (an open question, a provider error, an answer you have not read) in one queue in your browser, where you can read the conversation and reply. It shows the agents running in its own tmux server (`tmux -L adash`, with its own `tmux.conf`; your `~/.tmux.conf` and your harness configs are not touched), and you can still attach to them from any terminal with `tmux -L adash attach`. Agents started in other terminals are not shown; [resume them inside adash](#bring-an-existing-session-in).
 
