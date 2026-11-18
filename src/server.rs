@@ -2545,6 +2545,61 @@ fn analytics_round(sh: &Arc<Shared>, db: &crate::analytics::Db) {
     }
 }
 
+/// Board notices (`/api/state` `notices`, shown once as toasts): `(at, text)`, the last 10 minutes.
+pub static NOTICES: std::sync::LazyLock<Mutex<Vec<(i64, String, String)>>> = std::sync::LazyLock::new(Default::default);
+
+fn notice(ko: String, en: String) {
+    let now = now_ms();
+    let mut n = NOTICES.plock();
+    n.retain(|(at, _, _)| now - at < 600_000);
+    n.push((now, ko, en));
+}
+
+/// A new agent in an archived project un-archives it (archiving closed every agent, so a live
+/// one was started since); in a hidden project it stays hidden but is announced once. Agents
+/// already live when adash started are not news.
+fn scan_project_arrivals(sh: &Shared, snap: &Snapshot) {
+    static SEEN: std::sync::LazyLock<Mutex<Option<std::collections::HashSet<String>>>> = std::sync::LazyLock::new(Default::default);
+    let mut seen = SEEN.plock();
+    let first = seen.is_none();
+    let known = seen.get_or_insert_with(Default::default);
+    let meta = Meta::load();
+    let now = now_ms();
+    let mut unarchive: Vec<String> = vec![];
+    for a in &snap.agents {
+        let Some(p) = meta.projects.get(&a.project) else {
+            known.insert(a.identity.clone());
+            continue;
+        };
+        let new = known.insert(a.identity.clone()) && !first;
+        if p.archived {
+            if !unarchive.contains(&a.project) {
+                unarchive.push(a.project.clone());
+            }
+        } else if new && p.is_hidden(now) {
+            let t = format!("숨긴 프로젝트 {} 에 새 에이전트 {} 가 생겼습니다", a.project, a.name);
+            crate::notify::send(&t, "프로젝트는 계속 숨겨져 있습니다", a.handle.clone());
+            notice(t, format!("New agent {} in hidden project {}", a.name, a.project));
+        }
+    }
+    drop(seen);
+    if unarchive.is_empty() {
+        return;
+    }
+    let _w = sh.write.plock();
+    let mut m = Meta::load();
+    for name in unarchive {
+        if let Some(p) = m.projects.get_mut(&name).filter(|p| p.archived) {
+            p.archived = false;
+            p.hidden = None;
+            let t = format!("보관된 프로젝트 {name} 에 새 에이전트가 생겨 다시 보이게 했습니다");
+            crate::notify::send(&t, "", None);
+            notice(t, format!("Archived project {name} got a new agent and is shown again"));
+        }
+    }
+    let _ = m.save();
+}
+
 /// Sleeping agents: drop the ones live again, wake the ones a thread or magi run must reach,
 /// and (every 30 min, in the background) put the next long-idle ones to sleep.
 fn scan_sleep(sh: &Arc<Shared>, snap: &Snapshot) {
@@ -2590,6 +2645,7 @@ fn background_round(sh: &Arc<Shared>, n: u32) {
     scan_outdated(sh);
     scan_btw(&snap);
     scan_sleep(sh, &snap);
+    scan_project_arrivals(sh, &snap);
     for mut st in crate::magi::RunState::load_all().into_iter().filter(|r| matches!(r.status.as_str(), "queued" | "held")) {
         // a run nobody delivered within a day is stale
         if now_ms() - st.created_at > 86_400_000 {
@@ -3431,6 +3487,7 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
             v["restoreHeld"] = json!(crate::restore::held());
             v["restartPending"] = json!(crate::outdated::WHEN_IDLE.plock().iter().cloned().collect::<Vec<_>>());
             v["sleep"] = crate::sleep::view();
+            v["notices"] = json!(NOTICES.plock().iter().map(|(at, t, en)| json!({"at": at, "text": t, "textEn": en})).collect::<Vec<_>>());
             let cutoff = now_ms() - 7 * 86_400_000;
             {
                 let now = now_ms();

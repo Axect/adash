@@ -118,6 +118,8 @@ pub fn build(snap: &Snapshot, meta: &Meta, threads: &[Thread]) -> Value {
                 "progress": if p.prog.is_empty() { Value::Null } else { json!(round(p.prog.iter().sum::<f64>() / p.prog.len() as f64)) },
                 "bottleneck": max_wait > 0.0 && p.wait == max_wait,
                 "agents": p.agents,
+                "archived": pm.archived,
+                "hidden": pm.hidden.as_ref().filter(|_| pm.is_hidden(crate::util::now_ms())).map(|h| json!({"until": h.until})),
             })
         })
         .collect();

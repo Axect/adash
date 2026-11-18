@@ -602,7 +602,10 @@
         if (r.status === 403) { const j = await r.json().catch(() => null); if (j?.error === "device_pending") return showPairing(j); }
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         hidePairing();
-        setState(await r.json());
+        const js = await r.json();
+        // server notices (a new agent in an archived / hidden project …): each one toasts once
+        for (const n of js.notices || []) if (n.at > (refresh.noticeAt ??= Date.now() - 60000)) { refresh.noticeAt = n.at; toast(window.ADASH_LANG === "en" ? n.textEn || n.text : n.text, 6000); }
+        setState(js);
       }
     } catch (e) { $("#status").textContent = `연결 실패: ${e.message}`; connLost(e); }
   }

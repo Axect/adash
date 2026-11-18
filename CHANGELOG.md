@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Projects: a new agent in an archived project un-archives it, and one in a hidden project is announced (the project stays hidden), with a desktop notification and a dashboard toast; `/api/state` `projects[]` carries `archived` and `hidden`.
 - omp form answers: a text field is cleared before typing and read back from the screen (cleared and typed once more when it differs), so a retry over a half-filled form no longer types the text twice; after submitting, the form leaving the screen counts as success and the record is awaited up to 120 s (a large form recorded its answer 42 s late and was reported as failed); typed answers the harness recorded differently are named with a correction draft.
 - README rewritten: what adash is and its tmux-server scope up front, a 30-second try, the core loop, an accurate harness table, quick start with bringing existing sessions in and uninstalling, the defaults that act on their own, and an accurate privacy note. Settings moved to `docs/configuration.md`.
 - `adash uninstall-service [--tmux [--yes]]`: stops and removes the dashboard service; `--tmux` also the tmux service after a warning that it ends every agent terminal. Config and data are kept.
