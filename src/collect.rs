@@ -46,6 +46,10 @@ pub struct Agent {
     /// resident memory of the agent's process tree (MB), sampled every ~10 s
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rss_mb: Option<u64>,
+    /// subagents the agent launched (omp `task`, Claude Code Task): `[{name, file, running,
+    /// lastTool, startedAt, updatedAt}]`; running ones keep the parent "working"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subagents: Option<Value>,
     /// unsent text in the agent's own input box: {text, readable, source, seenAt} (scanned ~10 s)
     pub draft: Option<Value>,
     /// login prompt on the agent's screen (state "auth"): {reason, phrase, url?, code?, since}
@@ -332,6 +336,7 @@ impl Collector {
                     acked_at: None,
                     unread: false,
                     rss_mb: None,
+                    subagents: None,
                     draft: None,
                     auth: None,
                     queued: None,

@@ -35,6 +35,7 @@ mod session;
 mod sleep;
 mod state;
 mod stats;
+mod subagents;
 mod term;
 mod theme;
 mod theme_import;

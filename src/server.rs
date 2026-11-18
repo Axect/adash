@@ -164,6 +164,8 @@ pub struct Shared {
     pub stall: Mutex<HashMap<String, (u64, i64, u64, i64, i64)>>,
     /// handle → resident memory (MB) of its agent's process tree
     pub rss: Mutex<HashMap<String, u64>>,
+    /// handle → its subagents (see `crate::subagents`)
+    pub subagents: Mutex<HashMap<String, Value>>,
     /// handle → title of an omp Ask box on the screen (omp 18.18 records the call late)
     pub screen_ask: Mutex<HashMap<String, String>>,
     pub catalog: Mutex<crate::launch::Cached>,
@@ -1636,6 +1638,7 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
     let stall = sh.stall.plock();
     let sa = sh.screen_ask.plock();
     let rss = sh.rss.plock();
+    let subs = sh.subagents.plock();
     let stall_ms = crate::config::get().notifications.stall_minutes as i64 * 60_000;
     for a in snap.agents.iter_mut() {
         if a.handle.as_ref().is_some_and(|h| sa.contains_key(h)) && a.state == "working" && a.ask.is_none() {
@@ -1667,6 +1670,16 @@ fn attach_drafts(sh: &Shared, snap: &mut Snapshot) {
         }
         a.outdated = a.handle.as_ref().and_then(|h| od.get(h)).cloned();
         a.rss_mb = a.handle.as_ref().and_then(|h| rss.get(h)).copied();
+        a.subagents = a.handle.as_ref().and_then(|h| subs.get(h)).cloned();
+        // its turn ended but subagents it launched still run (it wakes on their results): working,
+        // not my turn, nothing to notify, never slept or restarted in a batch
+        let running = a.subagents.as_ref().and_then(|v| v.as_array()).map_or(0, |l| l.iter().filter(|s| s["running"] == true).count());
+        if running > 0 && matches!(a.state.as_str(), "done" | "idle" | "waiting") {
+            a.state = "working".into();
+            a.tool = Some(format!("subagents ×{running}"));
+            a.needs_human = false;
+            a.unread = false;
+        }
         a.queued = a.handle.as_ref().and_then(|h| qd.get(h)).cloned();
         a.draft = a.handle.as_ref().and_then(|h| d.get(h)).filter(|v| !v.is_null()).cloned();
         // a login prompt on the screen: the agent waits for the user whatever its transcript says
@@ -2050,6 +2063,7 @@ fn scan_auth(sh: &Arc<Shared>) {
     }
     *sh.screen_ask.plock() = sa;
     scan_stalls(sh, &agents);
+    *sh.subagents.plock() = agents.iter().filter_map(|a| Some((a.handle.clone()?, crate::subagents::of(&a.agent_type, a.session_path.as_deref()?)?))).collect();
 }
 
 /// B4 detection (every ~60 s): pointer lines `[marker] @brief 를 읽고 답해줘` in live agents'
@@ -2354,6 +2368,7 @@ pub fn serve(port: u16) -> Res<()> {
         interrupted: Mutex::new(HashMap::new()),
         stall: Mutex::new(HashMap::new()),
         rss: Mutex::new(HashMap::new()),
+        subagents: Mutex::new(HashMap::new()),
         screen_ask: Mutex::new(HashMap::new()),
         catalog: Mutex::new(crate::launch::Cached::default()),
         devices: Mutex::new(crate::mobile::Devices::load()),
@@ -3328,6 +3343,21 @@ fn api(sh: &Shared, method: &Method, segs: &[&str], body: &str, query: &str) -> 
                 .ok_or((404, format!("unknown agent {name}")))?;
             crate::sleep::pin(&id, *op == "pin");
             Ok((200, json!({"ok": true, "identity": id, "pinned": *op == "pin"})))
+        }
+        // a subagent's conversation, read-only (only files the agent's subagent list names)
+        (Method::Get, ["api", "agents", name, "subagent"]) => {
+            let a = find(&sh.snap.plock().agents, name).cloned().ok_or((404, format!("unknown agent {name}")))?;
+            let file = q("file").unwrap_or_default();
+            let listed = a.subagents.as_ref().and_then(|v| v.as_array()).is_some_and(|l| l.iter().any(|s| s["file"].as_str() == Some(file.as_str())));
+            if !listed {
+                return Err((404, "not a subagent of this agent".into()));
+            }
+            let v = sh
+                .transcripts
+                .plock()
+                .session_view(&a.agent_type, std::path::Path::new(&file), None, q("limit").and_then(|l| l.parse().ok()).unwrap_or(300))
+                .map_err(|e| (500, e))?;
+            Ok((200, v))
         }
         (Method::Get, ["api", "agents", name, "commands"]) => {
             let a = find(&sh.snap.plock().agents, name).cloned().ok_or((404, format!("unknown agent {name}")))?;

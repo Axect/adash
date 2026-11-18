@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Subagents: an omp agent whose `task` subagents still run after its turn (Claude Code Task subagents too, untested) stays working, out of My turn, unnotified and never slept; the row and chat header show "↳ N subagents", the info panel lists each with its state, last tool and age, and opens its conversation read-only (`GET /api/agents/{name}/subagent?file=`).
 - Projects: a new agent in an archived project un-archives it, and one in a hidden project is announced (the project stays hidden), with a desktop notification and a dashboard toast; `/api/state` `projects[]` carries `archived` and `hidden`.
 - omp form answers: a text field is cleared before typing and read back from the screen (cleared and typed once more when it differs), so a retry over a half-filled form no longer types the text twice; after submitting, the form leaving the screen counts as success and the record is awaited up to 120 s (a large form recorded its answer 42 s late and was reported as failed); typed answers the harness recorded differently are named with a correction draft.
 - README rewritten: what adash is and its tmux-server scope up front, a 30-second try, the core loop, an accurate harness table, quick start with bringing existing sessions in and uninstalling, the defaults that act on their own, and an accurate privacy note. Settings moved to `docs/configuration.md`.

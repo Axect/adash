@@ -229,6 +229,8 @@
     const ro = e.target.closest("[data-reopen]");
     if (ro) { e.preventDefault(); e.stopPropagation(); return reopenAgent(ro.dataset.reopen); }
     // "이어서 열기" on a past session found by search (identity = session file)
+    const sf = e.target.closest("[data-sub-file]");
+    if (sf) { e.preventDefault(); e.stopPropagation(); return openSubagent(sf.dataset.subFile, sf.dataset.subName); }
     const rf = e.target.closest("[data-reopen-file]");
     if (rf) { e.preventDefault(); e.stopPropagation(); return reopenSession(rf.dataset.reopenFile, rf.dataset.label); }
     if (e.target.closest("[data-sess-back]")) { e.preventDefault(); return openSessions(); }
@@ -1675,7 +1677,7 @@
       // Left micro urgency tag (direction 1): what the row needs from me, readable without the legend.
       const utag = a.kind === "asking" ? `<span class="utag ask">ASK</span>` : a.kind === "error" && s?.state === "auth" ? `<span class="utag err">LOGIN</span>` : a.kind === "error" ? `<span class="utag err">ERR${s?.lastError?.status ? ` ${esc(s.lastError.status)}` : ""}</span>` : isMyTurn(a) ? TK(a) : "";
       L.push(`<div class="${cls}${bulk.has(a.name) ? " picked" : ""}" data-agent="${esc(a.name)}"><input type="checkbox" class="pick" tabindex="-1" ${bulk.has(a.name) ? "checked" : ""} title="여러 개 선택 (Ctrl/Shift+클릭)">${harnessBadge(s, a.live)}${a.live ? netIcon(s) : ""}
-        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : ""}</span>${a.kind === "working" ? "" : utag}${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
+        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : ""}${subChip(s)}</span>${a.kind === "working" ? "" : utag}${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
       // Status column (v15.1): one line = [unread dot][icon chips][time][countdown][progress]. Secondary marks are
       // small same-color icon chips; if the line still overflows, fitInfoRows() folds the lowest-priority items
       // (질문 > 오류 > 결정 > 보류 > 초안 > magi > 시간) into a "+k" chip whose tooltip lists everything.
@@ -2695,6 +2697,23 @@
       target?.scrollIntoView({ block: h.messageId ? "center" : "end" });
     } catch (e) { openViewer(`<p>대화를 열 수 없음: ${esc(e.message)}</p>`, true); }
   }
+  // Subagents (omp task, Claude Code Task): "↳ 2" while they run; the info panel lists them.
+  const subRunning = (s) => (s?.subagents || []).filter((x) => x.running);
+  const subChip = (s) => { const n = subRunning(s).length; return n ? `<span class="sub-chip" title="${esc(subRunning(s).map((x) => `${x.name}${x.lastTool ? ` · ${x.lastTool}` : ""}`).join("\n"))}">↳ ${n} ${esc(L2("서브에이전트", n === 1 ? "subagent" : "subagents"))}</span>` : ""; };
+  function subagentsHtml(a) {
+    const l = a?.subagents || []; if (!l.length) return "";
+    return `<dt>${esc(L2("서브에이전트", "Subagents"))}</dt><dd>${l.map((x) => `<div><button type="button" class="linkish" data-sub-file="${esc(x.file)}" data-sub-name="${esc(x.name)}">${esc(x.name)}</button> <span class="muted small">${x.running ? esc(L2("실행 중", "running")) : esc(L2("끝남", "done"))}${x.lastTool ? ` · ${esc(x.lastTool)}` : ""} · ${esc(ago(x.startedAt))}</span></div>`).join("")}</dd>`;
+  }
+  async function openSubagent(file, name) {
+    openViewer(`<p class="muted">${esc(L2("불러오는 중…", "Loading…"))}</p>`, true);
+    try {
+      const r = await api("GET", `/api/agents/${enc(ov.name)}/subagent?file=${enc(file)}`, undefined, { quiet: true });
+      const body = (r?.messages || []).filter((m) => m.role !== "tool").map((m) => `<div class="ro-m ${esc(m.role)}"><div class="muted small">${esc(m.role)}</div><div class="md">${md(m.text || "", ov.name, m.id)}</div></div>`).join("");
+      openViewer(`<div class="doc-path"><b>${esc(name)}</b> <span class="muted small">${esc(L2("서브에이전트 · 읽기 전용", "subagent · read-only"))}</span></div>${body || `<p class="muted">${esc(L2("메시지 없음", "No messages"))}</p>`}`, true);
+      enhanceRich($("#viewer"));
+      [...$("#viewer .viewer-body").querySelectorAll(".ro-m")].pop()?.scrollIntoView({ block: "end" });
+    } catch (e) { openViewer(`<p>${esc(e.message)}</p>`, true); }
+  }
   async function reopenSession(file, label) {
     toast(`${label} 이어서 여는 중…`, 10000);
     try {
@@ -3311,6 +3330,7 @@
     const order = triageOrder();
     const k = order.indexOf(ov.name);
     $("#ov-title").innerHTML = a ? `<span class="${a.ambiguous ? "amb" : ""}" title="${esc(`${L2("이름 출처", "name source")}: ${a.nameSource || "?"}${a.ambiguous ? ` · ${L2("이름이 모호함", "ambiguous name")}` : ""}`)}">${esc(a.name)}${a.ambiguous ? "?" : ""}</span>${kindOf(a) === "working" ? WKa(a.name) : isMyTurn(model.agents.find((x) => x.name === a.name)) ? TK(model.agents.find((x) => x.name === a.name)) : ""} <span class="muted small">${esc(a.project)}${a.role ? " · " + esc(a.role) : ""}</span>` : ov.name ? esc(ov.name) : "패널";
+    if (a && subRunning(a).length) $("#ov-title").insertAdjacentHTML("beforeend", subChip(a));
     $("#ov-nav").textContent = `내 차례 ${k >= 0 ? k + 1 : "–"}/${model.counts.mine}`;
     $("#ov-unsnooze").hidden = !a?.snoozedUntil;
     // Live agent → 종료/강제 종료; ended (offline) agent → 다시 열기.
@@ -4105,6 +4125,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
           <dt>상태</dt><dd>${esc(stateKo(a.state))} · ${fmtMin(sinceMin(a))}${a.snoozedUntil ? ` · ${L2("미룸", "snoozed")} ~${fmtUntil(a.snoozedUntil)}` : ""}</dd>
           ${cacheState(a) ? `<dt>캐시</dt><dd${cacheBasis(a) ? ` title="${esc(cacheBasis(a))}"` : ""}><span class="badge ${esc(cacheState(a))}">${CACHE_KO[cacheState(a)] || esc(cacheState(a))}</span>${cacheExp(a) && cacheState(a) !== "cold" ? ` <span class="cd" data-exp="${cacheExp(a)}" data-basis="${esc(cacheBasis(a))}"></span>` : ""}</dd>` : ""}
           ${a.tool ? `<dt>도구</dt><dd>${esc(a.tool)}</dd>` : ""}
+          ${subagentsHtml(a)}
           ${a.rssMb != null ? `<dt>${esc(L2("메모리", "Memory"))}</dt><dd>${a.rssMb >= 1024 ? `${(a.rssMb / 1024).toFixed(1)} GB` : `${a.rssMb} MB`}</dd>` : ""}
           ${pr ? `<dt>진행</dt><dd>${pr.done}/${pr.total}${pr.current ? " · " + esc(pr.current) : ""} <span class="muted small">(${esc(pr.source)})</span></dd>` : ""}
           <dt>대화 출처</dt><dd>${tx ? (tx.unavailable ? `<span class="muted">불러올 수 없음 (${esc(tx.unavailable)})</span>` : `${esc(tx.source || "?")} · ${tx.mappingConfidence === "exact" ? "정확" : tx.mappingConfidence === "heuristic" ? `<span style="color:var(--info-warn)">추정</span>` : esc(tx.mappingConfidence || "?")}`) : "…"}</dd>
