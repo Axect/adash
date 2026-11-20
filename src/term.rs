@@ -38,6 +38,12 @@ set -g status-left-length 40
 /// Deadline for one tmux call: a wedged server must not freeze the poll loop or hold locks.
 const CALL_TIMEOUT_S: u64 = 10;
 
+/// Flags of every tmux client adash runs: the adash server, and `-u` for UTF-8 output whatever
+/// the locale. Without LC_ALL, LC_CTYPE or LANG naming UTF-8 (a launchd service has none) tmux
+/// writes each control or non-ASCII character as `_`: the `\x1f` field separator of
+/// `list-panes -F` too, so every pane would be dropped.
+const CLIENT: [&str; 3] = ["-u", "-L", SOCKET];
+
 /// The tmux binary (config `terminal.tmux`, else PATH).
 pub fn tmux_bin() -> PathBuf {
     TMUX.clone()
@@ -61,7 +67,7 @@ static TMUX: LazyLock<PathBuf> = LazyLock::new(|| {
 pub fn tmux(args: &[&str]) -> Res<String> {
     let out = crate::platform::timeout(CALL_TIMEOUT_S)
         .arg(&*TMUX)
-        .args(["-L", SOCKET])
+        .args(CLIENT)
         .args(args)
         .output()
         .map_err(|e| format!("tmux {}: {e}", args.first().unwrap_or(&"")))?;
@@ -411,7 +417,8 @@ pub fn send_paste(handle: &str, text: &str) -> Res<Value> {
     let p = pane_of(handle)?;
     let buf = format!("adash-{}", now_ms());
     let mut child = Command::new(&*TMUX)
-        .args(["-L", SOCKET, "load-buffer", "-b", &buf, "-"])
+        .args(CLIENT)
+        .args(["load-buffer", "-b", &buf, "-"])
         .stdin(std::process::Stdio::piped())
         .spawn()
         .map_err(|e| format!("tmux load-buffer: {e}"))?;
