@@ -300,6 +300,60 @@ pub fn screen(handle: &str) -> Res<Vec<String>> {
     Ok(lines_of(&tmux(&["capture-pane", "-p", "-J", "-t", &p])?))
 }
 
+/// The screen as the input box sees it: on the cursor's row only what lies left of the cursor,
+/// and the rows below it up to the next rule blanked. What a TUI draws after the cursor in an
+/// empty box (omp's predicted next message, agy's mode hint, Claude Code's suggestion) is not
+/// typed text. Without a cursor position this is `screen`.
+pub fn input_screen(handle: &str) -> Res<Vec<String>> {
+    let p = pane_of(handle)?;
+    let raw = tmux(&["capture-pane", "-p", "-t", &p])?;
+    let cur = tmux(&["display-message", "-p", "-t", &p, "#{cursor_x} #{cursor_y} #{cursor_flag}"]).ok();
+    let mut lines: Vec<String> = raw.lines().map(String::from).collect();
+    if let Some((x, y)) = cur.as_deref().and_then(parse_cursor) {
+        mask_after_cursor(&mut lines, x, y);
+    }
+    Ok(lines_of(&lines.join("\n")))
+}
+
+/// "x y flag" → (x, y) when the cursor is shown.
+fn parse_cursor(s: &str) -> Option<(usize, usize)> {
+    let mut it = s.split_whitespace();
+    let (x, y, f) = (it.next()?.parse().ok()?, it.next()?.parse().ok()?, it.next().unwrap_or("1"));
+    (f == "1").then_some((x, y))
+}
+
+/// Cut row `y` at column `x` (wide characters take two columns) and blank the rows after it up
+/// to the next horizontal rule (the end of the input box).
+pub fn mask_after_cursor(lines: &mut [String], x: usize, y: usize) {
+    let Some(row) = lines.get_mut(y) else { return };
+    let mut col = 0;
+    let mut cut = row.len();
+    for (i, c) in row.char_indices() {
+        if col >= x {
+            cut = i;
+            break;
+        }
+        col += if is_wide(c) { 2 } else { 1 };
+    }
+    row.truncate(cut);
+    let rule = |l: &str| {
+        let t = l.trim();
+        t.chars().count() >= 10 && t.chars().all(|c| matches!(c, '─' | '━' | '╰' | '╯' | '└' | '┘'))
+    };
+    for l in lines[y + 1..].iter_mut() {
+        if rule(l) {
+            break;
+        }
+        // keep a box's side borders, drop what is inside
+        let keep: String = l.chars().take_while(|c| *c == ' ' || *c == '│' || *c == '┃').collect();
+        *l = keep;
+    }
+}
+
+fn is_wide(c: char) -> bool {
+    matches!(c as u32, 0x1100..=0x115F | 0x2E80..=0x303E | 0x3041..=0x33FF | 0x3400..=0x4DBF | 0x4E00..=0x9FFF | 0xA000..=0xA4CF | 0xAC00..=0xD7A3 | 0xF900..=0xFAFF | 0xFE30..=0xFE4F | 0xFF00..=0xFF60 | 0xFFE0..=0xFFE6 | 0x1F300..=0x1F64F | 0x1F900..=0x1F9FF | 0x20000..=0x3FFFD)
+}
+
 /// The rendered screen with its colours (SGR escapes kept), for the dashboard's terminal view.
 pub fn screen_ansi(handle: &str) -> Res<String> {
     let p = pane_of(handle)?;
@@ -610,5 +664,26 @@ mod tests {
         // omp goes by environment; other commands untouched
         assert_eq!(super::silence_harness("omp --resume x"), "omp --resume x");
         assert_eq!(super::silence_harness("agy"), "agy");
+    }
+
+    #[test]
+    fn ghost_text_after_the_cursor_is_not_input() {
+        // omp: an empty box showing its predicted next message in grey; the cursor sits at column 1
+        let mut l: Vec<String> =
+            ["answer text", "──────────────", " 아 그렇네. 그럼 3.51배 불일치랑", "──────────────", " status"].iter().map(|s| s.to_string()).collect();
+        super::mask_after_cursor(&mut l, 1, 2);
+        assert_eq!(l[2], " ");
+        assert_eq!(crate::threads::composer_text("omp", "screen", &l), Some(None));
+        // typed Korean before the cursor stays (two columns per syllable)
+        let mut t: Vec<String> = ["──────────────", " 검토 부탁해요 predicted rest", "──────────────", " status"].iter().map(|s| s.to_string()).collect();
+        super::mask_after_cursor(&mut t, 1 + 13, 1);
+        assert_eq!(crate::threads::composer_text("omp", "screen", &t), Some(Some("검토 부탁해요".into())));
+        // agy's grey mode hint after "> "
+        let mut a: Vec<String> = ["────────────", "> Accept-edits mode: file edits auto-approved (shift+tab to cycle)", "────────────", "? for shortcuts"]
+            .iter()
+            .map(|s| s.to_string())
+            .collect();
+        super::mask_after_cursor(&mut a, 2, 1);
+        assert_eq!(crate::threads::composer_text("antigravity", "screen", &a), Some(None));
     }
 }

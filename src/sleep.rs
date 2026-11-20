@@ -204,7 +204,7 @@ fn put_to_sleep(sh: &crate::server::Shared, a: &Agent) -> Value {
         return json!({"name": a.name, "ok": false, "reason": "changed"});
     }
     let h = cur.handle.clone().unwrap_or_default();
-    let ready = crate::term::screen(&h).ok().and_then(|t| crate::threads::composer_empty(&cur.agent_type, "screen", &t));
+    let ready = crate::term::input_screen(&h).ok().and_then(|t| crate::threads::composer_empty(&cur.agent_type, "screen", &t));
     if ready != Some(true) {
         return json!({"name": a.name, "ok": false, "reason": "composer"});
     }
@@ -252,7 +252,7 @@ pub fn wake(sh: &crate::server::Shared, key: &str, why: &str) -> Option<Result<S
             if kind == "antigravity" {
                 crate::server::dismiss_agy_notice(&h);
             }
-            let empty = crate::term::screen(&h).ok().and_then(|t| crate::threads::composer_empty(&kind, "screen", &t));
+            let empty = crate::term::input_screen(&h).ok().and_then(|t| crate::threads::composer_empty(&kind, "screen", &t));
             ok = if empty == Some(true) { ok + 1 } else { 0 };
             if ok >= 3 {
                 break;

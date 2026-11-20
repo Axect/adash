@@ -683,7 +683,7 @@ pub fn op_send_files(snap: &Snapshot, key: &str, text: &str, images: &[String], 
 fn submitted(agent_type: &str, h: &str) -> bool {
     for _ in 0..10 {
         std::thread::sleep(Duration::from_millis(300));
-        let r = term::screen(h)
+        let r = term::input_screen(h)
             .map(|t| ("screen".to_string(), t))
             .or_else(|_| term::tail(h))
             .ok()
@@ -2184,7 +2184,7 @@ fn scan_drafts(sh: &Shared) {
     let mut found = HashMap::new();
     for a in agents.iter().filter(|a| a.state != "working" && a.state != "asking" && matches!(a.agent_type.as_str(), "omp" | "claude" | "codex")) {
         let Some(h) = &a.handle else { continue };
-        let Ok((source, tail)) = term::screen(h).map(|t| ("screen".to_string(), t)).or_else(|_| term::tail(h)) else { continue };
+        let Ok((source, tail)) = term::input_screen(h).map(|t| ("screen".to_string(), t)).or_else(|_| term::tail(h)) else { continue };
         let v = match threads::composer_text(&a.agent_type, &source, &tail) {
             Some(Some(text)) => json!({"text": text, "readable": true, "source": source, "seenAt": now_ms()}),
             Some(None) => Value::Null,
@@ -2201,7 +2201,7 @@ fn scan_drafts(sh: &Shared) {
 fn op_draft(sh: &Shared, a: &crate::collect::Agent, action: &str) -> Result<Value, (u16, String)> {
     let h = a.handle.clone().ok_or((409, "agent has no terminal".to_string()))?;
     let read = || {
-        term::screen(&h)
+        term::input_screen(&h)
             .map(|t| ("screen".to_string(), t))
             .or_else(|_| term::tail(&h))
             .ok()

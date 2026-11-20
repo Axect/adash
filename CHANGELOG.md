@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Input box reading takes only what lies left of the terminal cursor: omp's grey predicted next message, agy's mode hint and other text a TUI draws after the cursor in an empty box no longer count as an unsent draft (which held sends, kept agents from sleeping and offered to send the prediction).
 - Subagents: an omp agent whose `task` subagents still run after its turn (Claude Code Task subagents too, untested) stays working, out of My turn, unnotified and never slept; the row and chat header show "↳ N subagents", the info panel lists each with its state, last tool and age, and opens its conversation read-only (`GET /api/agents/{name}/subagent?file=`).
 - Projects: a new agent in an archived project un-archives it, and one in a hidden project is announced (the project stays hidden), with a desktop notification and a dashboard toast; `/api/state` `projects[]` carries `archived` and `hidden`.
 - omp form answers: a text field is cleared before typing and read back from the screen (cleared and typed once more when it differs), so a retry over a half-filled form no longer types the text twice; after submitting, the form leaving the screen counts as success and the record is awaited up to 120 s (a large form recorded its answer 42 s late and was reported as failed); typed answers the harness recorded differently are named with a correction draft.

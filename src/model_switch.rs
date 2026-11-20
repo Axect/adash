@@ -393,7 +393,7 @@ pub fn apply(a: &Agent, model: Option<&str>, effort: Option<&str>) -> Result<Val
     }
     let h = a.handle.clone().ok_or((409, "agent has no terminal".to_string()))?;
     // the input box read now, not the last poll's draft: typed commands would join unsent text
-    let live = crate::term::screen(&h)
+    let live = crate::term::input_screen(&h)
         .map(|t| ("screen".to_string(), t))
         .or_else(|_| crate::term::tail(&h))
         .ok()

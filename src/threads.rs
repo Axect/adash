@@ -290,7 +290,7 @@ pub fn gate(agent: &Agent) -> Gate {
         return Gate::Busy("target working".into());
     }
     let Some(h) = &agent.handle else { return Gate::Busy("no live terminal".into()) };
-    let read = term::screen(h).map(|t| ("screen".to_string(), t)).or_else(|_| term::tail(h));
+    let read = term::input_screen(h).map(|t| ("screen".to_string(), t)).or_else(|_| term::tail(h));
     match read {
         Err(e) => Gate::Busy(format!("terminal read failed: {e}")),
         Ok((source, tail)) => match composer_empty(&agent.agent_type, &source, &tail) {

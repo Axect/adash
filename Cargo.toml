@@ -8,7 +8,6 @@ license = "Apache-2.0"
 readme = "README.md"
 authors = ["Tae-Geun Kim <axect.tg@proton.me>"]
 repository = "https://github.com/Axect/adash"
-homepage = "https://github.com/Axect/adash"
 keywords = ["agents", "tmux", "dashboard", "claude", "codex"]
 categories = ["command-line-utilities", "development-tools"]
 exclude = ["docs/media/", "scripts/", ".github/", ".gitleaks.toml"]
