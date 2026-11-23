@@ -33,7 +33,7 @@
   const kindOf = (a) => (a.state === "asking" || a.state === "trust" || a.state === "approval" || a.ask ? "asking" : a.state === "error" || a.state === "auth" ? "error" : a.needsHuman && !a.snoozedUntil ? "waiting" : a.state === "working" ? "working" : "idle");
   // agy "model not found": the model is not usable now (plan or access), not necessarily gone
   const modelUnavailable = (e) => !!e && /model not found|unknown model/.test(e.message || "");
-  const errLabel = (e) => (modelUnavailable(e) ? L2("모델 사용 불가", "model unavailable") : e ? `오류${e.status ? ` ${e.status}` : ""}` : "오류");
+  const errLabel = (e) => (/^interrupted:/.test(e?.message || "") ? L2("중단됨", "interrupted") : modelUnavailable(e) ? L2("모델 사용 불가", "model unavailable") : e ? `오류${e.status ? ` ${e.status}` : ""}` : "오류");
   const errTip = (e) => (e ? [`${errLabel(e)}${e.provider || e.model ? ` · ${[e.provider, e.model].filter(Boolean).join(" / ")}` : ""}`, e.message || "", e.at ? new Date(e.at).toLocaleString("ko-KR") : ""].filter(Boolean).join("\n") : "제공자 API 오류로 멈춤");
   // Retry (v19): the label comes from the backend (`agent.retry.label`, e.g. how that harness retries);
   // omp's default is its F5 retry.
@@ -2513,13 +2513,15 @@
     }
     const warn = closeWarnings([name]);
     if (!warn.length) return doRestart(name, false);
-    dialog(`<h3>${t_("다시 시작")} · ${esc(name)}</h3><p>${t_("정상 종료한 뒤 같은 세션으로 다시 엽니다.")}</p><div class="close-warn"><b>${t_("주의")}</b><ul>${warn.join("")}</ul></div>`, t_("다시 시작"), () => doRestart(name, true));
+    const working = agentBy(name)?.state === "working";
+    dialog(`<h3>${t_("다시 시작")} · ${esc(name)}</h3><p>${t_("정상 종료한 뒤 같은 세션으로 다시 엽니다.")}</p><div class="close-warn"><b>${t_("주의")}</b><ul>${warn.join("")}</ul></div>${working ? `<label class="ld-check"><input type="checkbox" id="rs-resume" checked> ${esc(L2("다시 시작 후 중단된 작업 이어서 진행", "Continue the interrupted work after the restart"))}</label>` : ""}`, t_("다시 시작"), () => doRestart(name, true));
   }
   async function doRestart(name, confirmed, reask) {
     const wasAuth = agentBy(name)?.state === "auth";
     toast(`${name} ${t_("다시 시작하는 중…")}`, 15000);
     try {
-      await api("POST", `/api/agents/${enc(name)}/restart`, confirmed ? { confirmWorking: true, discardDraft: true, renotifyAsk: !!reask } : {}, { quiet: true });
+      const resume = !!$("#rs-resume")?.checked;
+      await api("POST", `/api/agents/${enc(name)}/restart`, confirmed ? { confirmWorking: true, discardDraft: true, renotifyAsk: !!reask, ...(resume ? { resumeWork: true } : {}) } : {}, { quiet: true });
       toast(`${name} ${t_("다시 시작함")}`, 3000);
     } catch (e) {
       toast(`${t_("다시 시작하지 않음:")} ${e.status === 409 ? CLOSE_WHY[e.reason] || e.message : e.message}`, 6000);

@@ -151,8 +151,20 @@ impl Harness for Omp {
     }
     fn record_error(&self, v: &Value, ts: i64) -> Option<ErrInfo> {
         let m = &v["message"];
-        if m["role"] != "assistant" || m["stopReason"] != "error" {
+        // "aborted": the omp process ended mid-turn (a restart, a reboot); the new process records
+        // it on resume ("Previous OMP process exited before completing the turn.") and F5 resumes
+        let aborted = m["stopReason"] == "aborted" && m["errorMessage"].as_str().is_some_and(|e| e.contains("exited before completing"));
+        if m["role"] != "assistant" || (m["stopReason"] != "error" && !aborted) {
             return None;
+        }
+        if aborted {
+            return Some(ErrInfo {
+                status: None,
+                message: "interrupted: the previous process exited before completing the turn".into(),
+                provider: None,
+                model: m["model"].as_str().map(String::from),
+                at: ts,
+            });
         }
         let raw = m["errorMessage"].as_str().unwrap_or("error");
         Some(ErrInfo {
@@ -573,5 +585,15 @@ mod tests {
         let cells: Vec<&str> = row.trim_matches('|').split('|').map(str::trim).skip(1).collect();
         let want: Vec<&str> = ["omp", "claude", "codex", "antigravity"].iter().map(|k| super::get(k).unwrap().tested_versions()).collect();
         assert_eq!(cells, want);
+    }
+
+    #[test]
+    fn omp_turn_cut_by_a_restart_is_retryable() {
+        let v: serde_json::Value = serde_json::from_str(r#"{"type":"message","message":{"role":"assistant","content":[],"stopReason":"aborted","errorMessage":"Previous OMP process exited before completing the turn."}}"#).unwrap();
+        let e = super::get("omp").unwrap().record_error(&v, 5).unwrap();
+        assert!(e.message.starts_with("interrupted"));
+        let user: serde_json::Value =
+            serde_json::from_str(r#"{"type":"message","message":{"role":"assistant","stopReason":"aborted","errorMessage":"Request was aborted"}}"#).unwrap();
+        assert!(super::get("omp").unwrap().record_error(&user, 5).is_none(), "an Esc by the user is not an error");
     }
 }

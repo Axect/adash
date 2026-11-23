@@ -208,6 +208,25 @@ pub fn restart(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
             notified = true;
         }
     }
+    // a turn cut by the restart: once the harness is up and its input box is empty, retry it
+    // (omp F5, the others their retry message)
+    if let (true, Some(h)) = (j["resumeWork"] == true && a.state == "working", opened["handle"].as_str()) {
+        let (h, kind) = (h.to_string(), a.agent_type.clone());
+        std::thread::spawn(move || {
+            for _ in 0..30 {
+                std::thread::sleep(Duration::from_secs(3));
+                let Ok(l) = term::input_screen(&h) else { continue };
+                if crate::threads::composer_empty(&kind, "screen", &l) == Some(true) {
+                    std::thread::sleep(Duration::from_secs(2));
+                    let _ = match crate::harness::get(&kind).map(|x| x.retry()) {
+                        Some(crate::harness::Retry::Key(seq, _)) => term::send_text(&h, seq),
+                        _ => term::send_line(&h, &crate::server::retry_message()),
+                    };
+                    return;
+                }
+            }
+        });
+    }
     // "다시 보내기": the last message again, once the harness is up
     if let (Some(t), Some(h)) = (j["resend"].as_str().filter(|t| !t.trim().is_empty()), opened["handle"].as_str()) {
         let (h, t) = (h.to_string(), t.to_string());

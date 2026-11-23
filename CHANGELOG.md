@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- omp: a turn cut by a restart or reboot ("Previous OMP process exited before completing the turn") shows as an error labelled "interrupted" with the F5 retry; omp's " F5 to retry" hint on screen does the same when no error was read. Restarting a working agent offers "continue the interrupted work" (on by default): F5 for omp, the retry message for the others, once the input box is ready (`resumeWork` on `POST /api/agents/{name}/restart`).
 - Input box reading takes only what lies left of the terminal cursor: omp's grey predicted next message, agy's mode hint and other text a TUI draws after the cursor in an empty box no longer count as an unsent draft (which held sends, kept agents from sleeping and offered to send the prediction).
 - Subagents: an omp agent whose `task` subagents still run after its turn (Claude Code Task subagents too, untested) stays working, out of My turn, unnotified and never slept; the row and chat header show "↳ N subagents", the info panel lists each with its state, last tool and age, and opens its conversation read-only (`GET /api/agents/{name}/subagent?file=`).
 - Projects: a new agent in an archived project un-archives it, and one in a hidden project is announced (the project stays hidden), with a desktop notification and a dashboard toast; `/api/state` `projects[]` carries `archived` and `hidden`.

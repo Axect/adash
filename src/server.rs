@@ -2018,7 +2018,9 @@ fn scan_auth(sh: &Arc<Shared>) {
             // a rejected sign-in: the login card (restart first: another agy may have signed in)
             let since = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             found.insert(h.clone(), json!({"reason": "expired", "phrase": v["message"], "url": null, "code": null, "since": since}));
-        } else if let Some(mut v) = crate::auth::agy_error(&a.agent_type, &lines) {
+        } else if let Some(mut v) = crate::auth::agy_error(&a.agent_type, &lines)
+            .or_else(|| crate::auth::omp_retry(&a.agent_type, &lines).filter(|_| a.state != "working" && a.last_error.is_none()))
+        {
             v["kind"] = json!("error");
             v["since"] = prev.get(h).and_then(|p| p["since"].as_i64()).map_or(json!(now_ms()), |s| json!(s));
             found.insert(h.clone(), v);

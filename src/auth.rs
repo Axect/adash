@@ -171,6 +171,17 @@ pub fn agy_error(kind: &str, screen: &[String]) -> Option<Value> {
     Some(json!({"message": msg, "modelMissing": missing, "auth": auth}))
 }
 
+/// omp's retry hint at the bottom of the screen (" F5 to retry", after a failed or cut turn):
+/// {message}. Only in the last rows (the hint goes once the turn is retried).
+pub fn omp_retry(kind: &str, screen: &[String]) -> Option<Value> {
+    if kind != "omp" {
+        return None;
+    }
+    let rows: Vec<&str> = screen.iter().map(|l| l.as_str()).filter(|l| !l.trim().is_empty()).collect();
+    let tail = &rows[rows.len().saturating_sub(8)..];
+    tail.iter().any(|l| l.contains("F5 to retry")).then(|| json!({"message": "retry available (F5)"}))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -327,5 +338,11 @@ mod tests {
         assert!(interrupted("antigravity", &scr));
         let typed = s(&["  ⎿  Interrupted · What should Antigravity CLI do instead?", "> keep going please"]);
         assert!(!interrupted("antigravity", &typed));
+    }
+
+    #[test]
+    fn omp_retry_hint() {
+        assert!(omp_retry("omp", &s(&["MCP finished with failures", " F5 to retry", "────", " status"])).is_some());
+        assert!(omp_retry("omp", &s(&["old F5 to retry", "a", "b", "c", "d", "e", "f", "g", "h", "i"])).is_none());
     }
 }
