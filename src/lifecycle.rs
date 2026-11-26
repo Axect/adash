@@ -70,6 +70,22 @@ pub fn pane_rekeys() -> Vec<(String, String)> {
 }
 
 /// `POST /api/agents/{name}/close {mode, confirmWorking?, discardDraft?}`.
+/// Remember how to start `a` again (`closed_agents.json`), as a close does.
+pub fn remember(a: &Agent, cwd: &str, args: &[String]) {
+    let Some(file) = &a.session_path else { return };
+    let mut st = load_store();
+    st[a.identity.as_str()] = json!({
+        "name": a.name, "role": a.role, "agentType": a.agent_type, "project": a.project, "cwd": cwd, "args": args,
+        "sessionPath": file, "mapping": a.mapping_confidence, "closedAt": now_ms(), "model": a.model,
+    });
+    let _ = crate::util::atomic_write(&store_path(), serde_json::to_string_pretty(&st).unwrap().as_bytes());
+}
+
+/// When adash itself closed this session last (ms), if ever.
+pub fn closed_at(identity: &str) -> Option<i64> {
+    load_store().get(identity).and_then(|v| v["closedAt"].as_i64())
+}
+
 pub fn close(snap: &Snapshot, a: &Agent, j: &Value) -> Result<Value, ApiErr> {
     let mode = j["mode"].as_str().unwrap_or("graceful");
     if !matches!(mode, "graceful" | "force") {

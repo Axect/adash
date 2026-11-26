@@ -732,6 +732,19 @@ fn form_rows(s: &[String]) -> Vec<(String, bool)> {
         .collect()
 }
 
+/// Does a form row show `label`: its first 14 characters, or (omp 19 folds an answered choice
+/// field to one row of shortened chips, "a…   ✓ b…   c…") a chip the label starts with.
+fn form_row_has(row: &str, label: &str) -> bool {
+    let want: String = label.chars().take(14).collect();
+    if row.contains(&want) {
+        return true;
+    }
+    row.split("  ").map(|s| s.trim().trim_start_matches(['✓', '○', ' ']).trim()).filter(|s| s.ends_with('…')).any(|s| {
+        let p = s.trim_end_matches('…').trim_end();
+        p.chars().count() >= 4 && label.starts_with(p)
+    })
+}
+
 /// Typed answers the harness recorded differently from what was sent (whitespace aside):
 /// `[{id, label, sent, recorded}]`. omp 18.20 records `[{name, question, answer}]`, a typed
 /// choice as "Other: …".
@@ -770,9 +783,12 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     let rows = || form_rows(&term::screen(&h).unwrap_or_default());
     let key = |k: &str| term::send_keys(&h, &[k]).map_err(|e| (502u16, e));
     // move the cursor onto the row whose text contains `want` (first match after `after`)
-    let goto = |want: &str| -> Result<(), (u16, String)> {
-        let want: String = want.chars().take(14).collect();
-        for _ in 0..60 {
+    let goto = |label: &str| -> Result<(), (u16, String)> {
+        let want: String = label.chars().take(14).collect();
+        // where to look when the target is not on the screen: down first, back up at the end
+        let mut dir = "Down";
+        let mut last_cur: Option<String> = None;
+        for _ in 0..80 {
             let r = rows();
             if r.iter().all(|x| x.0.is_empty()) {
                 // omp draws an empty frame while the box is hidden (Alt+H); adash never sends Alt+H
@@ -794,12 +810,22 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
             if r[cur].0.contains(&want) {
                 return Ok(());
             }
-            // not on this page: fields are answered in order, so the target lies further down
-            let t = r.iter().position(|x| !x.1 && x.0.contains(&want));
-            key(match t {
+            // the target elsewhere on the screen, also inside an answered field omp 19 folds to one
+            // row of shortened choices ("a…   ✓ b…   c…")
+            let t = r.iter().position(|x| !x.1 && form_row_has(&x.0, label));
+            let k = match t {
                 Some(t) if t < cur => "Up",
-                _ => "Down",
-            })?;
+                Some(_) => "Down",
+                None => {
+                    // not visible: keep one direction until the cursor stops moving, then turn
+                    if last_cur.as_deref() == Some(r[cur].0.as_str()) {
+                        dir = if dir == "Down" { "Up" } else { "Down" };
+                    }
+                    dir
+                }
+            };
+            last_cur = Some(r[cur].0.clone());
+            key(k)?;
             std::thread::sleep(Duration::from_millis(120));
         }
         Err((409, format!("could not reach '{want}' in the question box; answer in the terminal")))
@@ -818,10 +844,19 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
     // type `t` into the field under the cursor exactly once: clear it first (a field filled by an
     // earlier attempt would otherwise get the text twice), type, read it back; one more clear and
     // retype when it differs, then give up before submitting
-    let fill = |t: &str, check: &dyn Fn() -> bool| -> Result<(), (u16, String)> {
+    let fill = |t: &str, check: &dyn Fn() -> bool, clear_done: &dyn Fn() -> bool| -> Result<(), (u16, String)> {
         for _ in 0..2 {
-            key("C-u")?;
-            std::thread::sleep(Duration::from_millis(120));
+            // the cursor of a prefilled field (an HTML default value) sits at its start: go to the
+            // end, kill the line; a multi-line value loses one line per round
+            for _ in 0..8 {
+                key("End")?;
+                key("C-u")?;
+                std::thread::sleep(Duration::from_millis(120));
+                if clear_done() {
+                    break;
+                }
+                key("BSpace")?;
+            }
             term::send_text(&h, t).map_err(|e| (502u16, e))?;
             std::thread::sleep(Duration::from_millis(350));
             if check() {
@@ -846,7 +881,7 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
             let label = if q.question.is_empty() { q.id.clone() } else { q.question.clone() };
             goto(&label)?;
             if let crate::ask::Answer::Text(t) = &ans {
-                tag(k, fill(t, &|| squash(&field_value(&label)) == squash(t)))?;
+                tag(k, fill(t, &|| squash(&field_value(&label)) == squash(t), &|| squash(&field_value(&label)).is_empty()))?;
             }
             key("Enter")?;
         } else {
@@ -868,10 +903,14 @@ fn op_answer_form(a: &crate::collect::Agent, ask: &crate::ask::Ask, j: &Value, p
                     let want = squash(t);
                     tag(
                         k,
-                        fill(t, &|| {
-                            let all = squash(&rows().iter().map(|x| x.0.clone()).collect::<Vec<_>>().join(""));
-                            all.matches(&want).count() == 1
-                        }),
+                        fill(
+                            t,
+                            &|| {
+                                let all = squash(&rows().iter().map(|x| x.0.clone()).collect::<Vec<_>>().join(""));
+                                all.matches(&want).count() == 1
+                            },
+                            &|| !squash(&rows().iter().map(|x| x.0.clone()).collect::<Vec<_>>().join("")).contains(&want),
+                        ),
                     )?;
                     key("Enter")?;
                 }
@@ -2621,6 +2660,7 @@ fn scan_project_arrivals(sh: &Shared, snap: &Snapshot) {
 /// and (every 30 min, in the background) put the next long-idle ones to sleep.
 fn scan_sleep(sh: &Arc<Shared>, snap: &Snapshot) {
     crate::sleep::prune(snap);
+    crate::sleep::keep_vanished(snap);
     static BUSY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
     if BUSY.swap(true, std::sync::atomic::Ordering::SeqCst) {
         return;
@@ -4480,5 +4520,15 @@ mod retry_tests {
         let m = super::form_mismatch(&qs, &sent, &rec);
         assert_eq!(m.len(), 1, "{m:?}");
         assert_eq!(m[0]["id"], "occupation");
+    }
+
+    /// omp 19.1: an answered radio field folds to chips; a later answer must still find its option
+    #[test]
+    fn omp19_folded_choices_are_found() {
+        let row = "   민감정보 없는 파일…   ✓ 폴더 전체를 공유하…   폴더 전체를 그…";
+        assert!(super::form_row_has(row, "폴더 전체를 공유하되 Dropbox 링크 비밀번호를 설정 (Plus/Professional 요금제 필요)"));
+        assert!(super::form_row_has(row, "폴더 전체를 그대로 공개 링크로 공유 (위험을 알고 진행)"));
+        assert!(!super::form_row_has(row, "링크 만들지 않음"));
+        assert!(super::form_row_has("   폴더 전체를 그대로 공개 링크로 공유", "폴더 전체를 그대로 공개 링크로 공유 (위험을 알고 진행)"));
     }
 }

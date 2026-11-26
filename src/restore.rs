@@ -33,6 +33,10 @@ struct SavedPane {
 #[serde(rename_all = "camelCase")]
 struct Saved {
     server_pid: u32,
+    /// the tmux server's start time (s): after a reboot the new server often gets the same pid
+    /// (2026-11-23: pid 1112 both times), so the pid alone does not tell a new server
+    #[serde(default)]
+    server_start: i64,
     saved_at: i64,
     panes: Vec<SavedPane>,
 }
@@ -45,12 +49,13 @@ enum Action {
     Restore,
 }
 
-/// Restore only when the server restarted (other pid), none of the saved terminals is back and
-/// this server pid was not restored already; otherwise save the current terminals.
-fn decide(saved: Option<&Saved>, server_pid: Option<u32>, handles: &[String], restored_for: Option<u32>) -> Action {
-    let Some(pid) = server_pid else { return Action::Nothing };
+/// Restore only when the server restarted (other pid or start time), none of the saved terminals
+/// is back and this server was not restored already; otherwise save the current terminals.
+fn decide(saved: Option<&Saved>, server: Option<(u32, i64)>, handles: &[String], restored_for: Option<(u32, i64)>) -> Action {
+    let Some((pid, start)) = server else { return Action::Nothing };
+    let new = |s: &Saved| s.server_pid != pid || (s.server_start != 0 && start != 0 && s.server_start != start);
     match saved {
-        Some(s) if s.server_pid != pid && restored_for != Some(pid) && !s.panes.is_empty() && !s.panes.iter().any(|p| handles.contains(&p.handle)) => {
+        Some(s) if new(s) && restored_for != Some((pid, start)) && !s.panes.is_empty() && !s.panes.iter().any(|p| handles.contains(&p.handle)) => {
             Action::Restore
         }
         _ => Action::Save,
@@ -62,10 +67,10 @@ fn path() -> PathBuf {
 }
 
 struct State {
-    /// server pid already restored in this process
-    restored_for: Option<u32>,
-    /// last written (server pid, panes): skip identical writes
-    last: Option<(u32, Vec<SavedPane>)>,
+    /// server (pid, start time) already restored in this process
+    restored_for: Option<(u32, i64)>,
+    /// last written (server, panes): skip identical writes
+    last: Option<((u32, i64), Vec<SavedPane>)>,
     /// restored agent terminals whose agent is not mapped yet: (entry, restored at ms); keeps their
     /// resume details in the file until the collector sees the agent again
     pending: HashMap<String, (SavedPane, i64)>,
@@ -150,16 +155,15 @@ const PENDING_MS: i64 = 120_000;
 /// One background round: restore after a server restart, else save the current terminals.
 pub fn tick(snap: &Snapshot) {
     let Ok(panes) = term::panes() else { return };
-    let server_pid = term::server_pid();
+    let server = term::server_id();
     let saved: Option<Saved> = std::fs::read_to_string(path()).ok().and_then(|s| serde_json::from_str(&s).ok());
     let handles: Vec<String> = panes.iter().map(|p| p.handle.clone()).collect();
     let mut st = STATE.plock();
     release(&mut st);
-    match decide(saved.as_ref(), server_pid, &handles, st.restored_for) {
+    match decide(saved.as_ref(), server, &handles, st.restored_for) {
         Action::Nothing => return,
         Action::Restore => {
-            let pid = server_pid.unwrap_or(0);
-            st.restored_for = Some(pid);
+            st.restored_for = server;
             // after a reboot a harness's sign-in may have expired: start one agent per harness
             // first; the others follow once it shows no sign-in screen (else they would all stop
             // at the same screen)
@@ -177,7 +181,7 @@ pub fn tick(snap: &Snapshot) {
         Action::Save => {}
     }
     // save what runs now (after a restore: the recreated terminals)
-    let Some(pid) = server_pid else { return };
+    let Some(sid) = server else { return };
     let Ok(panes) = term::panes() else { return };
     let procs = crate::session::scan_procs();
     let now = now_ms();
@@ -216,12 +220,12 @@ pub fn tick(snap: &Snapshot) {
     st.pending.retain(|_, (_, at)| now - *at < PENDING_MS);
     let mut entries = entries;
     entries.extend(st.held.iter().cloned());
-    if st.last.as_ref().is_some_and(|(lp, le)| *lp == pid && *le == entries) {
+    if st.last.as_ref().is_some_and(|(lp, le)| *lp == sid && *le == entries) {
         return;
     }
-    let out = Saved { server_pid: pid, saved_at: now, panes: entries.clone() };
+    let out = Saved { server_pid: sid.0, server_start: sid.1, saved_at: now, panes: entries.clone() };
     match crate::util::atomic_write(&path(), serde_json::to_string_pretty(&out).unwrap_or_default().as_bytes()) {
-        Ok(()) => st.last = Some((pid, entries)),
+        Ok(()) => st.last = Some((sid, entries)),
         Err(e) => eprintln!("adash: saving {}: {e}", path().display()),
     }
 }
@@ -243,14 +247,21 @@ mod tests {
     #[test]
     fn restores_once_after_a_server_restart_without_its_terminals() {
         let pane = |h: &str| SavedPane { handle: h.into(), ..Default::default() };
-        let saved = Saved { server_pid: 100, saved_at: 1, panes: vec![pane("t_aaaaaaaa"), pane("t_bbbbbbbb")] };
+        let saved = Saved { server_pid: 100, server_start: 1000, saved_at: 1, panes: vec![pane("t_aaaaaaaa"), pane("t_bbbbbbbb")] };
         let none: Vec<String> = vec![];
         assert_eq!(decide(Some(&saved), None, &none, None), Action::Nothing, "server down");
-        assert_eq!(decide(Some(&saved), Some(100), &none, None), Action::Save, "same server");
-        assert_eq!(decide(Some(&saved), Some(200), &none, None), Action::Restore, "new server, terminals gone");
-        assert_eq!(decide(Some(&saved), Some(200), &none, Some(200)), Action::Save, "never twice for one server pid");
-        assert_eq!(decide(Some(&saved), Some(200), &["t_bbbbbbbb".to_string()], None), Action::Save, "a saved terminal is back");
-        assert_eq!(decide(Some(&Saved { server_pid: 100, saved_at: 1, panes: vec![] }), Some(200), &none, None), Action::Save, "nothing to restore");
-        assert_eq!(decide(None, Some(200), &none, None), Action::Save, "first run");
+        assert_eq!(decide(Some(&saved), Some((100, 1000)), &none, None), Action::Save, "same server");
+        assert_eq!(decide(Some(&saved), Some((200, 2000)), &none, None), Action::Restore, "new server, terminals gone");
+        assert_eq!(decide(Some(&saved), Some((100, 2000)), &none, None), Action::Restore, "a reboot gave the new server the same pid");
+        assert_eq!(decide(Some(&saved), Some((200, 2000)), &none, Some((200, 2000))), Action::Save, "never twice for one server");
+        assert_eq!(decide(Some(&saved), Some((200, 2000)), &["t_bbbbbbbb".to_string()], None), Action::Save, "a saved terminal is back");
+        assert_eq!(
+            decide(Some(&Saved { server_pid: 100, server_start: 1000, saved_at: 1, panes: vec![] }), Some((200, 2000)), &none, None),
+            Action::Save,
+            "nothing to restore"
+        );
+        assert_eq!(decide(None, Some((200, 2000)), &none, None), Action::Save, "first run");
+        let old = Saved { server_start: 0, ..saved };
+        assert_eq!(decide(Some(&old), Some((100, 2000)), &none, None), Action::Save, "a file from before start times: the pid decides");
     }
 }

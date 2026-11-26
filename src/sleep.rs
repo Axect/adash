@@ -51,6 +51,9 @@ impl Store {
 }
 
 fn log(action: &str, name: &str, detail: Value) {
+    if cfg!(test) {
+        return;
+    }
     if let Ok(db) = crate::analytics::open() {
         db.log_action(action, name, &detail);
     }
@@ -292,6 +295,59 @@ pub fn view() -> Value {
     json!({"asleep": list, "pinned": st.pinned})
 }
 
+/// Live agents with a resumable session as last seen: (agent, cwd, argv). Agents that leave
+/// without adash closing them (exited in their terminal, crashed, terminal killed) are kept as
+/// asleep, so they stay on the board and a message reopens them.
+static SEEN: LazyLock<Mutex<std::collections::HashMap<String, (Agent, String, Vec<String>)>>> = LazyLock::new(Default::default);
+
+pub fn keep_vanished(snap: &Snapshot) {
+    let procs = crate::session::scan_procs();
+    let tests = crate::history::test_handles();
+    let live: HashSet<&str> = snap.agents.iter().map(|a| a.identity.as_str()).collect();
+    let mut seen = SEEN.plock();
+    let now = now_ms();
+    let gone: Vec<(Agent, String, Vec<String>)> = seen.iter().filter(|(id, _)| !live.contains(id.as_str())).map(|(_, v)| v.clone()).collect();
+    seen.retain(|id, _| live.contains(id.as_str()));
+    for a in &snap.agents {
+        let (Some(h), Some(p)) = (&a.handle, &a.session_path) else { continue };
+        if !a.mapping_exact || tests.contains(h) || !p.exists() {
+            continue;
+        }
+        if let Some(pr) = procs.get(h).and_then(|v| v.iter().find(|x| x.kind == a.agent_type)) {
+            seen.insert(a.identity.clone(), (a.clone(), pr.cwd.to_string_lossy().into_owned(), pr.args.clone()));
+        }
+    }
+    drop(seen);
+    if gone.is_empty() {
+        return;
+    }
+    let _g = LOCK.plock();
+    let mut st = Store::load();
+    let mut changed = false;
+    let handles: HashSet<&str> = snap.agents.iter().filter_map(|a| a.handle.as_deref()).collect();
+    for (a, cwd, args) in gone {
+        // its terminal still runs an agent: the session changed (`/new`, a resume), nothing left
+        if a.handle.as_deref().is_some_and(|h| handles.contains(h)) {
+            continue;
+        }
+        // closed by adash (close, sleep, restart, archive) a moment ago: that path keeps its record
+        if crate::lifecycle::closed_at(&a.identity).is_some_and(|t| now - t < 5 * 60_000) || st.asleep.contains_key(&a.identity) {
+            continue;
+        }
+        crate::lifecycle::remember(&a, &cwd, &args);
+        st.asleep.insert(
+            a.identity.clone(),
+            json!({"name": a.name, "project": a.project, "agentType": a.agent_type, "model": a.model, "sessionPath": a.session_path,
+                   "idleSince": a.state_since, "sleptAt": now, "vanished": true}),
+        );
+        log("vanished", &a.name, json!({"identity": a.identity}));
+        changed = true;
+    }
+    if changed {
+        st.save();
+    }
+}
+
 /// Drop entries whose agent is live again (reopened by hand, or by a restore).
 pub fn prune(snap: &Snapshot) {
     let _g = LOCK.plock();
@@ -333,6 +389,30 @@ mod tests {
         assert_eq!(blocker(&a, now, day, &pinned, &busy, &w), Some("pinned"));
         assert_eq!(blocker(&a, now, day, &st, &["A".to_string()].into(), &w), Some("thread"));
         assert_eq!(blocker(&a, now, day, &st, &busy, &["t_1".to_string()].into()), Some("watched"));
+        let _ = std::fs::remove_file(&file);
+    }
+
+    #[test]
+    fn a_vanished_agent_stays_asleep_but_a_session_switch_does_not() {
+        let file = std::env::temp_dir().join(format!("adash-vanish-{}.jsonl", std::process::id()));
+        std::fs::write(&file, "").unwrap();
+        let a = Agent {
+            name: "V".into(),
+            identity: file.to_string_lossy().into(),
+            handle: Some("t_vanish01".into()),
+            session_path: Some(file.clone()),
+            mapping_exact: true,
+            ..Default::default()
+        };
+        SEEN.plock().insert(a.identity.clone(), (a.clone(), "/tmp".into(), vec!["omp".into()]));
+        // the same terminal now runs another session: not vanished
+        let other = Agent { identity: "other".into(), handle: Some("t_vanish01".into()), ..Default::default() };
+        keep_vanished(&Snapshot { agents: vec![other], ..Default::default() });
+        assert!(!Store::load().asleep.contains_key(&a.identity));
+        SEEN.plock().insert(a.identity.clone(), (a.clone(), "/tmp".into(), vec!["omp".into()]));
+        keep_vanished(&Snapshot::default());
+        assert_eq!(Store::load().asleep[&a.identity]["vanished"], true);
+        let _ = std::fs::remove_file(path());
         let _ = std::fs::remove_file(&file);
     }
 }

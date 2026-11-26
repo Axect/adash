@@ -129,6 +129,13 @@ pub fn silence_harness(command: &str) -> String {
 }
 
 /// The tmux server's pid (None = server down). Changes when the server restarts.
+/// (pid, start time in s) of the tmux server: identifies one server instance across reboots.
+pub fn server_id() -> Option<(u32, i64)> {
+    let s = tmux(&["display-message", "-p", "#{pid} #{start_time}"]).ok()?;
+    let mut it = s.split_whitespace();
+    Some((it.next()?.parse().ok()?, it.next().and_then(|x| x.parse().ok()).unwrap_or(0)))
+}
+
 pub fn server_pid() -> Option<u32> {
     tmux(&["display-message", "-p", "#{pid}"]).ok().and_then(|s| s.trim().parse().ok())
 }
