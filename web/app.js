@@ -416,6 +416,11 @@
     }
     if (method === "GET" && path === "/api/workspaces") return structuredClone(fixtureLaunch.workspaces);
     if (method === "GET" && path === "/api/launch/catalog") return structuredClone(fixtureLaunch.catalog);
+    if (method === "POST" && /^\/api\/sleep\/(pin|unpin)$/.test(path)) {
+      const a = fixtureData.agents.find((x) => x.name === body?.name), k = a?.identity || a?.paneKey;
+      const p = new Set(fixtureData.sleep.pinned); if (k) (path.endsWith("/pin") ? p.add(k) : p.delete(k)); fixtureData.sleep.pinned = [...p];
+      setState(fixtureData); return { ok: true };
+    }
     if (method === "GET" && path.startsWith("/api/capacity")) {
       if (path.includes("refresh=1")) fixtureLaunch.capacity.fetchedAt = fixtureData.generatedAt;
       return structuredClone(fixtureLaunch.capacity);
@@ -1002,7 +1007,7 @@
     // Items carry a fold priority (data-f, higher folds first): when the top bar is short of room (English labels,
     // narrow windows) fitSummary() hides 작업 중 → 기타 → 곧 식음 → 미확인; the tooltip keeps every count.
     const si = (f, html, first) => `<span class="si"${f ? ` data-f="${f}"` : ""}>${first ? "" : sep}${html}</span>`;
-    H("#summary").innerHTML = `<span title="${esc(tip)}">${si(0, `내 차례 <b class="${c.mine ? "alert" : ""}">${c.mine}</b>`, true)}${si(0, `<span class="lb">질문 </span><b class="${c.asking ? "ask-n" : ""}">${c.asking}</b>`)}${c.error ? si(0, `<span class="lb">오류 </span><b class="err-n">${c.error}</b>`) : ""}${si(1, `미확인 <b>${c.unread}</b>`)}${si(3, `기타 <b>${c.other}</b>`)}${soon ? si(2, `<span title="${esc(soonTip)}">곧 식음 <b class="held-n">${soon}</b></span>`) : ""}${si(4, `작업 중 <b>${c.working}</b>`)}${(state.sleep?.asleep || []).length ? si(5, `<button class="linkish" data-act="wake-all" title="${esc(L2("잠든 에이전트를 모두 같은 세션으로 다시 엶", "Reopen every sleeping agent on its session"))}">${esc(L2("잠듦", "asleep"))} <b>${state.sleep.asleep.length}</b> · ${esc(L2("모두 깨우기", "wake all"))}</button>`) : ""}</span>${retryAll}${odSummaryBtn()}` +
+    H("#summary").innerHTML = `<span title="${esc(tip)}">${si(0, `내 차례 <b class="${c.mine ? "alert" : ""}">${c.mine}</b>`, true)}${si(0, `<span class="lb">질문 </span><b class="${c.asking ? "ask-n" : ""}">${c.asking}</b>`)}${c.error ? si(0, `<span class="lb">오류 </span><b class="err-n">${c.error}</b>`) : ""}${si(1, `미확인 <b>${c.unread}</b>`)}${si(3, `기타 <b>${c.other}</b>`)}${soon ? si(2, `<span title="${esc(soonTip)}">곧 식음 <b class="held-n">${soon}</b></span>`) : ""}${si(4, `작업 중 <b>${c.working}</b>`)}${(state.sleep?.pinned || []).length ? si(1, `<button class="linkish" data-act="pinned-list" title="${esc(L2("잠들지 않게 고정한 에이전트", "Agents kept awake"))}">${ICONS.pin} <b>${state.sleep.pinned.length}</b></button>`) : ""}${(state.sleep?.asleep || []).length ? si(5, `<button class="linkish" data-act="wake-all" title="${esc(L2("잠든 에이전트를 모두 같은 세션으로 다시 엶", "Reopen every sleeping agent on its session"))}">${esc(L2("잠듦", "asleep"))} <b>${state.sleep.asleep.length}</b> · ${esc(L2("모두 깨우기", "wake all"))}</button>`) : ""}</span>${retryAll}${odSummaryBtn()}` +
       "";
     // History unavailable: say so under the header instead of a hidden summary note.
     const hb = $("#hist-banner");
@@ -1458,6 +1463,7 @@
   // 10 px stroke icons for the status column chips (currentColor = the chip's color).
   const svgI = (d) => `<svg viewBox="0 0 10 10" width="10" height="10" aria-hidden="true">${d}</svg>`;
   const ICONS = {
+    pin: svgI(`<path d="M3.6 1h2.8M4 1.2v2.6L2.4 5.6h5.2L6 3.8V1.2M5 5.6v3.6" fill="none" stroke="currentColor" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round"/>`),
     err: svgI(`<circle cx="5" cy="5" r="4.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M5 2.6v3M5 7.2v.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>`),
     skill: svgI(`<path d="M5 .9l1.2 2.5 2.7.4-2 1.9.5 2.7L5 7.1 2.6 8.4l.5-2.7-2-1.9 2.7-.4z" fill="none" stroke="currentColor" stroke-width="1" stroke-linejoin="round"/>`),
     dec: svgI(`<path d="M1.2 2.4l1 1 1.6-1.8M1.2 6.6l1 1 1.6-1.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.4 2.6h3.6M5.4 6.8h3.6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>`),
@@ -1677,7 +1683,7 @@
       // Left micro urgency tag (direction 1): what the row needs from me, readable without the legend.
       const utag = a.kind === "asking" ? `<span class="utag ask">ASK</span>` : a.kind === "error" && s?.state === "auth" ? `<span class="utag err">LOGIN</span>` : a.kind === "error" ? `<span class="utag err">ERR${s?.lastError?.status ? ` ${esc(s.lastError.status)}` : ""}</span>` : isMyTurn(a) ? TK(a) : "";
       L.push(`<div class="${cls}${bulk.has(a.name) ? " picked" : ""}" data-agent="${esc(a.name)}"><input type="checkbox" class="pick" tabindex="-1" ${bulk.has(a.name) ? "checked" : ""} title="여러 개 선택 (Ctrl/Shift+클릭)">${harnessBadge(s, a.live)}${a.live ? netIcon(s) : ""}
-        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : ""}${subChip(s)}</span>${a.kind === "working" ? "" : utag}${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
+        <span class="nmwrap"><span class="nm${s?.ambiguous ? " amb" : ""}">${esc(a.name)}</span>${pinIcon(s || a, a.name)}${a.kind === "working" ? WKa(a.name) : ""}${subChip(s)}</span>${a.kind === "working" ? "" : utag}${a.live ? "" : `<button class="reopen-btn" data-reopen="${esc(a.name)}" title="저장된 세션을 이어서 새 터미널로 엶">다시 열기</button>`}</div>`);
       // Status column (v15.1): one line = [unread dot][icon chips][time][countdown][progress]. Secondary marks are
       // small same-color icon chips; if the line still overflows, fitInfoRows() folds the lowest-priority items
       // (질문 > 오류 > 결정 > 보류 > 초안 > magi > 시간) into a "+k" chip whose tooltip lists everything.
@@ -2699,9 +2705,23 @@
       target?.scrollIntoView({ block: h.messageId ? "center" : "end" });
     } catch (e) { openViewer(`<p>대화를 열 수 없음: ${esc(e.message)}</p>`, true); }
   }
+  // Keep awake (pinned against sleeping): a small neutral pin next to the name; a click offers to unpin.
+  const pinKey = (x) => x?.identity || x?.paneKey || null;
+  const isPinned = (x) => { const k = pinKey(x); return !!k && (state?.sleep?.pinned || []).includes(k); };
+  const pinIcon = (x, name) => (isPinned(x) ? `<button type="button" class="pin-ic" data-act="unpin-ask" data-name="${esc(name)}" title="${esc(L2("잠들지 않게 고정됨 · 누르면 해제", "Kept awake · click to unpin"))}" aria-label="${esc(L2("고정됨", "pinned"))}">${ICONS.pin}</button>` : "");
   // Subagents (omp task, Claude Code Task): "↳ 2" while they run; the info panel lists them.
   const subRunning = (s) => (s?.subagents || []).filter((x) => x.running);
   const subChip = (s) => { const n = subRunning(s).length; return n ? `<span class="sub-chip" title="${esc(subRunning(s).map((x) => `${x.name}${x.lastTool ? ` · ${x.lastTool}` : ""}`).join("\n"))}">↳ ${n} ${esc(L2("서브에이전트", n === 1 ? "subagent" : "subagents"))}</span>` : ""; };
+  // 잠들기: pinned, or after how long idle it sleeps (and when)
+  function sleepLine(a) {
+    const sl = state?.sleep; if (!a || !sl || sl.enabled === false) return "";
+    if (isPinned(a)) return `<dt>${esc(L2("잠들기", "Sleep"))}</dt><dd>${ICONS.pin} ${esc(L2("고정됨", "kept awake"))} · <button type="button" class="linkish" data-act="unpin-ask" data-name="${esc(a.name)}">${esc(L2("해제", "unpin"))}</button></dd>`;
+    const h = sl.afterHours || 24;
+    const idle = ["done", "idle", "waiting"].includes(a.state);
+    const left = idle ? h * 3600000 - (Date.now() - (a.stateSince || Date.now())) : null;
+    const when = left == null ? "" : left <= 0 ? L2(" · 곧 잠듦", " · sleeps soon") : L2(` · ${fmtMin(left / 60000)} 남음`, ` · in ${fmtMin(left / 60000)}`);
+    return `<dt>${esc(L2("잠들기", "Sleep"))}</dt><dd>${esc(L2(`${h}시간 쉬면 잠듦`, `after ${h} h idle`))}${esc(when)}</dd>`;
+  }
   function subagentsHtml(a) {
     const l = a?.subagents || []; if (!l.length) return "";
     return `<dt>${esc(L2("서브에이전트", "Subagents"))}</dt><dd>${l.map((x) => `<div><button type="button" class="linkish" data-sub-file="${esc(x.file)}" data-sub-name="${esc(x.name)}">${esc(x.name)}</button> <span class="muted small">${x.running ? esc(L2("실행 중", "running")) : esc(L2("끝남", "done"))}${x.lastTool ? ` · ${esc(x.lastTool)}` : ""} · ${esc(ago(x.startedAt))}</span></div>`).join("")}</dd>`;
@@ -3332,6 +3352,7 @@
     const order = triageOrder();
     const k = order.indexOf(ov.name);
     $("#ov-title").innerHTML = a ? `<span class="${a.ambiguous ? "amb" : ""}" title="${esc(`${L2("이름 출처", "name source")}: ${a.nameSource || "?"}${a.ambiguous ? ` · ${L2("이름이 모호함", "ambiguous name")}` : ""}`)}">${esc(a.name)}${a.ambiguous ? "?" : ""}</span>${kindOf(a) === "working" ? WKa(a.name) : isMyTurn(model.agents.find((x) => x.name === a.name)) ? TK(model.agents.find((x) => x.name === a.name)) : ""} <span class="muted small">${esc(a.project)}${a.role ? " · " + esc(a.role) : ""}</span>` : ov.name ? esc(ov.name) : "패널";
+    if (a && isPinned(a)) ($("#ov-title").firstElementChild || $("#ov-title")).insertAdjacentHTML("afterend", pinIcon(a, a.name));
     if (a && subRunning(a).length) $("#ov-title").insertAdjacentHTML("beforeend", subChip(a));
     $("#ov-nav").textContent = `내 차례 ${k >= 0 ? k + 1 : "–"}/${model.counts.mine}`;
     $("#ov-unsnooze").hidden = !a?.snoozedUntil;
@@ -4129,6 +4150,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
           <dt>하네스</dt><dd>${esc(a.agentType || "?")}${a.outdated ? ` <span class="od-mark" title="${esc(odTip(a.outdated))}">↑ ${esc(a.outdated.running || "")} → ${esc(a.outdated.installed || "")}</span> ${odPending.has(a.name) ? `<button type="button" data-od-cancel="${esc(a.name)}">${L2("예약 취소", "Cancel")}</button>` : `<button type="button" data-act="od-one" data-name="${esc(a.name)}">${L2("다시 시작", "Restart")}</button>`}` : ""}</dd>
           <dt>모델</dt><dd><button type="button" class="model-btn" data-model-pick="${n}" title="${esc(L2("모델·effort 바꾸기", "Change model / effort"))}">${esc([a.usage?.model || a.model || L2("알 수 없음", "unknown"), a.usage?.thinking ? `thinking ${a.usage.thinking}` : ""].filter(Boolean).join(" · "))} <span class="muted">▾</span></button></dd>
           <dt>상태</dt><dd>${esc(stateKo(a.state))} · ${fmtMin(sinceMin(a))}${a.snoozedUntil ? ` · ${L2("미룸", "snoozed")} ~${fmtUntil(a.snoozedUntil)}` : ""}</dd>
+          ${sleepLine(a)}
           ${cacheState(a) ? `<dt>캐시</dt><dd${cacheBasis(a) ? ` title="${esc(cacheBasis(a))}"` : ""}><span class="badge ${esc(cacheState(a))}">${CACHE_KO[cacheState(a)] || esc(cacheState(a))}</span>${cacheExp(a) && cacheState(a) !== "cold" ? ` <span class="cd" data-exp="${cacheExp(a)}" data-basis="${esc(cacheBasis(a))}"></span>` : ""}</dd>` : ""}
           ${a.tool ? `<dt>도구</dt><dd>${esc(a.tool)}</dd>` : ""}
           ${subagentsHtml(a)}
@@ -4962,6 +4984,19 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       const n = (state.sleep?.asleep || []).length;
       dialog(`<h3>${esc(L2("모두 깨우기", "Wake all"))}</h3><p>${esc(L2(`잠든 에이전트 ${n}개를 같은 세션으로 하나씩 다시 엽니다. 메모리를 다시 씁니다.`, `Reopens ${n} sleeping agents one by one.`))}</p>`, L2("깨우기", "Wake"), () => { b.dataset.ok = "1"; b.click(); delete b.dataset.ok; });
     }
+    else if (a === "unpin-ask") {
+      const n = b.dataset.name;
+      dialog(`<h3>${esc(L2("고정 해제", "Unpin"))} · ${esc(n)}</h3><p>${esc(L2(`오래 쉬면 다시 자동으로 잠듭니다(${state.sleep?.afterHours || 24}시간).`, `It sleeps again after ${state.sleep?.afterHours || 24} h idle.`))}</p>`, L2("해제", "Unpin"), () =>
+        api("POST", "/api/sleep/unpin", { name: n }, { quiet: true }).then(() => toast(L2(`${n} 고정 해제`, `${n} unpinned`), 2500)).catch((e) => toast(e.message, 5000)).finally(() => !FIXTURE && refresh()));
+    }
+    else if (a === "pinned-list") {
+      const ids = state.sleep?.pinned || [];
+      const rows = ids.map((id) => { const x = (state.agents || []).find((g) => pinKey(g) === id); const nm = x?.name || id.split("/").pop(); return `<li>${esc(nm)}${x ? "" : ` <span class="muted small">${esc(L2("(꺼져 있음)", "(not running)"))}</span>`} <button type="button" class="linkish" data-act="unpin-ask" data-name="${esc(x?.name || id)}">${esc(L2("해제", "unpin"))}</button></li>`; }).join("");
+      dialog(`<h3>${esc(L2(`고정된 에이전트 ${ids.length}`, `Kept awake: ${ids.length}`))}</h3><ul class="pin-list">${rows}</ul>`, L2("닫기", "Close"), () => {});
+    }
+    else if (a === "sleep-agent" && isPinned(agentBy(name)) && !b.dataset.ok) {
+      dialog(`<h3>${esc(L2("잠재우기", "Sleep now"))} · ${esc(name)}</h3><p>${esc(L2("잠들지 않게 고정이 해제됩니다.", "Its keep-awake pin is removed."))}</p>`, L2("잠재우기", "Sleep"), () => { b.dataset.ok = "1"; b.click(); delete b.dataset.ok; });
+    }
     else if (a === "sleep-agent" || a === "pin-awake" || a === "wake-all") {
       const path = a === "sleep-agent" ? "now" : a === "wake-all" ? "wake" : b.dataset.pinned ? "unpin" : "pin";
       api("POST", `/api/sleep/${path}`, a === "wake-all" ? { all: true } : { name }, { quiet: true })
@@ -5187,13 +5222,13 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
         const s = a.s, dn = decisionsOf(s).length;
         return `<div class="mcard${a.unread ? " unread" : ""}${a.kind === "asking" ? " asking" : ""}${a.kind === "error" ? " erred" : ""}" data-magent="${esc(a.name)}">
           <div class="mc-swipe"><span class="mc-l">확인함</span><span class="spacer"></span><span class="mc-r">${L2("미루기 1시간", "Snooze 1 h")}</span></div>
-          <div class="mc-body"><div class="mc-head"><b>${esc(a.name)}</b>${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}<span class="muted mc-proj">${esc(a.project)}</span><span class="spacer"></span><span class="mc-st">${stateLine(a)}</span></div>
+          <div class="mc-body"><div class="mc-head"><b>${esc(a.name)}</b>${pinIcon(a.s || a, a.name)}${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}<span class="muted mc-proj">${esc(a.project)}</span><span class="spacer"></span><span class="mc-st">${stateLine(a)}</span></div>
             <div class="mc-meta">${a.role ? `<span class="muted">${esc(a.role)}</span>` : ""}${dn ? `<span class="dec-mark">결정 ${dn}</span>` : ""}${heldRelays(a.name).length ? '<span class="held-mark">답변 보류</span>' : ""}${s?.draft?.text ? '<span class="draft-mark">초안</span>' : ""}${soonCold(s) ? `<span class="cd soon" title="${esc(cacheBasis(s))}">곧 식음</span>` : ""}</div>
             <div class="mc-first">${esc(a.kind === "error" ? (s?.state === "auth" ? t_("로그인이 필요합니다") : s?.lastError?.message || "제공자 API 오류로 멈춤") : a.kind === "asking" && s?.ask ? askQuestions(s.ask)[0].question : firstLine(s?.lastMessage))}</div>${a.kind === "error" ? `<div class="mc-act"><button data-retry="${esc(a.name)}">${esc(retryLabel(s))}</button></div>` : ""}</div></div>`;
       }).join("") : `<p class="muted m-empty">기다리는 에이전트가 없습니다</p>`;
     } else if (mtab === "projects") {
       html = model.groups.map((g) => `<section class="mproj"><div class="mp-head"><b>${esc(g.name)}</b>${g.asking ? `<span class="ask-n">질문 ${g.asking}</span>` : ""}${g.unread ? `<span class="unread-n">미확인 ${g.unread}</span>` : ""}<span class="spacer"></span><span class="muted small">에이전트 ${g.allCount}</span><button class="g-more m" data-proj-menu="${esc(g.name)}" aria-label="프로젝트 메뉴">⋯</button></div>
-        ${g.members.map((a) => `<div class="mp-row" data-magent="${esc(a.name)}">${harnessBadge(a.s, a.live)}<span class="mp-n${a.unread ? " unread" : ""}"><span class="mp-nt">${esc(a.name)}</span>${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}${a.live ? netIcon(a.s) : ""}</span><span class="mp-st muted">${a.live ? stateLine(a) : `<button class="reopen-btn m" data-reopen="${esc(a.name)}">다시 열기</button>`}</span>${sparkline(a)}</div>`).join("")}${g.hidden.length ? `<div class="mp-row mp-off muted small" data-toggle-offline="${esc(g.name)}">${expandedOffline.has(g.name) ? "오프라인 접기" : `오프라인 ${g.hidden.length}개 숨김`}</div>` : ""}</section>`).join("") + hiddenProjHtml(true);
+        ${g.members.map((a) => `<div class="mp-row" data-magent="${esc(a.name)}">${harnessBadge(a.s, a.live)}<span class="mp-n${a.unread ? " unread" : ""}"><span class="mp-nt">${esc(a.name)}</span>${pinIcon(a.s || a, a.name)}${a.kind === "working" ? WKa(a.name) : isMyTurn(a) ? TK(a) : ""}${a.live ? netIcon(a.s) : ""}</span><span class="mp-st muted">${a.live ? stateLine(a) : `<button class="reopen-btn m" data-reopen="${esc(a.name)}">다시 열기</button>`}</span>${sparkline(a)}</div>`).join("")}${g.hidden.length ? `<div class="mp-row mp-off muted small" data-toggle-offline="${esc(g.name)}">${expandedOffline.has(g.name) ? "오프라인 접기" : `오프라인 ${g.hidden.length}개 숨김`}</div>` : ""}</section>`).join("") + hiddenProjHtml(true);
     } else if (mtab === "more") {
       html = `${capListHtml()}<div class="mmore"><button class="primary" data-act="m-new">새 세션</button>${odAgents().length ? `<button data-act="od-all">↑ ${L2(`업데이트된 세션 ${odAgents().length} · 모두 재시작`, `${odAgents().length} updated · restart all`)}</button>` : ""}<button data-act="m-sessions">지난 세션</button><button data-act="m-reports">보고서</button><button data-act="m-push">알림·기기 설정</button><button data-open-tab="threads">검토 요청 목록</button><button data-open-tab="tasks">내 할 일</button><button class="font-btn">표시 설정</button></div>`;
     }

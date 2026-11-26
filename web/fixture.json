@@ -1739,5 +1739,13 @@
    "agents": 1,
    "archivedSessions": []
   }
- ]
+ ],
+ "sleep": {
+  "asleep": [],
+  "pinned": [
+   "t3:l1"
+  ],
+  "enabled": true,
+  "afterHours": 24
+ }
 }

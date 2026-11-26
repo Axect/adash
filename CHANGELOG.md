@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Keep awake: a pinned agent shows a small pin next to its name on the board, in the chat header and on the phone (list and cards); a click offers to unpin. The info panel has a "Sleep" line (kept awake · unpin, or after how many idle hours it sleeps and how long is left), the top bar a pin count that lists the pinned agents, and "Sleep now" on a pinned agent says the pin is removed. `/api/state` `sleep` carries `enabled` and `afterHours`.
 - Chat: a sent message's "sending" bubble matches the session record from the moment of the click (minus 5 s), not from when the send request returned, so a message the agent recorded before the request finished no longer stays "sending" and then "not confirmed".
 - Question answers: after a failure the retry re-enters everything from the start (text fields cleared first); it is not offered after a partial entry that included a multi-choice answer (toggles would undo).
 - Reboot restore: the tmux server is recognised by its pid and start time. After a second reboot the new server had the same pid, so adash took it for the old one and saved over the list instead of restoring (2026-11-23: ten agents and this dashboard's own were lost).

@@ -292,7 +292,8 @@ pub fn view() -> Value {
             v
         })
         .collect();
-    json!({"asleep": list, "pinned": st.pinned})
+    let cfg = &crate::config::get().sleep;
+    json!({"asleep": list, "pinned": st.pinned, "enabled": cfg.enabled, "afterHours": cfg.after_hours})
 }
 
 /// Live agents with a resumable session as last seen: (agent, cwd, argv). Agents that leave
