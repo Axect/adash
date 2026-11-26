@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Chat: a sent message's "sending" bubble matches the session record from the moment of the click (minus 5 s), not from when the send request returned, so a message the agent recorded before the request finished no longer stays "sending" and then "not confirmed".
+- Question answers: after a failure the retry re-enters everything from the start (text fields cleared first); it is not offered after a partial entry that included a multi-choice answer (toggles would undo).
 - Reboot restore: the tmux server is recognised by its pid and start time. After a second reboot the new server had the same pid, so adash took it for the old one and saved over the list instead of restoring (2026-11-23: ten agents and this dashboard's own were lost).
 - Agents that end without adash closing them (exited in their terminal, crashed, a terminal killed) stay on the board as asleep, with their launch flags, and a message reopens them; a session switch in the same terminal does not count.
 - omp 19 forms: an answered choice field folds into one row of shortened chips; the option is now found there too (prefix of the shortened label), and the cursor searches both ways for a field not on the screen. A text field with a default value is cleared to its end before typing (the cursor sits at its start, so the answer used to land in front of the default).

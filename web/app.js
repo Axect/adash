@@ -3809,6 +3809,10 @@
   // A failed poll never reads as "failed": we re-check the agent, since the answer may well have landed.
   const answerJobs = new Map(); // agent name → {state: running|done|failed|unknown, step, k, n, verified, reason, body}
   const ANS_STEP_KO = { queued: "대기", focusing: "창 여는 중", selecting: "선택하는 중", typing: "입력하는 중", submitting: "제출하는 중", verifying: "반영 확인 중" };
+  // Retrying re-enters every answer: text fields are cleared first and choices picked again, so
+  // that is safe; a multi-choice answer toggles (Space) and would undo the picks already made,
+  // so after a partial entry it is answered in the terminal instead.
+  const ajRetryOk = (j) => !((j.k || 0) > 1 && (j.body?.answers || []).some((x) => Array.isArray(x.optionIndices) && x.optionIndices.length));
   function answerJobHtml(j) {
     const prog = j.n ? `${Math.min(j.k || 0, j.n)}/${j.n}` : "";
     const bar = j.n ? `<div class="aj-bar"><span style="width:${Math.round(100 * Math.min(j.k || 0, j.n) / j.n)}%"></span></div>` : "";
@@ -3817,7 +3821,7 @@
     if (j.state === "done" && j.mismatch?.length) return `<div class="aj warn"><b>${esc(L2("답이 다르게 들어갔습니다", "An answer was recorded differently"))}: ${esc(j.mismatch.map((m) => m.label || m.id).join(", "))}</b>${j.mismatch.map((m) => `<div class="muted small">${esc(m.label || m.id)} · ${esc(L2("보낸 값", "sent"))}: ${esc(m.sent)} · ${esc(L2("기록", "recorded"))}: ${esc(m.recorded)}</div>`).join("")}<div class="aj-act"><button data-act="aj-fix" data-name="${esc(j.name)}">${esc(L2("정정 메시지 초안", "Draft a correction"))}</button><button data-act="aj-dismiss" data-name="${esc(j.name)}">${esc(L2("닫기", "Dismiss"))}</button></div></div>`;
     if (j.state === "done") return `<div class="aj done"><b>${j.verified === false ? "답을 넣었습니다 · 반영은 확인하지 못함" : "답을 넣었습니다 ✓"}</b>${prog ? `<span class="muted small">${prog}</span>` : ""}${j.verified === false ? `<div class="muted small">터미널에서 한 번 확인해 주세요.</div><div class="aj-act"><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div>` : ""}</div>`;
     if (j.state === "unknown") return `<div class="aj warn"><b>진행 상태를 확인하지 못했습니다</b><div class="muted small">답이 들어갔을 수 있습니다. 다시 보내기 전에 터미널에서 확인하세요.${j.reason ? ` (${esc(j.reason)})` : ""}</div><div class="aj-act"><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div></div>`;
-    return `<div class="aj failed"><b>답을 넣지 못했습니다${prog ? ` (${prog}에서 멈춤)` : ""}</b><div class="muted small">${esc(j.reason || "이유 없음")}</div><div class="aj-act"><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button><button class="primary" data-act="aj-retry">다시 시도</button><button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div></div>`;
+    return `<div class="aj failed"><b>답을 넣지 못했습니다${prog ? ` (${prog}에서 멈춤)` : ""}</b><div class="muted small">${esc(j.reason || "이유 없음")}</div><div class="aj-act"><button data-act="view" data-v="terminal">${t_("터미널 보기")}</button>${ajRetryOk(j) ? `<button class="primary" data-act="aj-retry" title="${esc(L2("칸마다 비우고 처음부터 다시 넣습니다", "Clears each field and enters every answer again"))}">${esc(L2("처음부터 다시 입력", "Enter again from the start"))}</button>` : ""}<button data-act="focus" data-name="${esc(j.name)}">터미널 열기</button><button data-act="aj-close">닫기</button></div></div>`;
   }
   const normJob = (r) => ({ state: r.state || r.status || "running", step: r.step || r.phase, k: r.k ?? r.done ?? r.progress?.done, n: r.n ?? r.total ?? r.progress?.total, verified: r.verified, reason: r.reason || r.error, mismatch: r.result?.mismatch || [], submitted: !!r.result?.submitted });
   function setJob(name, j) { answerJobs.set(name, { ...answerJobs.get(name), ...j, name }); renderAskCard(); render(); }
@@ -4220,7 +4224,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       if (p.btwText != null) seen = msgs.filter((m) => (m.kind === "btw" || m.btw) && m.role === "user").slice(p.seenBtw || 0).some((m) => norm(m.text) === norm(p.btwText));
       else {
         // user messages that arrived after the send: past the count seen at send time, or stamped at/after it
-        const fresh = users.filter((u, k) => k >= p.seenUsers || userTs[k] >= p.at - 2000);
+        const fresh = users.filter((u, k) => k >= p.seenUsers || userTs[k] >= p.at - 5000);
         const want = nz(p.text);
         seen = fresh.some((u) => {
           const got = nz(u.body);
@@ -4228,7 +4232,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
           return p.images.every((x) => u.paths.includes(x)) && (p.files || []).every((x) => u.files.includes(x));
         });
         // Text still differs: any new user message, or the agent starting to work after the send, means it arrived.
-        if (!seen && (fresh.length || (st0?.state === "working" && (st0.stateSince || 0) >= p.at - 2000))) seen = true;
+        if (!seen && (fresh.length || (st0?.state === "working" && (st0.stateSince || 0) >= p.at - 5000))) seen = true;
       }
       if (seen) { p.urls.forEach((u) => URL.revokeObjectURL(u)); return false; }
       // Never "sending" forever: after 30 s it turns into "not confirmed · send again".
@@ -4633,6 +4637,9 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
     }
     const asText = !!(ov.prefixHit && ov.prefixMode === "text");
     const sendBody = { text, force: !!force, ...(images.length ? { images } : {}), ...(files.length ? { files } : {}), ...(asText ? { asText: true } : {}) };
+    // the agent may record the message before this request returns (a slow reply, a restart of
+    // adash): the bubble matches messages from just before the click on
+    const clickAt = Date.now();
     try { r = await api("POST", `/api/agents/${enc(name)}/send`, sendBody); }
     catch (e) { $("#send-result").textContent = `실패: ${e.message}`; return; }
     if (name !== ov.name) return;
@@ -4648,7 +4655,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       const seenBtw = (ov.tx?.messages || []).filter((m) => (m.kind === "btw" || m.btw) && m.role === "user").length;
       // a harness built-in ran in the harness (no user message to wait for): a small command line instead
       if (r.command) { (ov.cmdRuns ||= []).push({ cmd: text.trim(), out: r.output || [], at: Date.now(), after: (ov.tx?.messages || []).length }); }
-      else if (ov.tx?.source !== "terminal") ov.pending.push({ text, images, urls: imgAtts.map((a) => a.url), files, sizes: new Map([...fileAtts.filter((a) => a.size != null).map((a) => [a.path, a.size]), ...fileAtts.map((a) => [`name:${a.path}`, a.name])]), seenUsers, seenBtw, btwText, at: Date.now() });
+      else if (ov.tx?.source !== "terminal") ov.pending.push({ text, images, urls: imgAtts.map((a) => a.url), files, sizes: new Map([...fileAtts.filter((a) => a.size != null).map((a) => [a.path, a.size]), ...fileAtts.map((a) => [`name:${a.path}`, a.name])]), seenUsers, seenBtw, btwText, at: clickAt });
       else ready.forEach((a) => a.url && URL.revokeObjectURL(a.url));
       // its own 30 s expiry (not only the render-time check): "sending" never outlives it
       { const p = ov.pending[ov.pending.length - 1], who = name; if (p) setTimeout(() => { if (ov.name === who && ov.pending.includes(p) && !p.stale) { p.stale = true; renderChat(); } }, 30500); }
