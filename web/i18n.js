@@ -163,6 +163,7 @@
     "프로젝트": "Project", "활동": "Activity", "기다리는 에이전트가 없습니다": "No agents waiting", "미루기 60분": "Snooze 60 min", "알림·기기": "Notifications",
     "이 기기 승인 대기": "This device is waiting for approval", "데스크톱의 adash 대시보드에서 이 기기를 승인하세요.": "Approve this device in the adash dashboard on the desktop.",
     "새 기기 승인 요청": "New device approval request", "휴대폰에 보이는 코드:": "Code shown on the phone:", "승인": "Approve", "해제": "Revoke", "기기": "Devices",
+    "승인과 해제는 데스크톱 대시보드에서 합니다": "Approve and revoke devices on the desktop dashboard",
     "모르는 기기라면 취소하세요. 나중에 '알림·기기 설정'에서 승인할 수 있습니다.": "Cancel if you don't know this device. You can approve it later in Notifications & devices.",
     "기기를 승인했습니다": "Device approved", "기기를 해제했습니다": "Device revoked", "이 기기에서 푸시 받기": "Receive push on this device", "이 기기 푸시 알림": "Push on this device",
     "푸시 알림을 켰습니다": "Push enabled", "푸시 알림을 껐습니다": "Push disabled", "푸시 설정 실패:": "Push setup failed:", "조용한 시간": "Quiet hours", "저장": "Save",

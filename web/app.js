@@ -5292,6 +5292,10 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
   // ---------- Web Push + devices (Phase C) ----------
   const PUSH_EVENTS = [["asking", "질문 대기"], ["human_answer", "내가 직접 물은 질문에 답이 옴"], ["relay_held", "검토 답변 보류"], ["escalated", "에스컬레이션"], ["waiting_after_human", "내가 말 건 에이전트가 답을 남김"]];
   const b64ToU8 = (s) => { const p = "=".repeat((4 - (s.length % 4)) % 4); const raw = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(raw, (c) => c.charCodeAt(0)); };
+  // Only the desktop approves and revokes devices: the server refuses both (403) for a browser that came in through
+  // tailscale serve, and that browser has the tailnet name in its address, never a loopback one (an SSH tunnel to
+  // 127.0.0.1 counts as the desktop on both sides).
+  const onDesktop = ["127.0.0.1", "localhost", "[::1]"].includes(location.hostname);
   async function pushState() {
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return { supported: false };
     const reg = await navigator.serviceWorker.getRegistration();
@@ -5311,7 +5315,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
         <div class="row">조용한 시간 <input type="time" name="qf" value="${esc(cur.quietHours?.from || "")}"> ~ <input type="time" name="qt" value="${esc(cur.quietHours?.to || "")}"></div>
         ${key?.idleSupported ? `<label class="mg-t"><input type="checkbox" name="idle" ${cur.onlyWhenIdle ? "checked" : ""}>데스크톱을 5분 이상 쓰지 않을 때만</label>` : ""}
         <label class="mg-t"><input type="checkbox" name="on" ${ps.sub ? "checked" : ""} ${ps.supported && key?.publicKey ? "" : "disabled"}>이 기기에서 푸시 받기</label></div>
-      ${devices.length ? `<div class="ps-sec"><b>기기</b>${devices.map((d) => `<div class="dev-row"><span>${d.node ? `<b>${esc(d.node)}</b> ` : ""}${esc(d.name || d.id)}</span><span class="muted small">${esc(d.login || "")}${d.lastSeen ? ` · ${ago(d.lastSeen)}` : ""}</span><span class="spacer"></span>${d.approved ? `<button type="button" data-act="dev-revoke" data-id="${esc(d.id)}" title="${esc(d.node ? L2(`이 Tailscale 기기(${d.node})의 모든 접속을 해제`, `Revokes every login from this Tailscale device (${d.node})`) : "")}">해제</button>` : `<button type="button" class="primary" data-act="dev-approve" data-id="${esc(d.id)}">승인</button>`}</div>`).join("")}</div>` : ""}`, "저장", async (fd) => {
+      ${devices.length ? `<div class="ps-sec"><b>기기</b>${onDesktop ? "" : ` <span class="muted small">승인과 해제는 데스크톱 대시보드에서 합니다</span>`}${devices.map((d) => `<div class="dev-row"><span>${d.node ? `<b>${esc(d.node)}</b> ` : ""}${esc(d.name || d.id)}</span><span class="muted small">${esc(d.login || "")}${d.lastSeen ? ` · ${ago(d.lastSeen)}` : ""}</span><span class="spacer"></span>${!onDesktop ? "" : d.approved ? `<button type="button" data-act="dev-revoke" data-id="${esc(d.id)}" title="${esc(d.node ? L2(`이 Tailscale 기기(${d.node})의 모든 접속을 해제`, `Revokes every login from this Tailscale device (${d.node})`) : "")}">해제</button>` : `<button type="button" class="primary" data-act="dev-approve" data-id="${esc(d.id)}">승인</button>`}</div>`).join("")}</div>` : ""}`, "저장", async (fd) => {
       const settings = { events: fd.getAll("ev"), quietHours: fd.get("qf") && fd.get("qt") ? { from: fd.get("qf"), to: fd.get("qt") } : null, onlyWhenIdle: !!fd.get("idle") };
       localStorage.setItem("adash.push", JSON.stringify(settings));
       try {
@@ -5345,7 +5349,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
   const markDevPrompted = (d) => { const s = devPrompted(); s.add(devKey(d)); localStorage.setItem(DEV_KEY, JSON.stringify([...s].slice(-50))); };
   let devPrompt = null; // id of the device whose prompt is open
   async function pollDevices() {
-    if (FIXTURE || isMobile()) return;
+    if (FIXTURE || isMobile() || !onDesktop) return;
     let ds = [];
     try { ds = (await api("GET", "/api/devices", undefined, { quiet: true }))?.devices || []; } catch { return; }
     const pending = ds.filter((d) => !d.approved && !d.revoked);
