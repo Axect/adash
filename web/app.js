@@ -2736,6 +2736,20 @@
       [...$("#viewer .viewer-body").querySelectorAll(".ro-m")].pop()?.scrollIntoView({ block: "end" });
     } catch (e) { openViewer(`<p>${esc(e.message)}</p>`, true); }
   }
+  // A harness note to the model ("<system-reminder …>…</system-reminder>": unfinished todos, a
+  // style rule, a changed file): one grey line, the text folded under it.
+  function reminderSummary(t) {
+    const todo = t.match(/stopped with (\d+) incomplete todo/i), rk = t.match(/\(Reminder (\d+)\/(\d+)\)/i);
+    if (todo) return L2(`남은 할 일 ${todo[1]}개로 계속 진행 요청${rk ? ` (${rk[1]}/${rk[2]})` : ""}`, `asked to go on: ${todo[1]} unfinished todo${todo[1] === "1" ? "" : "s"}${rk ? ` (${rk[1]}/${rk[2]})` : ""}`);
+    const rule = t.match(/rule="([^"]+)"/), reason = t.match(/reason="([^"]+)"/);
+    if (rule) return L2(`규칙 알림: ${rule[1]}`, `rule note: ${rule[1]}`);
+    const body = t.replace(/<\/?system-reminder[^>]*>/g, "").trim().split("\n").find((l) => l.trim()) || "";
+    return `${reason ? `${reason[1]}: ` : ""}${body.length > 90 ? body.slice(0, 90) + "…" : body}`;
+  }
+  function reminderRow(m) {
+    const h = agentBy(ov.name)?.agentType || "agent";
+    return `<details class="m sysnote" data-gid="${esc(m.id)}"${ov.openGroups.has(m.id) ? " open" : ""} title="${esc(tsTitle(m.ts))}"><summary>↻ ${esc(h)}: ${esc(reminderSummary(m.text || ""))}</summary><pre class="sysnote-body">${esc((m.text || "").replace(/<\/?system-reminder[^>]*>/g, "").trim())}</pre></details>`;
+  }
   async function reopenSession(file, label) {
     toast(`${label} 이어서 여는 중…`, 10000);
     try {
@@ -4283,6 +4297,7 @@ html = `<dl class="kv"><dt>제목</dt><dd>${esc(a.title || "-")}</dd>
       else if (m.role === "media") blocks.push([m.id, mediaRow(m)]);
       // open state survives re-renders (same as tool groups); no text: no block
       else if (m.role === "thinking") { if (m.text?.trim()) blocks.push([`${m.id}:${ov.openGroups.has(m.id)}:${m.text.length}`, `<details class="m thinking" data-gid="${esc(m.id)}"${ov.openGroups.has(m.id) ? " open" : ""} title="${esc(tsTitle(m.ts))}"><summary>${t_("생각")}</summary><div class="md">${md(m.text, ov.name, m.id)}</div></details>`]); }
+      else if (/^\s*<system-reminder\b/.test(m.text || "")) blocks.push([`${m.id}:${ov.openGroups.has(m.id)}`, reminderRow(m)]);
       else blocks.push([m.id, `<div class="m system${tx?.source === "terminal" ? " term" : ""}" title="${esc(tsTitle(m.ts))}">${esc(m.text)}</div>`]);
     }
     (ov.cmdRuns || []).filter((c) => c.at > Date.now() - 10 * 60_000).forEach((c, i) => blocks.push([`c:${i}:${c.at}`, `<div class="m system cmd-run"><code>${esc(c.cmd)}</code> ${esc(L2("실행", "ran"))}${c.out.length ? ` · ${esc(c.out.join(" · "))}` : ""}</div>`]));

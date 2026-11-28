@@ -293,6 +293,10 @@ code.path { font: var(--fs-xs) var(--mono); color: var(--muted); user-select: al
 .pin-ic { display: inline-flex; align-items: center; flex-shrink: 0; margin-left: 4px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; vertical-align: middle; }
 .pin-ic:hover { color: var(--fg); }
 .pin-list { padding-left: 1.2em; }
+.m.sysnote { align-self: stretch; color: var(--muted); font-size: .82em; margin: 2px 0; }
+.m.sysnote summary { cursor: pointer; list-style: none; }
+.m.sysnote summary::-webkit-details-marker { display: none; }
+.sysnote-body { white-space: pre-wrap; font-size: .95em; margin: 4px 0 0 1.2em; max-height: 40vh; overflow: auto; }
 .sub-chip { margin-left: 6px; font-size: .78em; color: var(--muted); white-space: nowrap; }
 .open-menu { position: fixed; z-index: 50; display: flex; flex-direction: column; min-width: 180px; }
 .open-menu button { text-align: left; }

@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Chat: a harness note to the model (`<system-reminder>`: omp's "stopped with N incomplete todo items … (Reminder k/3)", style-rule notes, file-change notices) folds into one grey line ("↻ omp: asked to go on: 2 unfinished todos (3/3)"), its text under it. Such notes never counted as your messages.
 - Keep awake: a pinned agent shows a small pin next to its name on the board, in the chat header and on the phone (list and cards); a click offers to unpin. The info panel has a "Sleep" line (kept awake · unpin, or after how many idle hours it sleeps and how long is left), the top bar a pin count that lists the pinned agents, and "Sleep now" on a pinned agent says the pin is removed. `/api/state` `sleep` carries `enabled` and `afterHours`.
 - Chat: a sent message's "sending" bubble matches the session record from the moment of the click (minus 5 s), not from when the send request returned, so a message the agent recorded before the request finished no longer stays "sending" and then "not confirmed".
 - Question answers: after a failure the retry re-enters everything from the start (text fields cleared first); it is not offered after a partial entry that included a multi-choice answer (toggles would undo).
