@@ -822,11 +822,13 @@ pub(crate) fn claude_file(p: &Proc) -> Option<(PathBuf, bool)> {
 }
 
 /// The session jsonl a Claude Code process names in its pid file, when the file belongs to this
-/// process (started within 10 s of it; a reused pid's stale file does not) and exists.
+/// process and exists. `startedAt` is when the current session started: never before the process
+/// (a reused pid's stale file is older), but it can be much later (a slow start, a session
+/// resumed inside the process).
 fn claude_pid_session(dir: &Path, p: &Proc) -> Option<PathBuf> {
     let v: Value = serde_json::from_str(&std::fs::read_to_string(dir.join(format!("{}.json", p.pid))).ok()?).ok()?;
     let started = v["startedAt"].as_i64()?;
-    if (started - p.start_ms).abs() > 10_000 {
+    if started < p.start_ms - 10_000 {
         return None;
     }
     let id = v["sessionId"].as_str().filter(|i| !i.is_empty() && !i.contains('/'))?;
@@ -939,10 +941,17 @@ mod tests {
         let write = |started: i64| {
             std::fs::write(dir.join("4242.json"), serde_json::json!({"pid": 4242, "sessionId": id, "cwd": cwd, "startedAt": started}).to_string()).unwrap()
         };
+        let own = Some(pdir.join(format!("{id}.jsonl")));
         write(1_002_000);
-        assert_eq!(super::claude_pid_session(&dir, &p), Some(pdir.join(format!("{id}.jsonl"))));
+        assert_eq!(super::claude_pid_session(&dir, &p), own);
+        // startedAt is when the session started: later than the process when its start was slow
+        // (2026-11-17: 12 s, the agent stayed idle after answering) or a session was resumed in it
+        write(1_012_300);
+        assert_eq!(super::claude_pid_session(&dir, &p), own, "session started 12 s after the process");
         write(5_000_000);
-        assert_eq!(super::claude_pid_session(&dir, &p), None, "another process with the same pid");
+        assert_eq!(super::claude_pid_session(&dir, &p), own, "session resumed inside the process");
+        write(900_000);
+        assert_eq!(super::claude_pid_session(&dir, &p), None, "left by an earlier process with the same pid");
         let _ = std::fs::remove_dir_all(&pdir);
         let _ = std::fs::remove_dir_all(&dir);
     }
