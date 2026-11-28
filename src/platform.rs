@@ -236,8 +236,20 @@ fn lsof(pid: u32, cwd_only: bool) -> Vec<PathBuf> {
     if cwd_only {
         args.extend(["-d", "cwd"]);
     }
-    let out = Command::new("lsof").args(&args).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default();
+    let out = Command::new(lsof_bin()).args(&args).output().map(|o| String::from_utf8_lossy(&o.stdout).into_owned()).unwrap_or_default();
     out.lines().filter_map(|l| l.strip_prefix('n')).filter(|n| n.starts_with('/')).map(PathBuf::from).collect()
+}
+
+/// macOS keeps lsof in /usr/sbin, which is not on the PATH of a launchd service (`adash
+/// install-service`): call it by full path there, by name elsewhere.
+#[cfg(not(target_os = "linux"))]
+fn lsof_bin() -> &'static str {
+    const MAC: &str = "/usr/sbin/lsof";
+    if cfg!(target_os = "macos") && Path::new(MAC).is_file() {
+        MAC
+    } else {
+        "lsof"
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -675,6 +687,20 @@ mod tests {
         assert!(super::cwd(me).is_some());
         assert!(super::start_ms(me) > 0);
         assert!(super::ppid(me).is_some());
+    }
+
+    /// The check above with the PATH of a launchd service, which has no /usr/sbin (where macOS
+    /// keeps lsof): this test binary runs it again in a child.
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn this_process_is_visible_on_a_service_path() {
+        let out = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "platform::tests::this_process_is_visible"])
+            .env("PATH", "/usr/local/bin:/usr/bin:/bin")
+            .output()
+            .unwrap();
+        let log = String::from_utf8_lossy(&out.stdout);
+        assert!(out.status.success() && log.contains("1 passed"), "{log}");
     }
 
     #[test]
